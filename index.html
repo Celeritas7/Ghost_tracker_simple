@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0b12" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Ghost Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root {
+      min-height: 100vh;
+      background: #0a0b12;
+      color: #e2e4ed;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at 50% 20%, rgba(91,110,234,0.05) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e2130; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- QR Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <!-- Google Identity Services for Sheets API token -->
+  <script src="https://accounts.google.com/gsi/client"></script>
+
+<script type="text/babel">
+// ============================================================
+// GHOST ASSEMBLY TRACKER — Single File App
+// ============================================================
+
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ===================== CONFIG =====================
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBigwohpQQU3TKImuGL3StJ-eWtX6OKFxI",
+  authDomain: "ghost-tracker-app-1b1d0.firebaseapp.com",
+  projectId: "ghost-tracker-app-1b1d0",
+  storageBucket: "ghost-tracker-app-1b1d0.firebasestorage.app",
+  messagingSenderId: "859247887158",
+  appId: "1:859247887158:web:ebefbd4c880ca15958a997",
+};
+
+const SHEETS_CLIENT_ID = '1088099187141-ut0dn0scqt3h99htf3rg8gsrg2oo1ad8.apps.googleusercontent.com';
+const SPREADSHEET_ID = '1mUhNDzucbHpS2y-IYu3A5ML1x5I_opUeNnqqyOtg95M';
+const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+// Init Firebase
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+
+// ===================== S/N PARSER =====================
+
+const ASSEMBLY_CODES = {
+  GST: { type:'ghost',      label:'Ghost',       sheet:'00_GHOST' },
+  MBB: { type:'mobileBase', label:'Mobile Base',  sheet:'05_Mobile Base' },
+  PLR: { type:'pillar',     label:'Pillar',       sheet:'06_Pillar' },
+  HBD: { type:'headBody',   label:'Head & Body',  sheet:'07_Head & Body' },
+  GPR: { type:'gripper',    label:'Gripper',      sheet:'08_Gripper' },
+  ARM: { type:'arm',        label:'Arm',          sheet:'09_Arm' },
+  DPK: { type:'deployKit',  label:'Deploy Kit',   sheet:'10_Deploy Kit' },
+  LAC: { type:'lMotor',     label:'L-Motor',      sheet:'01_L-motor' },
+  A12: { type:'a12Motor',   label:'A12 Motor',    sheet:'02_A12-motor' },
+  A35: { type:'a35Motor',   label:'A35 Motor',    sheet:'03_A35-motor' },
+  A4A: { type:'a4Motor',    label:'A4 Motor',     sheet:'04_A4-motor' },
+};
+
+const SHORTHAND_MAP = {
+  GH:'GST',GHOST:'GST',GST:'GST',MB:'MBB',MBB:'MBB',PL:'PLR',PLR:'PLR',PILLAR:'PLR',
+  HB:'HBD',HBD:'HBD',HEAD:'HBD',GR:'GPR',GPR:'GPR',GRIP:'GPR',ARM:'ARM',
+  DPK:'DPK',DK:'DPK',LM:'LAC',LAC:'LAC',A12:'A12',A35:'A35',A4:'A4A',A4A:'A4A',
+  PDB:'PDB',IOB:'IOB',MDB:'MDB',BRK:'BRK',BAT:'BAT',
+};
+
+function parseInput(raw) {
+  const input = raw.trim();
+  if (!input) return null;
+  const fullMatch = input.match(/^GT\d{3}-([A-Z0-9]{2,3})-(\d{3,5})$/i);
+  if (fullMatch) {
+    const code = fullMatch[1].toUpperCase(), num = parseInt(fullMatch[2]);
+    const asm = ASSEMBLY_CODES[code];
+    if (asm) return { ...asm, num, fullSN:input.toUpperCase(), inputType:'qr' };
+  }
+  if (/^\d{5,6}$/.test(input)) return { type:'galina', label:'GALINA', num:parseInt(input), fullSN:input, inputType:'manual' };
+  const shortMatch = input.match(/^([A-Z]{2,6})[- ]?(\d+)$/i);
+  if (shortMatch) {
+    const prefix = shortMatch[1].toUpperCase(), num = parseInt(shortMatch[2]);
+    const code = SHORTHAND_MAP[prefix];
+    if (code && ASSEMBLY_CODES[code]) return { ...ASSEMBLY_CODES[code], num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
+    if (['PDB','IOB','MDB','BRK','BAT'].includes(prefix)) return { type:prefix.toLowerCase(), label:prefix, num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
+  }
+  return null;
+}
+
+// ===================== SHEETS API =====================
+
+let sheetsAccessToken = null;
+
+async function fetchSheetData(sheetName) {
+  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}`,
+    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
+  if (!res.ok) throw new Error(`Failed to read ${sheetName}: ${res.status}`);
+  return (await res.json()).values || [];
+}
+
+async function fetchAllSheets() {
+  const metaRes = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}?fields=sheets.properties.title`,
+    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
+  if (!metaRes.ok) throw new Error(`Metadata fetch failed: ${metaRes.status}`);
+  const meta = await metaRes.json();
+  const allData = {};
+  for (const s of meta.sheets) {
+    try { allData[s.properties.title] = await fetchSheetData(s.properties.title); } catch (e) { console.warn(`Skipped ${s.properties.title}:`, e.message); }
+  }
+  return allData;
+}
+
+async function writeCell(sheetName, cellRef, value) {
+  const range = `${sheetName}!${cellRef}`;
+  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    { method:'PUT', headers: { Authorization:`Bearer ${sheetsAccessToken}`, 'Content-Type':'application/json' }, body:JSON.stringify({ range, values:[[value]] }) });
+  if (!res.ok) throw new Error(`Write failed: ${res.status}`);
+  return res.json();
+}
+
+async function fetchDataValidations(sheetName) {
+  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}?fields=sheets(properties,data.rowData.values.dataValidation)&ranges=${encodeURIComponent(sheetName)}`,
+    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
+  if (!res.ok) return {};
+  const data = await res.json();
+  const validations = {};
+  const sheet = data.sheets?.[0];
+  if (!sheet?.data?.[0]?.rowData) return validations;
+  sheet.data[0].rowData.forEach((row, ri) => {
+    if (!row.values) return;
+    row.values.forEach((cell, ci) => {
+      if (!cell.dataValidation) return;
+      const dv = cell.dataValidation, key = `${ri},${ci}`;
+      if (dv.condition?.type === 'ONE_OF_LIST') validations[key] = { type:'dropdown', options:(dv.condition.values||[]).map(v=>v.userEnteredValue) };
+      else if (dv.condition?.type === 'BOOLEAN') validations[key] = { type:'checkbox' };
+      else if (dv.condition?.type?.startsWith('DATE')) validations[key] = { type:'date' };
+    });
+  });
+  return validations;
+}
+
+function colToLetter(col) { let s='',n=col; while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;} return s; }
+function makeCellRef(row,col) { return `${colToLetter(col)}${row+1}`; }
+
+// ===================== AUTH =====================
+
+async function isUserAllowed(email) {
+  if (!email) return false;
+  try { const d = await db.collection('approved_users').doc(email.toLowerCase()).get(); return d.exists; }
+  catch(e) { console.error('Access check failed:', e); return false; }
+}
+
+async function checkIsAdmin(email) {
+  if (!email) return false;
+  try { const d = await db.collection('approved_users').doc(email.toLowerCase()).get(); return d.exists && d.data()?.isAdmin === true; }
+  catch(e) { return false; }
+}
+
+async function getAllowedUsers() {
+  const s = await db.collection('approved_users').get();
+  return s.docs.map(d => ({ email:d.id, ...d.data() }));
+}
+
+async function addAllowedUser(email, isAdmin=false) {
+  await db.collection('approved_users').doc(email.toLowerCase().trim()).set({ email:email.toLowerCase().trim(), isAdmin, addedAt:firebase.firestore.FieldValue.serverTimestamp() });
+}
+
+async function removeAllowedUser(email) {
+  await db.collection('approved_users').doc(email.toLowerCase()).delete();
+}
+
+// Get Sheets token via Google Identity Services (GIS)
+function requestSheetsToken() {
+  return new Promise((resolve, reject) => {
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: SHEETS_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (response) => {
+        if (response.error) { reject(new Error(response.error)); return; }
+        sheetsAccessToken = response.access_token;
+        sessionStorage.setItem('sheets_token', response.access_token);
+        resolve(response.access_token);
+      },
+    });
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+function requestSheetsTokenWithConsent() {
+  return new Promise((resolve, reject) => {
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: SHEETS_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (response) => {
+        if (response.error) { reject(new Error(response.error)); return; }
+        sheetsAccessToken = response.access_token;
+        sessionStorage.setItem('sheets_token', response.access_token);
+        resolve(response.access_token);
+      },
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  });
+}
+
+// ===================== TRACE LOGIC =====================
+
+const SHEET_KEYS = {
+  '00_GHOST':'ghost','01_L-motor':'lMotor','02_A12-motor':'a12Motor',
+  '03_A35-motor':'a35Motor','04_A4-motor':'a4Motor','05_Mobile Base':'mobileBase',
+  '06_Pillar':'pillar','07_Head & Body':'headBody','08_Gripper':'gripper',
+  '09_Arm':'arm','10_Deploy Kit':'deployKit',
+};
+
+function findSNColumn(hdr) { if(!hdr)return -1; for(let i=0;i<hdr.length;i++){const h=String(hdr[i]).trim();if(h==='#'||h==='S/N'||h==='#S/N')return i;} return -1; }
+function findCellByValue(data, val) { const sv=String(val).trim(); for(let r=0;r<data.length;r++){if(!data[r])continue;for(let c=0;c<data[r].length;c++){if(String(data[r][c]).trim()===sv)return{row:r,col:c};}} return null; }
+function rowToObject(hdr,row) { const o={};if(!hdr||!row)return o;for(let i=0;i<hdr.length;i++){o[String(hdr[i]||`col_${i}`).trim()]=row[i]||'';}return o; }
+
+function traceToGhost(input, sheetsData) {
+  const parsed = parseInput(input);
+  if (!parsed) return null;
+  const searchValue = parsed.fullSN.match(/^GT/) ? parsed.fullSN : input.trim();
+  let mRow=-1, mCol=-1, mSheet='', mData=null;
+
+  if (parsed.sheet) {
+    const d = sheetsData[parsed.sheet];
+    if (d) { const f=findCellByValue(d,parsed.fullSN); if(f){mRow=f.row;mCol=f.col;mSheet=parsed.sheet;mData=d;} }
+  }
+  if (mRow===-1) {
+    for (const [n,d] of Object.entries(sheetsData)) {
+      if(!d||!d.length)continue; const f=findCellByValue(d,searchValue);
+      if(f){mRow=f.row;mCol=f.col;mSheet=n;mData=d;break;}
+    }
+  }
+  if (mRow===-1 && parsed.inputType==='shorthand') {
+    const ns = String(parsed.num).padStart(5,'0');
+    for (const [n,d] of Object.entries(sheetsData)) {
+      if(!d||d.length<2)continue; const sc=findSNColumn(d[0]); if(sc===-1)continue;
+      for(let r=1;r<d.length;r++){const v=String(d[r]?.[sc]||'');if(v.endsWith(ns)||v.endsWith(`-${parsed.num}`)){mRow=r;mCol=sc;mSheet=n;mData=d;break;}}
+      if(mRow!==-1)break;
+    }
+  }
+  if (mRow===-1) return null;
+
+  const path = [];
+  const matchedLabel = Object.values(ASSEMBLY_CODES).find(a=>a.sheet===mSheet)?.label || parsed.label || mSheet;
+  path.push(matchedLabel);
+  const gd = sheetsData['00_GHOST'];
+  if (!gd||!gd.length) return null;
+  const matchedSN = mData[mRow]?.[mCol] || searchValue;
+
+  if (mSheet==='00_GHOST') return { ghostRow:mRow, ghostData:rowToObject(gd[0],gd[mRow]), path:['Ghost'], matchedIn:'Ghost', matchedSN, matchedSheet:mSheet, matchedRow:mRow, matchedCol:mCol };
+
+  let gRow = -1;
+  for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===matchedSN){gRow=r;break;}}if(gRow!==-1)break;}
+
+  if (gRow===-1) {
+    const sc=findSNColumn(mData[0]); const aSN=sc>=0?mData[mRow]?.[sc]:null;
+    if (aSN) {
+      for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===aSN){gRow=r;break;}}if(gRow!==-1)break;}
+      if (gRow===-1) {
+        for (const ps of ['09_Arm','05_Mobile Base','06_Pillar','07_Head & Body']) {
+          const pd=sheetsData[ps]; if(!pd)continue; const f=findCellByValue(pd,aSN);
+          if(f){const psc=findSNColumn(pd[0]);const pSN=psc>=0?pd[f.row]?.[psc]:null;
+            if(pSN){path.push(Object.values(ASSEMBLY_CODES).find(a=>a.sheet===ps)?.label||ps);
+              for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===pSN){gRow=r;break;}}if(gRow!==-1)break;}}break;}
+        }
+      }
+    }
+  }
+  if (gRow===-1) return null;
+  path.push('Ghost');
+  return { ghostRow:gRow, ghostData:rowToObject(gd[0],gd[gRow]), path, matchedIn:matchedLabel, matchedSN, matchedSheet:mSheet, matchedRow:mRow, matchedCol:mCol };
+}
+
+function buildGhostTree(ghostRow, ghostDataObj, sheetsData) {
+  const tree = { ghost:{ sheetName:'00_GHOST', row:ghostRow, data:ghostDataObj } };
+  const gsd = sheetsData['00_GHOST']; if(!gsd)return tree;
+  const gv = gsd[ghostRow]||[];
+  for (const sn of ['05_Mobile Base','06_Pillar','07_Head & Body','09_Arm','08_Gripper','10_Deploy Kit']) {
+    const sd=sheetsData[sn]; if(!sd||sd.length<2)continue;
+    const sk=SHEET_KEYS[sn], sc=findSNColumn(sd[0]); if(sc===-1)continue;
+    for(const v of gv){ const vt=String(v||'').trim(); if(!vt)continue;
+      for(let r=1;r<sd.length;r++){
+        if(String(sd[r]?.[sc]||'').trim()===vt){
+          tree[sk]={sheetName:sn,row:r,data:rowToObject(sd[0],sd[r]),headers:sd[0],sn:vt};
+          if(sn==='05_Mobile Base'||sn==='06_Pillar') findMotors(sd[r],sheetsData,tree,sn==='05_Mobile Base'?'mbMotors':'plMotors');
+          if(sn==='09_Arm') findArmMotors(sd[r],sheetsData,tree);
+          break;
+        }
+      }
+    }
+  }
+  return tree;
+}
+
+function findMotors(parentRow,sheetsData,tree,treeKey) {
+  const ld=sheetsData['01_L-motor']; if(!ld||ld.length<2)return;
+  const sc=findSNColumn(ld[0]); if(sc===-1)return;
+  const motors=[];
+  for(const v of parentRow){const vt=String(v||'').trim();if(!vt)continue;for(let r=1;r<ld.length;r++){if(String(ld[r]?.[sc]||'').trim()===vt){motors.push({row:r,data:rowToObject(ld[0],ld[r]),headers:ld[0],sn:vt});break;}}}
+  if(motors.length>0)tree[treeKey]={sheetName:'01_L-motor',items:motors};
+}
+
+function findArmMotors(armRow,sheetsData,tree) {
+  for(const[sn,key]of[['02_A12-motor','armA12'],['03_A35-motor','armA35'],['04_A4-motor','armA4']]){
+    const sd=sheetsData[sn]; if(!sd||sd.length<2)continue;
+    const sc=findSNColumn(sd[0]); if(sc===-1)continue;
+    const motors=[];
+    for(const v of armRow){const vt=String(v||'').trim();if(!vt)continue;for(let r=1;r<sd.length;r++){if(String(sd[r]?.[sc]||'').trim()===vt){motors.push({row:r,data:rowToObject(sd[0],sd[r]),headers:sd[0],sn:vt});break;}}}
+    if(motors.length>0)tree[key]={sheetName:sn,items:motors};
+  }
+}
+
+// ===================== SECTION CONFIG =====================
+
+const SEC = {
+  ghost:     {icon:'👻',label:'Ghost',           color:'#5b6eea',bg:'#151728'},
+  mobileBase:{icon:'🛞',label:'Mobile Base',     color:'#34d399',bg:'#13201a'},
+  mbMotors:  {icon:'⚙️',label:'L-Motors (MB)',    color:'#6ee7b7',bg:'#131d19'},
+  pillar:    {icon:'🏛️',label:'Pillar',           color:'#a78bfa',bg:'#1a1528'},
+  plMotors:  {icon:'⚙️',label:'L-Motor (Pillar)', color:'#6ee7b7',bg:'#131d19'},
+  headBody:  {icon:'🧠',label:'Head & Body',     color:'#f87171',bg:'#201414'},
+  arm:       {icon:'🦾',label:'Arm',              color:'#fbbf24',bg:'#201c12'},
+  armA12:    {icon:'⚙️',label:'A12 Motors',       color:'#6ee7b7',bg:'#131d19'},
+  armA35:    {icon:'⚙️',label:'A35 Motor',        color:'#6ee7b7',bg:'#131d19'},
+  armA4:     {icon:'⚙️',label:'A4 Motor',         color:'#6ee7b7',bg:'#131d19'},
+  gripper:   {icon:'🤏',label:'Gripper',          color:'#38bdf8',bg:'#121a20'},
+  deployKit: {icon:'📦',label:'Deploy Kit',       color:'#fb923c',bg:'#1e1812'},
+};
+
+// ===================== COMPONENTS =====================
+
+function Toast({message,type,onClose}) {
+  useEffect(()=>{const t=setTimeout(onClose,3000);return()=>clearTimeout(t);},[onClose]);
+  const c={success:{bg:'#121e16',b:'#34d39933',c:'#34d399',i:'✓'},error:{bg:'#1e1214',b:'#f8717133',c:'#f87171',i:'✕'},info:{bg:'#121a20',b:'#38bdf833',c:'#38bdf8',i:'ℹ'},saving:{bg:'#1e1c12',b:'#fbbf2433',c:'#fbbf24',i:'◌'}}[type]||{bg:'#121e16',b:'#34d39933',c:'#34d399',i:'✓'};
+  return <div style={{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',padding:'10px 20px',borderRadius:10,background:c.bg,border:`1px solid ${c.b}`,color:c.c,fontSize:13,fontWeight:500,zIndex:999,boxShadow:'0 8px 32px rgba(0,0,0,0.4)',display:'flex',alignItems:'center',gap:8,animation:'slideUp 0.3s ease-out'}}><span>{c.i}</span> {message}</div>;
+}
+
+function QRScanner({onScan,onClose}) {
+  const [error,setError]=useState(null); const ref=useRef(null);
+  useEffect(()=>{let s=null;
+    (async()=>{try{s=new Html5Qrcode('qr-reader');ref.current=s;await s.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},(t)=>{s.stop().catch(()=>{});onScan(t);},()=>{});}catch(e){setError(e.message||'Camera denied');}})();
+    return()=>{if(ref.current)ref.current.stop().catch(()=>{});};
+  },[onScan]);
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:999}}>
+      <button onClick={onClose} style={{position:'absolute',top:16,right:16,background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',width:40,height:40,borderRadius:20,fontSize:18,cursor:'pointer'}}>✕</button>
+      <div style={{width:280,height:280,borderRadius:16,overflow:'hidden'}}><div id="qr-reader" style={{width:'100%',height:'100%'}}/></div>
+      <p style={{color:'#8b8fa7',fontSize:14,marginTop:20}}>Point camera at QR code</p>
+      {error&&<div style={{marginTop:16,padding:'10px 16px',borderRadius:8,background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.3)',color:'#f87171',fontSize:13,maxWidth:280,textAlign:'center'}}>{error}</div>}
+      <button onClick={onClose} style={{marginTop:24,padding:'10px 20px',borderRadius:8,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'#8b8fa7',fontSize:13,cursor:'pointer'}}>Type manually</button>
+    </div>
+  );
+}
+
+function AdminPanel({onClose}) {
+  const [users,setUsers]=useState([]); const [newE,setNewE]=useState(''); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
+  useEffect(()=>{load();},[]);
+  async function load(){setLoading(true);setUsers(await getAllowedUsers());setLoading(false);}
+  async function handleAdd(){if(!newE.trim()||!newE.includes('@'))return;setSaving(true);await addAllowedUser(newE.trim());setNewE('');await load();setSaving(false);}
+  async function handleRm(e){if(!confirm(`Remove ${e}?`))return;await removeAllowedUser(e);await load();}
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:900,padding:20}}>
+      <div style={{width:'100%',maxWidth:440,maxHeight:'80vh',background:'#12131e',borderRadius:16,border:'1px solid #1e2130',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #1e2130'}}>
+          <div><div style={{fontSize:16,fontWeight:700}}>User Access</div><div style={{fontSize:12,color:'#6b7094',marginTop:2}}>{users.length} user{users.length!==1?'s':''}</div></div>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'#6b7094',fontSize:18,padding:'4px 8px',cursor:'pointer'}}>✕</button>
+        </div>
+        <div style={{padding:'12px 20px',borderBottom:'1px solid #1e2130',display:'flex',gap:8}}>
+          <input value={newE} onChange={e=>setNewE(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="email@company.com" style={{flex:1,padding:'10px 14px',borderRadius:10,border:'1px solid #1e2130',background:'#0a0b12',color:'#e2e4ed',fontSize:13,outline:'none'}}/>
+          <button onClick={handleAdd} disabled={saving} style={{padding:'10px 16px',borderRadius:10,border:'none',background:'#5b6eea',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',opacity:saving?0.5:1}}>{saving?'...':'+ Add'}</button>
+        </div>
+        <div style={{flex:1,overflow:'auto',padding:'8px 12px'}}>
+          {loading?<div style={{padding:20,textAlign:'center',color:'#6b7094'}}>Loading...</div>:
+            users.map(u=>(
+              <div key={u.email} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:8,marginBottom:4,background:u.isAdmin?'rgba(91,110,234,0.06)':'transparent'}}>
+                <div><div style={{fontSize:13,color:'#e2e4ed'}}>{u.email}</div><span style={{fontSize:10,fontWeight:600,padding:'1px 6px',borderRadius:4,background:u.isAdmin?'rgba(91,110,234,0.15)':'rgba(255,255,255,0.04)',color:u.isAdmin?'#5b6eea':'#6b7094'}}>{u.isAdmin?'ADMIN':'USER'}</span></div>
+                {!u.isAdmin&&<button onClick={()=>handleRm(u.email)} style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'#f87171',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer',opacity:0.6}}>Remove</button>}
+              </div>))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================== MAIN APP =====================
+
+function App() {
+  const [user,setUser]=useState(null);
+  const [allowed,setAllowed]=useState(null);
+  const [adminUser,setAdminUser]=useState(false);
+  const [authLoading,setAuthLoading]=useState(true);
+  const [hasToken,setHasToken]=useState(false);
+  const [sheetsData,setSheetsData]=useState({});
+  const [dataLoading,setDataLoading]=useState(false);
+  const [validations,setValidations]=useState({});
+  const [screen,setScreen]=useState('search');
+  const [searchInput,setSearchInput]=useState('');
+  const [parsedPreview,setParsedPreview]=useState(null);
+  const [result,setResult]=useState(null);
+  const [tree,setTree]=useState(null);
+  const [expanded,setExpanded]=useState(new Set());
+  const [editing,setEditing]=useState(null);
+  const [editValue,setEditValue]=useState('');
+  const [toast,setToast]=useState(null);
+  const [showScanner,setShowScanner]=useState(false);
+  const [showAdmin,setShowAdmin]=useState(false);
+  const inputRef=useRef(null);
+
+  function showToastMsg(m,t='success'){setToast({msg:m,type:t});}
+
+  // Auth
+  useEffect(()=>{
+    // Restore token from session
+    const stored = sessionStorage.getItem('sheets_token');
+    if (stored) { sheetsAccessToken = stored; setHasToken(true); }
+
+    const unsub = auth.onAuthStateChanged(async(fbUser)=>{
+      setUser(fbUser);
+      if(fbUser){
+        const ok=await isUserAllowed(fbUser.email);
+        setAllowed(ok);
+        if(ok) setAdminUser(await checkIsAdmin(fbUser.email));
+      } else { setAllowed(null); }
+      setAuthLoading(false);
+    });
+    return unsub;
+  },[]);
+
+  useEffect(()=>{setParsedPreview(searchInput.trim()?parseInput(searchInput):null);},[searchInput]);
+  useEffect(()=>{if(screen==='search'&&inputRef.current)inputRef.current.focus();},[screen]);
+
+  async function handleSignIn() {
+    try {
+      const result = await auth.signInWithPopup(googleProvider);
+      // Now get Sheets token via GIS
+      try {
+        await requestSheetsToken();
+        setHasToken(true);
+      } catch(e) {
+        console.warn('Auto token failed, user will need to click Connect:', e);
+      }
+    } catch(err) { showToastMsg('Sign-in failed: '+err.message,'error'); }
+  }
+
+  async function connectSheets() {
+    try {
+      await requestSheetsTokenWithConsent();
+      setHasToken(true);
+    } catch(e) { showToastMsg('Failed to connect: '+e.message,'error'); }
+  }
+
+  async function handleSignOut() {
+    await auth.signOut();
+    sheetsAccessToken=null; sessionStorage.removeItem('sheets_token');
+    setUser(null);setAllowed(null);setHasToken(false);setSheetsData({});setScreen('search');
+  }
+
+  // Load data
+  useEffect(()=>{if(allowed&&hasToken&&sheetsAccessToken)loadData();},[allowed,hasToken]);
+
+  async function loadData() {
+    setDataLoading(true);
+    try {
+      const data=await fetchAllSheets();
+      setSheetsData(data);
+      const valMap={};
+      for(const name of Object.keys(data)){try{const v=await fetchDataValidations(name);if(Object.keys(v).length>0)valMap[name]=v;}catch(e){}}
+      setValidations(valMap);
+    } catch(err) {
+      console.error('Load failed:', err);
+      if (err.message.includes('401') || err.message.includes('403')) {
+        sheetsAccessToken=null; sessionStorage.removeItem('sheets_token'); setHasToken(false);
+        showToastMsg('Sheets token expired — click Connect to reconnect','error');
+      } else { showToastMsg('Failed to load data: '+err.message,'error'); }
+    }
+    setDataLoading(false);
+  }
+
+  function handleSearch() {
+    if(!searchInput.trim())return;
+    const r=traceToGhost(searchInput,sheetsData);
+    if(r){setResult(r);const gt=buildGhostTree(r.ghostRow,r.ghostData,sheetsData);setTree(gt);
+      const ek=new Set(['ghost']);const mk=Object.entries(SHEET_KEYS).find(([s])=>s===r.matchedSheet)?.[1];
+      if(mk)ek.add(mk);setExpanded(ek);setScreen('result');
+    } else { showToastMsg(`No match for "${searchInput}"`,'error'); }
+  }
+
+  function handleQRScan(value) {
+    setShowScanner(false);setSearchInput(value);
+    setTimeout(()=>{
+      const r=traceToGhost(value,sheetsData);
+      if(r){setResult(r);const gt=buildGhostTree(r.ghostRow,r.ghostData,sheetsData);setTree(gt);
+        const ek=new Set(['ghost']);const mk=Object.entries(SHEET_KEYS).find(([s])=>s===r.matchedSheet)?.[1];
+        if(mk)ek.add(mk);setExpanded(ek);setScreen('result');
+      } else { showToastMsg(`No match for "${value}"`,'error'); }
+    },100);
+  }
+
+  function getVal(sn,r,c){return validations[sn]?.[`${r},${c}`]||null;}
+
+  function startEdit(sn,row,col,hdr,val) {
+    const v=getVal(sn,row,col); const isDate=hdr.toLowerCase().includes('date')||hdr.includes('完了');
+    setEditing({sheetName:sn,row,col,headerName:hdr,value:val,validation:v||(isDate?{type:'date'}:null)});
+    setEditValue(val||'');setScreen('edit');
+  }
+
+  async function saveEdit() {
+    if(!editing)return;showToastMsg('Saving...','saving');
+    try{await writeCell(editing.sheetName,makeCellRef(editing.row,editing.col),editValue);
+      if(sheetsData[editing.sheetName]?.[editing.row]){sheetsData[editing.sheetName][editing.row][editing.col]=editValue;setSheetsData({...sheetsData});}
+      showToastMsg(`Saved ${editing.headerName}: ${editValue}`);setScreen('result');setEditing(null);
+    }catch(e){showToastMsg('Save failed: '+e.message,'error');}
+  }
+
+  function goBack(){if(screen==='edit'){setScreen('result');setEditing(null);}else{setScreen('search');setSearchInput('');setResult(null);setTree(null);}}
+  const toggle=(k)=>setExpanded(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
+
+  // FieldRow
+  function FR({sn,row,col,hdr,val,hl}) {
+    if(['ghostsn','parentsn','parenttype'].some(p=>hdr.toLowerCase().replace(/[^a-z0-9]/g,'').includes(p)))return null;
+    const v=getVal(sn,row,col); const isDate=v?.type==='date'||hdr.toLowerCase().includes('date')||hdr.includes('完了');
+    const isCheck=v?.type==='checkbox'||val==='✓'||val==='✗'; const isDrop=v?.type==='dropdown';
+    return (
+      <div onClick={()=>startEdit(sn,row,col,hdr,val)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 16px',cursor:'pointer',borderRadius:8,background:hl?'rgba(91,110,234,0.08)':'transparent',borderLeft:hl?'3px solid #5b6eea':'3px solid transparent',margin:'0 4px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,flex:1}}>
+          <span style={{fontSize:12,color:'#6b7094',flexShrink:0}}>{hdr}</span>
+          {isDrop&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(91,110,234,0.12)',color:'#5b6eea',fontWeight:700}}>▾</span>}
+          {isCheck&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(251,191,36,0.12)',color:'#fbbf24',fontWeight:700}}>☐</span>}
+          {isDate&&!isCheck&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(56,189,248,0.12)',color:'#38bdf8',fontWeight:700}}>📅</span>}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+          {isCheck?<span style={{width:20,height:20,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',background:val==='✓'?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.1)',border:`1.5px solid ${val==='✓'?'#34d399':'#f8717155'}`,fontSize:12,color:val==='✓'?'#34d399':'#f87171'}}>{val==='✓'?'✓':'✗'}</span>
+            :<span style={{fontSize:12,color:'#b0b4cc',fontFamily:"'Courier New',monospace",maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{val||'—'}</span>}
+          <span style={{fontSize:10,color:'#3d4060'}}>✎</span>
+        </div>
+      </div>
+    );
+  }
+
+  // SectionCard
+  function SC({sk,data}) {
+    if(!data)return null; const cfg=SEC[sk]; if(!cfg)return null;
+    const isOpen=expanded.has(sk); const isM=result?.matchedSheet===data.sheetName||(data.items&&data.items.some(i=>i.sn===result?.matchedSN));
+    const items=data.items||[data];
+    return (
+      <div style={{marginBottom:6}}>
+        <div onClick={()=>toggle(sk)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:cfg.bg,borderRadius:isOpen?'12px 12px 0 0':12,border:`1px solid ${cfg.color}${isM?'55':'22'}`,borderLeft:isM?`4px solid ${cfg.color}`:`1px solid ${cfg.color}22`,cursor:'pointer'}}>
+          <span style={{fontSize:22,lineHeight:1}}>{cfg.icon}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:cfg.color}}>{cfg.label}</div>
+            <div style={{fontSize:11,color:'#6b7094',marginTop:2,fontFamily:"'Courier New',monospace",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{items.map(i=>i.sn||i.data?.['#']||'').filter(Boolean).join(' · ')||data.sheetName}</div></div>
+          {isM&&<span style={{padding:'2px 8px',borderRadius:6,fontSize:10,fontWeight:600,background:`${cfg.color}22`,color:cfg.color}}>MATCH</span>}
+          <span style={{fontSize:11,color:'#3d4060',transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▼</span>
+        </div>
+        {isOpen&&items.map((item,idx)=>{const rd=item.data||{};return(
+          <div key={idx} style={{background:'#0d0e17',border:`1px solid ${cfg.color}15`,borderTop:'none',borderRadius:idx===items.length-1?'0 0 12px 12px':0,paddingTop:4,paddingBottom:4}}>
+            {items.length>1&&<div style={{padding:'6px 16px',fontSize:11,fontWeight:600,color:cfg.color,opacity:0.7,fontFamily:"'Courier New',monospace"}}>{item.sn||''}</div>}
+            {Object.entries(rd).map(([k,v],ci)=><FR key={k} sn={data.sheetName||item.sheetName} row={item.row} col={ci} hdr={k} val={v} hl={result?.matchedSN===v}/>)}
+          </div>);})}
+      </div>
+    );
+  }
+
+  const Spinner=({text})=><div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16}}><div style={{width:40,height:40,border:'3px solid #1e2130',borderTopColor:'#5b6eea',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#6b7094',fontSize:14}}>{text}</p></div>;
+
+  if(authLoading) return <Spinner text="Loading..."/>;
+
+  // Sign in
+  if(!user) return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{width:80,height:80,borderRadius:24,background:'linear-gradient(135deg,#5b6eea,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40,marginBottom:24,boxShadow:'0 12px 48px rgba(91,110,234,0.25)'}}>👻</div>
+      <h1 style={{fontSize:26,fontWeight:700,marginBottom:8}}>Ghost Tracker</h1>
+      <p style={{color:'#6b7094',fontSize:14,marginBottom:32,textAlign:'center',maxWidth:320,lineHeight:1.5}}>Sign in with your company Google account</p>
+      <button onClick={handleSignIn} style={{padding:'14px 36px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 24px rgba(91,110,234,0.3)',cursor:'pointer'}}>Sign in with Google</button>
+      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+    </div>
+  );
+
+  // Denied
+  if(allowed===false) return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
+      <div style={{width:64,height:64,borderRadius:16,background:'rgba(248,113,113,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:20}}>🔒</div>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Access Denied</h2>
+      <p style={{color:'#6b7094',fontSize:14,maxWidth:300,lineHeight:1.5,marginBottom:8}}>Your account <strong style={{color:'#e2e4ed'}}>{user.email}</strong> is not authorized.</p>
+      <p style={{color:'#6b7094',fontSize:13,marginBottom:24}}>Contact admin for access.</p>
+      <button onClick={handleSignOut} style={{padding:'10px 24px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#8b8fa7',fontSize:13,cursor:'pointer'}}>Sign out</button>
+    </div>
+  );
+
+  if(allowed===null||dataLoading) return <Spinner text="Loading assembly data..."/>;
+
+  // Need Sheets token
+  if(allowed&&!hasToken) return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
+      <div style={{width:64,height:64,borderRadius:16,background:'rgba(251,191,36,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:20}}>📋</div>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Connect to Google Sheets</h2>
+      <p style={{color:'#6b7094',fontSize:14,maxWidth:320,lineHeight:1.5,marginBottom:24}}>Signed in as <strong style={{color:'#e2e4ed'}}>{user.email}</strong>. Grant access to read/write assembly data.</p>
+      <button onClick={connectSheets} style={{padding:'14px 36px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 24px rgba(91,110,234,0.3)',cursor:'pointer'}}>Connect to Sheets</button>
+      <button onClick={handleSignOut} style={{marginTop:12,padding:'10px 24px',borderRadius:8,border:'1px solid #1e2130',background:'transparent',color:'#6b7094',fontSize:13,cursor:'pointer'}}>Sign out</button>
+      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+    </div>
+  );
+
+  // =================== SEARCH SCREEN ===================
+  if(screen==='search') return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',borderBottom:'1px solid #14152a'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {user.photoURL&&<img src={user.photoURL} alt="" style={{width:28,height:28,borderRadius:14}}/>}
+          <span style={{fontSize:12,color:'#6b7094'}}>{user.email}</span>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {adminUser&&<button onClick={()=>setShowAdmin(true)} style={{background:'none',border:'1px solid #1e2130',color:'#5b6eea',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer'}}>👥 Users</button>}
+          <button onClick={handleSignOut} style={{background:'none',border:'1px solid #1e2130',color:'#6b7094',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer'}}>Sign out</button>
+        </div>
+      </div>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#5b6eea,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:20,boxShadow:'0 12px 48px rgba(91,110,234,0.25)'}}>👻</div>
+        <h1 style={{fontSize:24,fontWeight:700,letterSpacing:-0.5,marginBottom:6}}>Ghost Tracker</h1>
+        <p style={{color:'#6b7094',fontSize:14,marginBottom:32,textAlign:'center',maxWidth:340,lineHeight:1.5}}>Scan QR or type any S/N to find and edit assembly data</p>
+        <div style={{width:'100%',maxWidth:400,marginBottom:12}}>
+          <input ref={inputRef} value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} placeholder="GT418-GST-00001 or GR-1 or 240002..." autoFocus
+            style={{width:'100%',padding:'15px 18px',borderRadius:14,border:'1px solid #1e2130',background:'#12131e',color:'#e2e4ed',fontSize:16,fontFamily:"'Courier New',monospace",outline:'none'}}
+            onFocus={e=>{e.target.style.borderColor='#5b6eea';e.target.style.boxShadow='0 0 0 3px rgba(91,110,234,0.12)';}} onBlur={e=>{e.target.style.borderColor='#1e2130';e.target.style.boxShadow='none';}}/>
+        </div>
+        {parsedPreview&&<div style={{width:'100%',maxWidth:400,padding:'8px 14px',borderRadius:10,background:'rgba(91,110,234,0.06)',border:'1px solid rgba(91,110,234,0.12)',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:11,color:'#5b6eea',fontWeight:600}}>{parsedPreview.inputType==='qr'?'📷 QR':parsedPreview.inputType==='shorthand'?'⌨️ Quick':'🔢'}</span>
+          <span style={{fontSize:12,color:'#8b8fa7'}}>→</span>
+          <span style={{fontSize:12,color:'#e2e4ed',fontWeight:500}}>{parsedPreview.label}</span>
+          {parsedPreview.sheet&&<span style={{fontSize:11,color:'#6b7094',marginLeft:'auto',fontFamily:'monospace'}}>{parsedPreview.sheet}</span>}
+        </div>}
+        <div style={{display:'flex',gap:10,width:'100%',maxWidth:400}}>
+          <button onClick={handleSearch} style={{flex:1,padding:'14px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 20px rgba(91,110,234,0.25)',cursor:'pointer'}}>Search</button>
+          <button onClick={()=>setShowScanner(true)} style={{flex:1,padding:'14px',borderRadius:12,border:'1px solid #1e2130',background:'#12131e',color:'#e2e4ed',fontSize:15,fontWeight:600,cursor:'pointer'}}>📷 Scan QR</button>
+        </div>
+        <div style={{marginTop:32,width:'100%',maxWidth:400,padding:'16px',borderRadius:12,background:'#0d0e17',border:'1px solid #1a1c2a'}}>
+          <div style={{fontSize:11,color:'#3d4060',fontWeight:600,marginBottom:10,letterSpacing:1}}>ACCEPTED FORMATS</div>
+          {[{f:'GT418-GST-00001',d:'Full S/N (QR)',t:'QR'},{f:'MB-1, ARM-10',d:'Quick shorthand',t:'Type'},{f:'PDB-4421, IOB-5567',d:'Sub-component',t:'Type'},{f:'240002',d:'GALINA number',t:'QR'}].map((i,x)=>
+            <div key={x} style={{display:'flex',alignItems:'center',gap:10,padding:'5px 0'}}>
+              <span style={{padding:'2px 6px',borderRadius:4,fontSize:9,fontWeight:600,background:i.t==='QR'?'rgba(91,110,234,0.12)':'rgba(251,191,36,0.12)',color:i.t==='QR'?'#5b6eea':'#fbbf24'}}>{i.t}</span>
+              <code style={{fontSize:12,color:'#8b8fa7',fontFamily:"'Courier New',monospace"}}>{i.f}</code>
+              <span style={{fontSize:11,color:'#3d4060',marginLeft:'auto'}}>{i.d}</span>
+            </div>)}
+        </div>
+        <div style={{marginTop:16,fontSize:11,color:'#2d3050'}}>{Object.keys(sheetsData).length} sheets · {Object.values(sheetsData).reduce((s,d)=>s+(d?.length||0),0)} rows</div>
+      </div>
+      {showScanner&&<QRScanner onScan={handleQRScan} onClose={()=>setShowScanner(false)}/>}
+      {showAdmin&&<AdminPanel onClose={()=>setShowAdmin(false)}/>}
+      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+    </div>
+  );
+
+  // =================== RESULT SCREEN ===================
+  if(screen==='result'&&tree) {
+    const all=Object.entries(tree).map(([k,d])=>({key:k,data:d}));
+    const matched=all.filter(s=>s.data?.sheetName===result?.matchedSheet&&s.key!=='ghost');
+    const rest=all.filter(s=>s.data?.sheetName!==result?.matchedSheet&&s.key!=='ghost');
+    const gs=all.find(s=>s.key==='ghost');
+    const isGM=result?.matchedSheet==='00_GHOST';
+    const sorted=isGM?all:[gs,...matched,...rest].filter(Boolean);
+    const seen=new Set(); const final=sorted.filter(s=>{if(seen.has(s.key))return false;seen.add(s.key);return true;});
+
+    return (
+      <div style={{minHeight:'100vh'}}>
+        <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid #14152a',background:'#0d0e18',position:'sticky',top:0,zIndex:100}}>
+          <button onClick={goBack} style={{background:'none',border:'none',color:'#5b6eea',fontSize:13,padding:'6px 10px',borderRadius:6,cursor:'pointer'}}>← Back</button>
+          <div style={{flex:1,textAlign:'center'}}><span style={{fontSize:14,fontWeight:700,fontFamily:"'Courier New',monospace"}}>👻 {tree.ghost?.data?.['#']||tree.ghost?.data?.['S/N']||`Row ${result?.ghostRow}`}</span></div>
+          <button onClick={loadData} style={{background:'none',border:'none',color:'#6b7094',fontSize:12,padding:'6px 8px',cursor:'pointer'}}>↻</button>
+        </div>
+        <div style={{margin:'12px 16px 8px',padding:'12px 14px',borderRadius:10,background:'rgba(91,110,234,0.04)',border:'1px solid rgba(91,110,234,0.1)'}}>
+          <div style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1,marginBottom:8}}>TRACE PATH</div>
+          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
+            {result.path.map((step,i)=><span key={i} style={{display:'flex',alignItems:'center',gap:4}}>
+              <span style={{padding:'3px 8px',borderRadius:5,fontSize:12,background:i===0?'rgba(91,110,234,0.15)':'rgba(255,255,255,0.03)',color:i===0?'#5b6eea':'#6b7094',fontWeight:i===0?600:400}}>{step}</span>
+              {i<result.path.length-1&&<span style={{color:'#2d3050',fontSize:10}}>→</span>}</span>)}
+          </div>
+        </div>
+        <div style={{padding:'4px 16px 100px'}}>
+          {!isGM&&matched.length>0&&<div style={{padding:'6px 12px',marginBottom:8,borderRadius:8,background:'rgba(91,110,234,0.06)',border:'1px solid rgba(91,110,234,0.1)',display:'flex',alignItems:'center',gap:6}}><span style={{fontSize:10,color:'#5b6eea',fontWeight:700,letterSpacing:1}}>▲ MATCHED</span><span style={{fontSize:10,color:'#3d4060'}}>— shown first</span></div>}
+          {final.map((s,i)=>{
+            const showDiv=!isGM&&matched.length>0&&i===matched.length+1;
+            return <div key={s.key}>
+              {showDiv&&<div style={{padding:'6px 12px',margin:'12px 0 8px',borderRadius:8,background:'rgba(255,255,255,0.02)',border:'1px solid #1a1c2a'}}><span style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1}}>▼ OTHER ASSEMBLIES</span></div>}
+              <SC sk={s.key} data={s.data}/>
+            </div>;})}
+        </div>
+        {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+      </div>
+    );
+  }
+
+  // =================== EDIT SCREEN ===================
+  if(screen==='edit'&&editing) {
+    const v=editing.validation; const isDrop=v?.type==='dropdown';
+    const isCheck=v?.type==='checkbox'||editing.value==='✓'||editing.value==='✗';
+    const isDate=v?.type==='date';
+    const d2i=d=>d?d.replace(/\//g,'-'):''; const i2d=d=>d?d.replace(/-/g,'/') :'';
+
+    return (
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #14152a',background:'#0d0e18'}}>
+          <button onClick={goBack} style={{background:'none',border:'none',color:'#f87171',fontSize:13,padding:'6px 10px',cursor:'pointer'}}>Cancel</button>
+          <span style={{fontSize:14,fontWeight:600}}>Edit Field</span>
+          <button onClick={saveEdit} style={{background:'none',border:'none',color:'#5b6eea',fontSize:13,padding:'6px 10px',fontWeight:600,cursor:'pointer'}}>Save ✓</button>
+        </div>
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',padding:24,paddingTop:32}}>
+          <div style={{fontSize:11,color:'#3d4060',fontFamily:'monospace',marginBottom:20}}>{editing.sheetName} · Row {editing.row+1}</div>
+          <div style={{fontSize:15,color:'#b0b4cc',fontWeight:500,marginBottom:16}}>{editing.headerName}</div>
+          <div style={{padding:'8px 16px',borderRadius:8,marginBottom:24,background:'rgba(248,113,113,0.04)',border:'1px solid rgba(248,113,113,0.1)',fontFamily:'monospace',fontSize:13,color:'#f87171',textDecoration:'line-through',opacity:0.5,width:'100%',maxWidth:380,textAlign:'center'}}>{editing.value||'empty'}</div>
+
+          {isDrop&&<div style={{width:'100%',maxWidth:380}}>
+            <div style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1,marginBottom:8}}>SELECT VALUE</div>
+            {v.options.map(opt=><div key={opt} onClick={()=>setEditValue(opt)} style={{padding:'12px 16px',borderRadius:10,cursor:'pointer',marginBottom:4,border:editValue===opt?'2px solid #5b6eea':'1px solid #1e2130',background:editValue===opt?'rgba(91,110,234,0.1)':'#12131e',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:20,height:20,borderRadius:10,border:`2px solid ${editValue===opt?'#5b6eea':'#2a2d3e'}`,display:'flex',alignItems:'center',justifyContent:'center'}}>{editValue===opt&&<div style={{width:10,height:10,borderRadius:5,background:'#5b6eea'}}/>}</div>
+                <span style={{fontSize:14,fontFamily:"'Courier New',monospace",color:editValue===opt?'#e2e4ed':'#8b8fa7'}}>{opt}</span>
+              </div>
+              {editing.value===opt&&<span style={{fontSize:9,padding:'2px 6px',borderRadius:4,background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontWeight:600}}>CURRENT</span>}
+            </div>)}
+          </div>}
+
+          {isCheck&&!isDrop&&<div style={{width:'100%',maxWidth:380,display:'flex',gap:12}}>
+            {['✓','✗'].map(val=>{const sel=editValue===val;const ip=val==='✓';const c=ip?'#34d399':'#f87171';
+              return <div key={val} onClick={()=>setEditValue(val)} style={{flex:1,padding:'24px 16px',borderRadius:14,cursor:'pointer',textAlign:'center',border:sel?`2px solid ${c}`:'1px solid #1e2130',background:sel?`${c}10`:'#12131e'}}>
+                <div style={{width:56,height:56,borderRadius:16,margin:'0 auto 12px',display:'flex',alignItems:'center',justifyContent:'center',background:sel?`${c}22`:'rgba(255,255,255,0.03)',border:`2px solid ${sel?c:'#2a2d3e'}`,fontSize:28,color:sel?c:'#3d4060'}}>{val}</div>
+                <div style={{fontSize:14,fontWeight:600,color:sel?c:'#4d5070'}}>{ip?'Pass':'Fail'}</div>
+              </div>;})}
+          </div>}
+
+          {isDate&&!isCheck&&<div style={{width:'100%',maxWidth:380}}>
+            <input type="date" value={d2i(editValue)} onChange={e=>setEditValue(i2d(e.target.value))} style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #38bdf8',background:'#12131e',color:'#e2e4ed',fontSize:18,fontFamily:"'Courier New',monospace",fontWeight:600,outline:'none',textAlign:'center',colorScheme:'dark'}}/>
+            <div style={{display:'flex',gap:8,marginTop:12}}>
+              <button onClick={()=>{const d=new Date();setEditValue(`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`);}} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#38bdf8',fontSize:13,fontWeight:500,cursor:'pointer'}}>Today</button>
+              <button onClick={()=>{const d=new Date();d.setDate(d.getDate()-1);setEditValue(`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`);}} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#38bdf8',fontSize:13,fontWeight:500,cursor:'pointer'}}>Yesterday</button>
+            </div>
+          </div>}
+
+          {!isDrop&&!isCheck&&!isDate&&<div style={{width:'100%',maxWidth:380}}>
+            <input autoFocus value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveEdit()}
+              style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #5b6eea',background:'#12131e',color:'#e2e4ed',fontSize:18,fontFamily:"'Courier New',monospace",fontWeight:600,outline:'none',boxShadow:'0 0 0 4px rgba(91,110,234,0.1)',textAlign:'center'}}/>
+          </div>}
+
+          <button onClick={saveEdit} style={{marginTop:28,padding:'14px 40px',borderRadius:12,border:'none',background:editValue!==editing.value&&editValue?'linear-gradient(135deg,#5b6eea,#7c5cf6)':'#1e2130',color:editValue!==editing.value&&editValue?'#fff':'#4d5070',fontSize:15,fontWeight:600,cursor:editValue!==editing.value?'pointer':'default'}}>
+            {editValue!==editing.value&&editValue?'Save to Sheet':'No changes'}
+          </button>
+        </div>
+        {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+      </div>
+    );
+  }
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
