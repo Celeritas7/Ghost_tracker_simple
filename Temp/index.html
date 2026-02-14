@@ -1,791 +1,1655 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0a0b12" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <title>Ghost Tracker</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #root {
-      min-height: 100vh;
-      background: #0a0b12;
-      color: #e2e4ed;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background: radial-gradient(ellipse at 50% 20%, rgba(91,110,234,0.05) 0%, transparent 70%);
-      pointer-events: none; z-index: 0;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #1e2130; border-radius: 3px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ghost Assembly Tracker</title>
+<style>
+  :root {
+    --bg-root: #0a0b12;
+    --bg-card: #0d0e18;
+    --bg-input: #12131e;
+    --bg-elevated: #151728;
+    --border-dim: #14152a;
+    --border-base: #1e2130;
+    --border-bright: #2a2d3e;
+    --text-primary: #e2e4ed;
+    --text-secondary: #8b8fa7;
+    --text-dim: #6b7094;
+    --text-muted: #4d5070;
+    --text-faint: #3d4060;
+    --text-ghost: #2d3050;
+    --accent: #5b6eea;
+    --accent-hover: #7c5cf6;
+    --green: #34d399;
+    --green-light: #6ee7b7;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #38bdf8;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg-root);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Loading screen */
+  .loading-screen {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 24px;
+  }
+  .loading-spinner {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.8; }
+  }
+  .loading-text { color: var(--text-dim); font-size: 14px; }
+  .loading-progress {
+    width: 200px; height: 3px; border-radius: 2px;
+    background: var(--border-base); overflow: hidden;
+  }
+  .loading-bar {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .loading-detail { color: var(--text-faint); font-size: 12px; font-family: var(--font-mono); }
+
+  /* Error banner */
+  .error-banner {
+    margin: 16px; padding: 16px; border-radius: 12px;
+    background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.15);
+    color: var(--red); font-size: 13px; line-height: 1.5;
+  }
+  .error-banner code {
+    display: block; margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+    background: rgba(248,113,113,0.05); font-family: var(--font-mono);
+    font-size: 11px; word-break: break-all; color: var(--text-secondary);
+  }
+
+  /* Search screen */
+  .search-screen {
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  .search-bg {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 20%, rgba(91,110,234,0.06) 0%, transparent 70%);
+  }
+  .search-content {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px; position: relative; z-index: 1;
+  }
+  .search-logo {
+    width: 72px; height: 72px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; margin-bottom: 20px;
+    box-shadow: 0 12px 48px rgba(91,110,234,0.25);
+  }
+  .search-title { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .search-subtitle {
+    color: var(--text-dim); font-size: 14px; margin-bottom: 32px;
+    text-align: center; max-width: 340px; line-height: 1.5;
+  }
+  .search-input-wrap { width: 100%; max-width: 400px; margin-bottom: 12px; }
+  .search-input {
+    width: 100%; padding: 15px 18px; border-radius: 14px;
+    border: 1px solid var(--border-base); background: var(--bg-input);
+    color: var(--text-primary); font-size: 16px; font-family: var(--font-mono);
+    outline: none; transition: all 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(91,110,234,0.12);
+  }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  /* Parse preview */
+  .parse-preview {
+    width: 100%; max-width: 400px; padding: 8px 14px; border-radius: 10px;
+    background: rgba(91,110,234,0.06); border: 1px solid rgba(91,110,234,0.12);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    font-size: 12px; transition: all 0.2s;
+  }
+  .parse-tag {
+    font-size: 11px; color: var(--accent); font-weight: 600;
+  }
+  .parse-arrow { color: var(--text-secondary); }
+  .parse-label { color: var(--text-primary); font-weight: 500; }
+  .parse-sheet {
+    font-size: 11px; color: var(--text-dim); margin-left: auto;
+    font-family: var(--font-mono);
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex; gap: 10px; width: 100%; max-width: 400px;
+  }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 12px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; font-family: var(--font-body);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: #fff; box-shadow: 0 4px 20px rgba(91,110,234,0.25);
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-secondary {
+    border: 1px solid var(--border-base); background: var(--bg-input);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* Formats help */
+  .formats-box {
+    margin-top: 32px; width: 100%; max-width: 400px; padding: 16px;
+    border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-dim);
+  }
+  .formats-title {
+    font-size: 11px; color: var(--text-faint); font-weight: 600;
+    margin-bottom: 10px; letter-spacing: 1px;
+  }
+  .format-row {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+  }
+  .format-tag {
+    padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;
+  }
+  .format-tag-qr { background: rgba(91,110,234,0.12); color: var(--accent); }
+  .format-tag-type { background: rgba(251,191,36,0.12); color: var(--yellow); }
+  .format-code { font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); }
+  .format-desc { font-size: 11px; color: var(--text-faint); margin-left: auto; }
+
+  /* Demo chips */
+  .demo-section { margin-top: 20px; text-align: center; }
+  .demo-label { font-size: 11px; color: var(--text-ghost); margin-bottom: 8px; }
+  .demo-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    justify-content: center; max-width: 400px;
+  }
+  .demo-chip {
+    padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-dim);
+    background: var(--bg-card); color: var(--text-dim); font-size: 11px;
+    font-family: var(--font-mono); cursor: pointer; transition: all 0.12s;
+  }
+  .demo-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Data status badge */
+  .data-status {
+    position: fixed; top: 12px; right: 12px; z-index: 200;
+    padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .data-status-live {
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2);
+    color: var(--green);
+  }
+  .data-status-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Result screen */
+  .result-screen { min-height: 100vh; }
+  .result-header {
+    display: flex; align-items: center; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-dim); background: var(--bg-card);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .back-btn {
+    background: none; border: none; color: var(--accent); font-size: 13px;
+    cursor: pointer; padding: 6px 10px; border-radius: 6px;
+    font-family: var(--font-body);
+  }
+  .result-ghost-id {
+    flex: 1; text-align: center; font-size: 14px; font-weight: 700;
+    font-family: var(--font-mono);
+  }
+  .live-badge {
+    padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 600;
+    background: rgba(52,211,153,0.1); color: var(--green);
+  }
+
+  /* Trace path */
+  .trace-box {
+    margin: 12px 16px 8px; padding: 12px 14px; border-radius: 10px;
+    background: rgba(91,110,234,0.04); border: 1px solid rgba(91,110,234,0.1);
+  }
+  .trace-title {
+    font-size: 10px; color: var(--text-faint); font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .trace-steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .trace-step {
+    padding: 3px 8px; border-radius: 5px; font-size: 12px;
+  }
+  .trace-step-first {
+    background: rgba(91,110,234,0.15); color: var(--accent); font-weight: 600;
+  }
+  .trace-step-rest {
+    background: rgba(255,255,255,0.03); color: var(--text-dim);
+  }
+  .trace-arrow { color: var(--text-ghost); font-size: 10px; }
+  .trace-summary {
+    font-size: 11px; color: var(--text-muted); margin-top: 8px;
+  }
+  .trace-summary .hl { color: var(--accent); font-family: var(--font-mono); }
+  .trace-summary .hl2 { color: var(--text-secondary); font-family: var(--font-mono); }
+
+  /* Validation legend */
+  .val-legend {
+    margin: 4px 16px 8px; display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .val-tag {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 6px; font-size: 9px; font-weight: 600;
+  }
+  .val-tag-desc { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+
+  /* Matched / other dividers */
+  .section-divider {
+    padding: 6px 12px; margin: 0 0 8px; border-radius: 8px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  }
+  .section-divider-match {
+    background: rgba(91,110,234,0.06); border: 1px solid rgba(91,110,234,0.1);
+    color: var(--accent);
+  }
+  .section-divider-other {
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border-dim);
+    color: var(--text-faint);
+  }
+  .section-divider-hint { font-weight: 400; color: var(--text-faint); }
+
+  /* Section cards */
+  .sections-wrap { padding: 4px 16px 100px; }
+  .section-card { margin-bottom: 6px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .section-icon { font-size: 22px; line-height: 1; }
+  .section-info { flex: 1; min-width: 0; }
+  .section-label { font-size: 14px; font-weight: 600; }
+  .section-sns {
+    font-size: 11px; color: var(--text-dim); margin-top: 2px;
+    font-family: var(--font-mono); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .match-badge {
+    padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600;
+  }
+  .section-chevron {
+    font-size: 11px; color: var(--text-faint); transition: transform 0.2s;
+  }
+  .section-chevron-open { transform: rotate(180deg); }
+
+  /* Field rows */
+  .field-group { padding-top: 4px; padding-bottom: 4px; }
+  .field-group-label {
+    padding: 6px 16px; font-size: 11px; font-weight: 600; opacity: 0.7;
+    font-family: var(--font-mono);
+  }
+  .field-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 16px; cursor: pointer; border-radius: 8px;
+    border-left: 3px solid transparent; transition: all 0.12s; margin: 0 4px;
+  }
+  .field-row:hover { background: rgba(255,255,255,0.03); }
+  .field-row-highlight {
+    background: rgba(91,110,234,0.08);
+    border-left-color: var(--accent);
+  }
+  .field-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .field-label { font-size: 13px; color: var(--text-dim); flex-shrink: 0; }
+  .field-right { display: flex; align-items: center; gap: 8px; }
+  .field-value {
+    font-size: 13px; color: var(--text-secondary); text-align: right;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .field-value-sn {
+    color: var(--text-primary); font-family: var(--font-mono); font-weight: 600;
+  }
+  .field-edit-icon { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
+
+  /* Inline badges */
+  .inline-badge {
+    font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; flex-shrink: 0;
+  }
+  .badge-list { background: rgba(91,110,234,0.12); color: var(--accent); }
+  .badge-check { background: rgba(251,191,36,0.12); color: var(--yellow); }
+  .badge-date { background: rgba(56,189,248,0.12); color: var(--blue); }
+
+  /* Checkbox display */
+  .check-display {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .check-pass {
+    background: rgba(52,211,153,0.15); border: 1.5px solid var(--green); color: var(--green);
+  }
+  .check-fail {
+    background: rgba(248,113,113,0.1); border: 1.5px solid rgba(248,113,113,0.35); color: var(--red);
+  }
+
+  /* Edit screen */
+  .edit-screen {
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  .edit-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border-dim);
+    background: var(--bg-card);
+  }
+  .cancel-btn {
+    background: none; border: none; color: var(--red); font-size: 13px;
+    cursor: pointer; padding: 6px 10px; font-family: var(--font-body);
+  }
+  .save-btn {
+    background: none; border: none; color: var(--accent); font-size: 13px;
+    cursor: pointer; padding: 6px 10px; font-weight: 600;
+    font-family: var(--font-body);
+  }
+  .edit-body {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; padding: 24px; padding-top: 32px;
+  }
+  .edit-context {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 8px; margin-bottom: 6px;
+  }
+  .edit-sn {
+    font-size: 11px; color: var(--text-faint); font-family: var(--font-mono);
+    margin-bottom: 20px;
+  }
+  .edit-field-name {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  }
+  .edit-field-label { font-size: 15px; color: #b0b4cc; font-weight: 500; }
+  .edit-old-value {
+    padding: 8px 16px; border-radius: 8px; margin-bottom: 24px;
+    background: rgba(248,113,113,0.04); border: 1px solid rgba(248,113,113,0.1);
+    font-family: var(--font-mono); font-size: 13px; color: var(--red);
+    text-decoration: line-through; opacity: 0.5;
+    width: 100%; max-width: 380px; text-align: center;
+  }
+  .edit-input-wrap { width: 100%; max-width: 380px; }
+  .edit-input-label {
+    font-size: 10px; color: var(--text-faint); font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .edit-text-input {
+    width: 100%; padding: 16px 18px; border-radius: 12px;
+    border: 2px solid var(--accent); background: var(--bg-input);
+    color: var(--text-primary); font-size: 18px; font-family: var(--font-mono);
+    font-weight: 600; outline: none; text-align: center;
+    box-shadow: 0 0 0 4px rgba(91,110,234,0.1);
+  }
+  .edit-date-input {
+    width: 100%; padding: 16px 18px; border-radius: 12px;
+    border: 2px solid var(--blue); background: var(--bg-input);
+    color: var(--text-primary); font-size: 18px; font-family: var(--font-mono);
+    font-weight: 600; outline: none; text-align: center;
+    box-shadow: 0 0 0 4px rgba(56,189,248,0.1); color-scheme: dark;
+  }
+  .date-quick-btns { display: flex; gap: 8px; margin-top: 12px; }
+  .date-quick-btn {
+    flex: 1; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--border-base); background: var(--bg-input);
+    color: var(--blue); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s; font-family: var(--font-body);
+  }
+  .date-format-hint {
+    margin-top: 12px; text-align: center; font-size: 12px; color: var(--text-muted);
+  }
+
+  /* Dropdown options */
+  .dropdown-list { display: flex; flex-direction: column; gap: 4px; }
+  .dropdown-option {
+    padding: 12px 16px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border-base); background: var(--bg-input);
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.12s;
+  }
+  .dropdown-option-selected {
+    border: 2px solid var(--accent); background: rgba(91,110,234,0.1);
+  }
+  .dropdown-option-inner { display: flex; align-items: center; gap: 10px; }
+  .radio-circle {
+    width: 20px; height: 20px; border-radius: 10px;
+    border: 2px solid var(--border-bright); display: flex;
+    align-items: center; justify-content: center; transition: all 0.12s;
+  }
+  .radio-circle-selected { border-color: var(--accent); }
+  .radio-dot {
+    width: 10px; height: 10px; border-radius: 5px; background: var(--accent);
+  }
+  .dropdown-option-text {
+    font-size: 14px; font-family: var(--font-mono); font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .dropdown-option-text-selected { color: var(--text-primary); }
+  .current-tag {
+    font-size: 9px; padding: 2px 6px; border-radius: 4px;
+    background: rgba(251,191,36,0.1); color: var(--yellow); font-weight: 600;
+  }
+
+  /* Checkbox toggle */
+  .check-options { display: flex; gap: 12px; }
+  .check-option {
+    flex: 1; padding: 24px 16px; border-radius: 14px; cursor: pointer;
+    text-align: center; border: 1px solid var(--border-base);
+    background: var(--bg-input); transition: all 0.15s;
+  }
+  .check-icon-wrap {
+    width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; transition: all 0.15s;
+    background: rgba(255,255,255,0.03); border: 2px solid var(--border-bright);
+    color: var(--text-faint);
+  }
+  .check-option-label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+
+  /* Save button */
+  .save-action-btn {
+    margin-top: 28px; padding: 14px 40px; border-radius: 12px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; font-family: var(--font-body);
+  }
+  .save-active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: #fff; box-shadow: 0 4px 20px rgba(91,110,234,0.2);
+  }
+  .save-inactive {
+    background: var(--border-base); color: var(--text-muted); cursor: default;
+  }
+  .edit-api-hint {
+    margin-top: 14px; font-size: 11px; color: var(--text-ghost); text-align: center;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+    z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transition: opacity 0.3s;
+  }
+  .toast-success {
+    background: #121e16; border: 1px solid rgba(52,211,153,0.2); color: var(--green);
+  }
+  .toast-error {
+    background: #1e1214; border: 1px solid rgba(248,113,113,0.2); color: var(--red);
+  }
+
+  /* QR Scan overlay */
+  .scan-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 999;
+  }
+  .scan-frame {
+    width: 200px; height: 200px; border: 2px solid rgba(91,110,234,0.27);
+    border-radius: 16px; position: relative; margin-bottom: 24px;
+  }
+  .scan-corner {
+    position: absolute; width: 28px; height: 28px;
+  }
+  .scan-line {
+    position: absolute; left: 8px; right: 8px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanAnim 1.5s ease-in-out infinite;
+  }
+  @keyframes scanAnim { 0%,100% { top: 10%; opacity: 0.3; } 50% { top: 85%; opacity: 1; } }
+
+  /* Refresh button */
+  .refresh-btn {
+    position: fixed; bottom: 20px; right: 20px; z-index: 100;
+    width: 48px; height: 48px; border-radius: 14px; border: none;
+    background: var(--bg-card); border: 1px solid var(--border-base);
+    color: var(--text-dim); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-spinning { animation: spin 1s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
+  /* Config panel */
+  .config-toggle {
+    position: fixed; top: 12px; left: 12px; z-index: 200;
+    padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border-dim);
+    background: var(--bg-card); color: var(--text-faint); font-size: 14px;
+    cursor: pointer; transition: all 0.12s;
+  }
+  .config-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .config-panel {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 320px; z-index: 300;
+    background: var(--bg-root); border-right: 1px solid var(--border-base);
+    padding: 20px; overflow-y: auto; transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .config-panel-open { transform: translateX(0); }
+  .config-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250;
+  }
+  .config-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .config-close {
+    background: none; border: none; color: var(--text-dim); font-size: 20px;
+    cursor: pointer;
+  }
+  .config-field { margin-bottom: 16px; }
+  .config-label {
+    font-size: 11px; color: var(--text-faint); font-weight: 600;
+    letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .config-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border-base); background: var(--bg-input);
+    color: var(--text-primary); font-size: 13px; font-family: var(--font-mono);
+    outline: none;
+  }
+  .config-input:focus { border-color: var(--accent); }
+  .config-hint {
+    font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.4;
+  }
+  .config-btn {
+    width: 100%; padding: 12px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff; font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-top: 8px; font-family: var(--font-body);
+  }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-
-  <!-- React CDN -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Firebase Compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
-  <!-- QR Scanner -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
-  <!-- Google Identity Services for Sheets API token -->
-  <script src="https://accounts.google.com/gsi/client"></script>
-
-<script type="text/babel">
-// ============================================================
-// GHOST ASSEMBLY TRACKER — Single File App
-// ============================================================
-
-const { useState, useEffect, useRef, useCallback } = React;
-
-// ===================== CONFIG =====================
-
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBigwohpQQU3TKImuGL3StJ-eWtX6OKFxI",
-  authDomain: "ghost-tracker-app-1b1d0.firebaseapp.com",
-  projectId: "ghost-tracker-app-1b1d0",
-  storageBucket: "ghost-tracker-app-1b1d0.firebasestorage.app",
-  messagingSenderId: "859247887158",
-  appId: "1:859247887158:web:ebefbd4c880ca15958a997",
+<div id="app"></div>
+<script>
+// ===================== CONFIGURATION =====================
+const CONFIG = {
+  sheetId: '1mUhNDzucbHpS2y-IYu3A5ML1x5I_opUeNnqqyOtg95M',
+  // Apps Script Web App URL for write-back (optional — deploy your own)
+  writeUrl: '',
+  // Sheet tab names — adjust if your sheet uses different names
+  tabs: {
+    ghosts:     '00_GHOST',
+    lMotors:    '01_L-motor',
+    a12Motors:  '02_A12-motor',
+    a35Motors:  '03_A35-motor',
+    a4Motors:   '04_A4-motor',
+    mobileBases:'05_Mobile Base',
+    pillars:    '06_Pillar',
+    headBodies: '07_Head & Body',
+    grippers:   '08_Gripper',
+    arms:       '09_Arm',
+    deployKits: '10_Deploy Kit',
+  },
 };
 
-const SHEETS_CLIENT_ID = '1088099187141-ut0dn0scqt3h99htf3rg8gsrg2oo1ad8.apps.googleusercontent.com';
-const SPREADSHEET_ID = '1mUhNDzucbHpS2y-IYu3A5ML1x5I_opUeNnqqyOtg95M';
-const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
-
-// Init Firebase
-firebase.initializeApp(FIREBASE_CONFIG);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const googleProvider = new firebase.auth.GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
-
-// ===================== S/N PARSER =====================
-
+// ===================== S/N PARSING =====================
 const ASSEMBLY_CODES = {
-  GST: { type:'ghost',      label:'Ghost',       sheet:'00_GHOST' },
-  MBB: { type:'mobileBase', label:'Mobile Base',  sheet:'05_Mobile Base' },
-  PLR: { type:'pillar',     label:'Pillar',       sheet:'06_Pillar' },
-  HBD: { type:'headBody',   label:'Head & Body',  sheet:'07_Head & Body' },
-  GPR: { type:'gripper',    label:'Gripper',      sheet:'08_Gripper' },
-  ARM: { type:'arm',        label:'Arm',          sheet:'09_Arm' },
-  DPK: { type:'deployKit',  label:'Deploy Kit',   sheet:'10_Deploy Kit' },
-  LAC: { type:'lMotor',     label:'L-Motor',      sheet:'01_L-motor' },
-  A12: { type:'a12Motor',   label:'A12 Motor',    sheet:'02_A12-motor' },
-  A35: { type:'a35Motor',   label:'A35 Motor',    sheet:'03_A35-motor' },
-  A4A: { type:'a4Motor',    label:'A4 Motor',     sheet:'04_A4-motor' },
+  GST: { type: 'ghost',     label: 'Ghost',      sheet: '00_GHOST' },
+  MBB: { type: 'mobileBase',label: 'Mobile Base', sheet: '05_Mobile Base' },
+  PLR: { type: 'pillar',    label: 'Pillar',      sheet: '06_Pillar' },
+  HBD: { type: 'headBody',  label: 'Head & Body', sheet: '07_Head & Body' },
+  GPR: { type: 'gripper',   label: 'Gripper',     sheet: '08_Gripper' },
+  ARM: { type: 'arm',       label: 'Arm',         sheet: '09_Arm' },
+  DPK: { type: 'deployKit', label: 'Deploy Kit',  sheet: '10_Deploy Kit' },
+  LAC: { type: 'lMotor',    label: 'L-Motor',     sheet: '01_L-motor' },
+  A12: { type: 'a12Motor',  label: 'A12 Motor',   sheet: '02_A12-motor' },
+  A35: { type: 'a35Motor',  label: 'A35 Motor',   sheet: '03_A35-motor' },
+  A4A: { type: 'a4Motor',   label: 'A4 Motor',    sheet: '04_A4-motor' },
 };
 
 const SHORTHAND_MAP = {
-  GH:'GST',GHOST:'GST',GST:'GST',MB:'MBB',MBB:'MBB',PL:'PLR',PLR:'PLR',PILLAR:'PLR',
-  HB:'HBD',HBD:'HBD',HEAD:'HBD',GR:'GPR',GPR:'GPR',GRIP:'GPR',ARM:'ARM',
-  DPK:'DPK',DK:'DPK',LM:'LAC',LAC:'LAC',A12:'A12',A35:'A35',A4:'A4A',A4A:'A4A',
+  GH:'GST',GHOST:'GST',GST:'GST',MB:'MBB',MBB:'MBB',
+  PL:'PLR',PLR:'PLR',PILLAR:'PLR',HB:'HBD',HBD:'HBD',HEAD:'HBD',
+  GR:'GPR',GPR:'GPR',GRIP:'GPR',ARM:'ARM',DPK:'DPK',DK:'DPK',
+  LM:'LAC',LAC:'LAC',A12:'A12',A35:'A35',A4:'A4A',A4A:'A4A',
   PDB:'PDB',IOB:'IOB',MDB:'MDB',BRK:'BRK',BAT:'BAT',
 };
 
 function parseInput(raw) {
   const input = raw.trim();
   if (!input) return null;
-  const fullMatch = input.match(/^GT\d{3}-([A-Z0-9]{2,3})-(\d{3,5})$/i);
-  if (fullMatch) {
-    const code = fullMatch[1].toUpperCase(), num = parseInt(fullMatch[2]);
+  // 1. Full QR: GT418-GST-00001
+  const full = input.match(/^GT\d{3}-([A-Z0-9]{2,3})-(\d{3,5})$/i);
+  if (full) {
+    const code = full[1].toUpperCase(), num = parseInt(full[2]);
     const asm = ASSEMBLY_CODES[code];
-    if (asm) return { ...asm, num, fullSN:input.toUpperCase(), inputType:'qr' };
+    if (asm) return { ...asm, num, fullSN: input.toUpperCase(), inputType: 'qr' };
   }
-  if (/^\d{5,6}$/.test(input)) return { type:'galina', label:'GALINA', num:parseInt(input), fullSN:input, inputType:'manual' };
-  const shortMatch = input.match(/^([A-Z]{2,6})[- ]?(\d+)$/i);
-  if (shortMatch) {
-    const prefix = shortMatch[1].toUpperCase(), num = parseInt(shortMatch[2]);
+  // 2. GALINA: 5-6 digit number
+  if (/^\d{5,6}$/.test(input))
+    return { type:'galina', label:'GALINA', num:parseInt(input), fullSN:input, inputType:'manual' };
+  // 3. Shorthand: GR-56, PDB-4421, etc.
+  const short = input.match(/^([A-Z]{2,6})[- ]?(\d+)$/i);
+  if (short) {
+    const prefix = short[1].toUpperCase(), num = parseInt(short[2]);
     const code = SHORTHAND_MAP[prefix];
-    if (code && ASSEMBLY_CODES[code]) return { ...ASSEMBLY_CODES[code], num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
-    if (['PDB','IOB','MDB','BRK','BAT'].includes(prefix)) return { type:prefix.toLowerCase(), label:prefix, num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
+    if (code && ASSEMBLY_CODES[code])
+      return { ...ASSEMBLY_CODES[code], num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
+    if (['PDB','IOB','MDB','BRK','BAT'].includes(prefix))
+      return { type:prefix.toLowerCase(), label:prefix, num, fullSN:`${prefix}-${num}`, inputType:'shorthand' };
   }
   return null;
-}
-
-// ===================== SHEETS API =====================
-
-let sheetsAccessToken = null;
-
-async function fetchSheetData(sheetName) {
-  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}`,
-    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
-  if (!res.ok) throw new Error(`Failed to read ${sheetName}: ${res.status}`);
-  return (await res.json()).values || [];
-}
-
-async function fetchAllSheets() {
-  const metaRes = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}?fields=sheets.properties.title`,
-    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
-  if (!metaRes.ok) throw new Error(`Metadata fetch failed: ${metaRes.status}`);
-  const meta = await metaRes.json();
-  const allData = {};
-  for (const s of meta.sheets) {
-    try { allData[s.properties.title] = await fetchSheetData(s.properties.title); } catch (e) { console.warn(`Skipped ${s.properties.title}:`, e.message); }
-  }
-  return allData;
-}
-
-async function writeCell(sheetName, cellRef, value) {
-  const range = `${sheetName}!${cellRef}`;
-  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
-    { method:'PUT', headers: { Authorization:`Bearer ${sheetsAccessToken}`, 'Content-Type':'application/json' }, body:JSON.stringify({ range, values:[[value]] }) });
-  if (!res.ok) throw new Error(`Write failed: ${res.status}`);
-  return res.json();
-}
-
-async function fetchDataValidations(sheetName) {
-  const res = await fetch(`${SHEETS_BASE}/${SPREADSHEET_ID}?fields=sheets(properties,data.rowData.values.dataValidation)&ranges=${encodeURIComponent(sheetName)}`,
-    { headers: { Authorization: `Bearer ${sheetsAccessToken}` } });
-  if (!res.ok) return {};
-  const data = await res.json();
-  const validations = {};
-  const sheet = data.sheets?.[0];
-  if (!sheet?.data?.[0]?.rowData) return validations;
-  sheet.data[0].rowData.forEach((row, ri) => {
-    if (!row.values) return;
-    row.values.forEach((cell, ci) => {
-      if (!cell.dataValidation) return;
-      const dv = cell.dataValidation, key = `${ri},${ci}`;
-      if (dv.condition?.type === 'ONE_OF_LIST') validations[key] = { type:'dropdown', options:(dv.condition.values||[]).map(v=>v.userEnteredValue) };
-      else if (dv.condition?.type === 'BOOLEAN') validations[key] = { type:'checkbox' };
-      else if (dv.condition?.type?.startsWith('DATE')) validations[key] = { type:'date' };
-    });
-  });
-  return validations;
-}
-
-function colToLetter(col) { let s='',n=col; while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;} return s; }
-function makeCellRef(row,col) { return `${colToLetter(col)}${row+1}`; }
-
-// ===================== AUTH =====================
-
-async function isUserAllowed(email) {
-  if (!email) return false;
-  try { const d = await db.collection('approved_users').doc(email.toLowerCase()).get(); return d.exists; }
-  catch(e) { console.error('Access check failed:', e); return false; }
-}
-
-async function checkIsAdmin(email) {
-  if (!email) return false;
-  try { const d = await db.collection('approved_users').doc(email.toLowerCase()).get(); return d.exists && d.data()?.isAdmin === true; }
-  catch(e) { return false; }
-}
-
-async function getAllowedUsers() {
-  const s = await db.collection('approved_users').get();
-  return s.docs.map(d => ({ email:d.id, ...d.data() }));
-}
-
-async function addAllowedUser(email, isAdmin=false) {
-  await db.collection('approved_users').doc(email.toLowerCase().trim()).set({ email:email.toLowerCase().trim(), isAdmin, addedAt:firebase.firestore.FieldValue.serverTimestamp() });
-}
-
-async function removeAllowedUser(email) {
-  await db.collection('approved_users').doc(email.toLowerCase()).delete();
-}
-
-// Get Sheets token via Google Identity Services (GIS)
-function requestSheetsToken() {
-  return new Promise((resolve, reject) => {
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: SHEETS_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
-      callback: (response) => {
-        if (response.error) { reject(new Error(response.error)); return; }
-        sheetsAccessToken = response.access_token;
-        sessionStorage.setItem('sheets_token', response.access_token);
-        resolve(response.access_token);
-      },
-    });
-    tokenClient.requestAccessToken({ prompt: '' });
-  });
-}
-
-function requestSheetsTokenWithConsent() {
-  return new Promise((resolve, reject) => {
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: SHEETS_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
-      callback: (response) => {
-        if (response.error) { reject(new Error(response.error)); return; }
-        sheetsAccessToken = response.access_token;
-        sessionStorage.setItem('sheets_token', response.access_token);
-        resolve(response.access_token);
-      },
-    });
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  });
-}
-
-// ===================== TRACE LOGIC =====================
-
-const SHEET_KEYS = {
-  '00_GHOST':'ghost','01_L-motor':'lMotor','02_A12-motor':'a12Motor',
-  '03_A35-motor':'a35Motor','04_A4-motor':'a4Motor','05_Mobile Base':'mobileBase',
-  '06_Pillar':'pillar','07_Head & Body':'headBody','08_Gripper':'gripper',
-  '09_Arm':'arm','10_Deploy Kit':'deployKit',
-};
-
-function findSNColumn(hdr) { if(!hdr)return -1; for(let i=0;i<hdr.length;i++){const h=String(hdr[i]).trim();if(h==='#'||h==='S/N'||h==='#S/N')return i;} return -1; }
-function findCellByValue(data, val) { const sv=String(val).trim(); for(let r=0;r<data.length;r++){if(!data[r])continue;for(let c=0;c<data[r].length;c++){if(String(data[r][c]).trim()===sv)return{row:r,col:c};}} return null; }
-function rowToObject(hdr,row) { const o={};if(!hdr||!row)return o;for(let i=0;i<hdr.length;i++){o[String(hdr[i]||`col_${i}`).trim()]=row[i]||'';}return o; }
-
-function traceToGhost(input, sheetsData) {
-  const parsed = parseInput(input);
-  if (!parsed) return null;
-  const searchValue = parsed.fullSN.match(/^GT/) ? parsed.fullSN : input.trim();
-  let mRow=-1, mCol=-1, mSheet='', mData=null;
-
-  if (parsed.sheet) {
-    const d = sheetsData[parsed.sheet];
-    if (d) { const f=findCellByValue(d,parsed.fullSN); if(f){mRow=f.row;mCol=f.col;mSheet=parsed.sheet;mData=d;} }
-  }
-  if (mRow===-1) {
-    for (const [n,d] of Object.entries(sheetsData)) {
-      if(!d||!d.length)continue; const f=findCellByValue(d,searchValue);
-      if(f){mRow=f.row;mCol=f.col;mSheet=n;mData=d;break;}
-    }
-  }
-  if (mRow===-1 && parsed.inputType==='shorthand') {
-    const ns = String(parsed.num).padStart(5,'0');
-    for (const [n,d] of Object.entries(sheetsData)) {
-      if(!d||d.length<2)continue; const sc=findSNColumn(d[0]); if(sc===-1)continue;
-      for(let r=1;r<d.length;r++){const v=String(d[r]?.[sc]||'');if(v.endsWith(ns)||v.endsWith(`-${parsed.num}`)){mRow=r;mCol=sc;mSheet=n;mData=d;break;}}
-      if(mRow!==-1)break;
-    }
-  }
-  if (mRow===-1) return null;
-
-  const path = [];
-  const matchedLabel = Object.values(ASSEMBLY_CODES).find(a=>a.sheet===mSheet)?.label || parsed.label || mSheet;
-  path.push(matchedLabel);
-  const gd = sheetsData['00_GHOST'];
-  if (!gd||!gd.length) return null;
-  const matchedSN = mData[mRow]?.[mCol] || searchValue;
-
-  if (mSheet==='00_GHOST') return { ghostRow:mRow, ghostData:rowToObject(gd[0],gd[mRow]), path:['Ghost'], matchedIn:'Ghost', matchedSN, matchedSheet:mSheet, matchedRow:mRow, matchedCol:mCol };
-
-  let gRow = -1;
-  for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===matchedSN){gRow=r;break;}}if(gRow!==-1)break;}
-
-  if (gRow===-1) {
-    const sc=findSNColumn(mData[0]); const aSN=sc>=0?mData[mRow]?.[sc]:null;
-    if (aSN) {
-      for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===aSN){gRow=r;break;}}if(gRow!==-1)break;}
-      if (gRow===-1) {
-        for (const ps of ['09_Arm','05_Mobile Base','06_Pillar','07_Head & Body']) {
-          const pd=sheetsData[ps]; if(!pd)continue; const f=findCellByValue(pd,aSN);
-          if(f){const psc=findSNColumn(pd[0]);const pSN=psc>=0?pd[f.row]?.[psc]:null;
-            if(pSN){path.push(Object.values(ASSEMBLY_CODES).find(a=>a.sheet===ps)?.label||ps);
-              for(let r=1;r<gd.length;r++){if(!gd[r])continue;for(let c=0;c<gd[r].length;c++){if(String(gd[r][c]).trim()===pSN){gRow=r;break;}}if(gRow!==-1)break;}}break;}
-        }
-      }
-    }
-  }
-  if (gRow===-1) return null;
-  path.push('Ghost');
-  return { ghostRow:gRow, ghostData:rowToObject(gd[0],gd[gRow]), path, matchedIn:matchedLabel, matchedSN, matchedSheet:mSheet, matchedRow:mRow, matchedCol:mCol };
-}
-
-function buildGhostTree(ghostRow, ghostDataObj, sheetsData) {
-  const tree = { ghost:{ sheetName:'00_GHOST', row:ghostRow, data:ghostDataObj } };
-  const gsd = sheetsData['00_GHOST']; if(!gsd)return tree;
-  const gv = gsd[ghostRow]||[];
-  for (const sn of ['05_Mobile Base','06_Pillar','07_Head & Body','09_Arm','08_Gripper','10_Deploy Kit']) {
-    const sd=sheetsData[sn]; if(!sd||sd.length<2)continue;
-    const sk=SHEET_KEYS[sn], sc=findSNColumn(sd[0]); if(sc===-1)continue;
-    for(const v of gv){ const vt=String(v||'').trim(); if(!vt)continue;
-      for(let r=1;r<sd.length;r++){
-        if(String(sd[r]?.[sc]||'').trim()===vt){
-          tree[sk]={sheetName:sn,row:r,data:rowToObject(sd[0],sd[r]),headers:sd[0],sn:vt};
-          if(sn==='05_Mobile Base'||sn==='06_Pillar') findMotors(sd[r],sheetsData,tree,sn==='05_Mobile Base'?'mbMotors':'plMotors');
-          if(sn==='09_Arm') findArmMotors(sd[r],sheetsData,tree);
-          break;
-        }
-      }
-    }
-  }
-  return tree;
-}
-
-function findMotors(parentRow,sheetsData,tree,treeKey) {
-  const ld=sheetsData['01_L-motor']; if(!ld||ld.length<2)return;
-  const sc=findSNColumn(ld[0]); if(sc===-1)return;
-  const motors=[];
-  for(const v of parentRow){const vt=String(v||'').trim();if(!vt)continue;for(let r=1;r<ld.length;r++){if(String(ld[r]?.[sc]||'').trim()===vt){motors.push({row:r,data:rowToObject(ld[0],ld[r]),headers:ld[0],sn:vt});break;}}}
-  if(motors.length>0)tree[treeKey]={sheetName:'01_L-motor',items:motors};
-}
-
-function findArmMotors(armRow,sheetsData,tree) {
-  for(const[sn,key]of[['02_A12-motor','armA12'],['03_A35-motor','armA35'],['04_A4-motor','armA4']]){
-    const sd=sheetsData[sn]; if(!sd||sd.length<2)continue;
-    const sc=findSNColumn(sd[0]); if(sc===-1)continue;
-    const motors=[];
-    for(const v of armRow){const vt=String(v||'').trim();if(!vt)continue;for(let r=1;r<sd.length;r++){if(String(sd[r]?.[sc]||'').trim()===vt){motors.push({row:r,data:rowToObject(sd[0],sd[r]),headers:sd[0],sn:vt});break;}}}
-    if(motors.length>0)tree[key]={sheetName:sn,items:motors};
-  }
 }
 
 // ===================== SECTION CONFIG =====================
-
-const SEC = {
-  ghost:     {icon:'👻',label:'Ghost',           color:'#5b6eea',bg:'#151728'},
-  mobileBase:{icon:'🛞',label:'Mobile Base',     color:'#34d399',bg:'#13201a'},
-  mbMotors:  {icon:'⚙️',label:'L-Motors (MB)',    color:'#6ee7b7',bg:'#131d19'},
-  pillar:    {icon:'🏛️',label:'Pillar',           color:'#a78bfa',bg:'#1a1528'},
-  plMotors:  {icon:'⚙️',label:'L-Motor (Pillar)', color:'#6ee7b7',bg:'#131d19'},
-  headBody:  {icon:'🧠',label:'Head & Body',     color:'#f87171',bg:'#201414'},
-  arm:       {icon:'🦾',label:'Arm',              color:'#fbbf24',bg:'#201c12'},
-  armA12:    {icon:'⚙️',label:'A12 Motors',       color:'#6ee7b7',bg:'#131d19'},
-  armA35:    {icon:'⚙️',label:'A35 Motor',        color:'#6ee7b7',bg:'#131d19'},
-  armA4:     {icon:'⚙️',label:'A4 Motor',         color:'#6ee7b7',bg:'#131d19'},
-  gripper:   {icon:'🤏',label:'Gripper',          color:'#38bdf8',bg:'#121a20'},
-  deployKit: {icon:'📦',label:'Deploy Kit',       color:'#fb923c',bg:'#1e1812'},
+const SECTION_CONFIG = {
+  ghost:      { icon:'👻', label:'Ghost',            color:'#5b6eea', bg:'#151728' },
+  mobileBase: { icon:'🛞', label:'Mobile Base',      color:'#34d399', bg:'#13201a' },
+  mbMotors:   { icon:'⚙️', label:'L-Motors (MB)',     color:'#6ee7b7', bg:'#131d19' },
+  pillar:     { icon:'🏛️', label:'Pillar',            color:'#a78bfa', bg:'#1a1528' },
+  plMotors:   { icon:'⚙️', label:'L-Motor (Pillar)',  color:'#6ee7b7', bg:'#131d19' },
+  headBody:   { icon:'🧠', label:'Head & Body',      color:'#f87171', bg:'#201414' },
+  arm:        { icon:'🦾', label:'Arm',               color:'#fbbf24', bg:'#201c12' },
+  armA12:     { icon:'⚙️', label:'A12 Motors',        color:'#6ee7b7', bg:'#131d19' },
+  armA35:     { icon:'⚙️', label:'A35 Motor',         color:'#6ee7b7', bg:'#131d19' },
+  armA4:      { icon:'⚙️', label:'A4 Motor',          color:'#6ee7b7', bg:'#131d19' },
+  gripper:    { icon:'🤏', label:'Gripper',           color:'#38bdf8', bg:'#121a20' },
+  deployKit:  { icon:'📦', label:'Deploy Kit',        color:'#fb923c', bg:'#1e1812' },
 };
 
-// ===================== COMPONENTS =====================
+const FIELD_LABELS = {
+  sn:'S/N', sopVer:'SOP Ver.', mbomVer:'M-BOM Ver.', pdbSN:'PDB S/N', pdbFW:'PDB FW',
+  l1Motor:'L1 Motor', l2Motor:'L2 Motor', l2BeltTension:'L2 Belt Tension',
+  l3Motor:'L3 Motor', brkSN:'Brake S/N', l3BeltTension:'L3 Belt Tension',
+  ecbVer:'ECB Ver.', galinaSN:'GALINA S/N', agxImage:'AGX Image', ip:'IP Address',
+  iobSN:'IOB S/N', iobFW:'IOB FW', batSN:'Battery S/N',
+  a1Motor:'A1 Motor', a2Motor:'A2 Motor', a3Motor:'A3 Motor',
+  a4Motor:'A4 Motor', a5Motor:'A5 Motor', gripperSN:'Gripper S/N',
+  a4BeltTension:'A4 Belt Tension', gantryLength:'Gantry Length',
+  mdbSN:'MDB S/N', mdbFW:'MDB FW', resistance:'Resistance', enc:'Encoder',
+  completionDate:'Completed', sw:'SW Version', endpoint:'Endpoint',
+  soraTimezone:'Sora TZ', soraFW:'Sora FW', fw:'FW Version',
+  assembler:'Assembler', slot:'Slot',
+};
 
-function Toast({message,type,onClose}) {
-  useEffect(()=>{const t=setTimeout(onClose,3000);return()=>clearTimeout(t);},[onClose]);
-  const c={success:{bg:'#121e16',b:'#34d39933',c:'#34d399',i:'✓'},error:{bg:'#1e1214',b:'#f8717133',c:'#f87171',i:'✕'},info:{bg:'#121a20',b:'#38bdf833',c:'#38bdf8',i:'ℹ'},saving:{bg:'#1e1c12',b:'#fbbf2433',c:'#fbbf24',i:'◌'}}[type]||{bg:'#121e16',b:'#34d39933',c:'#34d399',i:'✓'};
-  return <div style={{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',padding:'10px 20px',borderRadius:10,background:c.bg,border:`1px solid ${c.b}`,color:c.c,fontSize:13,fontWeight:500,zIndex:999,boxShadow:'0 8px 32px rgba(0,0,0,0.4)',display:'flex',alignItems:'center',gap:8,animation:'slideUp 0.3s ease-out'}}><span>{c.i}</span> {message}</div>;
+const SKIP_FIELDS = new Set(['ghostSN','parentSN','parentType','mobileBase','pillar','headBody','arm','deployKit']);
+
+// ===================== VALIDATION RULES =====================
+const VALIDATIONS = {
+  'ghost.sw':{ type:'dropdown', options:['v3.0.0','v3.1.0','v3.1.9','v3.2.0','v3.2.1','v3.3.0'] },
+  'ghost.soraFW':{ type:'dropdown', options:['2.0.0','2.0.5','2.0.8','2.1.0','2.1.1'] },
+  'ghost.fw':{ type:'dropdown', options:['3.9.0','4.0.0','4.0.1','4.1.0'] },
+  'ghost.soraTimezone':{ type:'dropdown', options:['Asia/Tokyo','America/New_York','Europe/London','America/Los_Angeles'] },
+  'ghost.completionDate':{ type:'date' },
+  'mobileBase.pdbFW':{ type:'dropdown', options:['1.9.0.0','1.9.1.0','1.9.2.0','2.0.0.0','2.1.0.0'] },
+  'mobileBase.ecbVer':{ type:'dropdown', options:['v1.0','v1.1','v1.2','v1.3','v1.4'] },
+  'mobileBase.sopVer':{ type:'dropdown', options:['v2.0','v2.1','v2.2','v2.3','v2.4'] },
+  'mobileBase.mbomVer':{ type:'dropdown', options:['v1.5','v1.6','v1.7','v1.8','v1.9'] },
+  'mobileBase.completionDate':{ type:'date' },
+  'pillar.sopVer':{ type:'dropdown', options:['v1.6','v1.7','v1.8','v1.9','v2.0'] },
+  'pillar.mbomVer':{ type:'dropdown', options:['v1.2','v1.3','v1.4','v1.5','v1.6'] },
+  'pillar.completionDate':{ type:'date' },
+  'headBody.iobFW':{ type:'dropdown', options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0'] },
+  'headBody.agxImage':{ type:'dropdown', options:['r35.3.1','r35.4.1','r35.5.0','r36.0.0'] },
+  'headBody.sopVer':{ type:'dropdown', options:['v1.8','v1.9','v2.0','v2.1','v2.2'] },
+  'headBody.mbomVer':{ type:'dropdown', options:['v1.3','v1.4','v1.5','v1.6','v1.7'] },
+  'headBody.completionDate':{ type:'date' },
+  'arm.sopVer':{ type:'dropdown', options:['v2.1','v2.2','v2.3','v2.4','v2.5'] },
+  'arm.mbomVer':{ type:'dropdown', options:['v1.6','v1.7','v1.8','v1.9','v2.0'] },
+  'arm.completionDate':{ type:'date' },
+  'gripper.iobFW':{ type:'dropdown', options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0'] },
+  'gripper.sopVer':{ type:'dropdown', options:['v1.4','v1.5','v1.6','v1.7','v1.8'] },
+  'gripper.mbomVer':{ type:'dropdown', options:['v1.0','v1.1','v1.2','v1.3','v1.4'] },
+  'gripper.completionDate':{ type:'date' },
+  'deployKit.sopVer':{ type:'dropdown', options:['v1.0','v1.1','v1.2','v1.3'] },
+  'deployKit.mbomVer':{ type:'dropdown', options:['v1.0','v1.1','v1.2'] },
+  'deployKit.gantryLength':{ type:'dropdown', options:['900mm','1000mm','1100mm','1200mm','1300mm'] },
+  'deployKit.completionDate':{ type:'date' },
+};
+['lMotors','a12Motors','a35Motors','a4Motors'].forEach(mt => {
+  VALIDATIONS[`${mt}.mdbFW`] = { type:'dropdown', options:['1.9.0.0','1.9.2.0','2.0.0.0','2.1.0.0'] };
+  VALIDATIONS[`${mt}.enc`] = { type:'checkbox' };
+});
+
+function getValidation(section, field) {
+  let v = VALIDATIONS[`${section}.${field}`];
+  if (v) return v;
+  const motorMap = { mbMotors:'lMotors', plMotors:'lMotors', armA12:'a12Motors', armA35:'a35Motors', armA4:'a4Motors' };
+  if (motorMap[section]) { v = VALIDATIONS[`${motorMap[section]}.${field}`]; if (v) return v; }
+  if (field.toLowerCase().includes('date')) return { type:'date' };
+  return null;
 }
 
-function QRScanner({onScan,onClose}) {
-  const [error,setError]=useState(null); const ref=useRef(null);
-  useEffect(()=>{let s=null;
-    (async()=>{try{s=new Html5Qrcode('qr-reader');ref.current=s;await s.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},(t)=>{s.stop().catch(()=>{});onScan(t);},()=>{});}catch(e){setError(e.message||'Camera denied');}})();
-    return()=>{if(ref.current)ref.current.stop().catch(()=>{});};
-  },[onScan]);
-  return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:999}}>
-      <button onClick={onClose} style={{position:'absolute',top:16,right:16,background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',width:40,height:40,borderRadius:20,fontSize:18,cursor:'pointer'}}>✕</button>
-      <div style={{width:280,height:280,borderRadius:16,overflow:'hidden'}}><div id="qr-reader" style={{width:'100%',height:'100%'}}/></div>
-      <p style={{color:'#8b8fa7',fontSize:14,marginTop:20}}>Point camera at QR code</p>
-      {error&&<div style={{marginTop:16,padding:'10px 16px',borderRadius:8,background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.3)',color:'#f87171',fontSize:13,maxWidth:280,textAlign:'center'}}>{error}</div>}
-      <button onClick={onClose} style={{marginTop:24,padding:'10px 20px',borderRadius:8,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'#8b8fa7',fontSize:13,cursor:'pointer'}}>Type manually</button>
-    </div>
-  );
-}
+// ===================== DATA STORE =====================
+let DATA = {};
+let LOADING = false;
 
-function AdminPanel({onClose}) {
-  const [users,setUsers]=useState([]); const [newE,setNewE]=useState(''); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
-  useEffect(()=>{load();},[]);
-  async function load(){setLoading(true);setUsers(await getAllowedUsers());setLoading(false);}
-  async function handleAdd(){if(!newE.trim()||!newE.includes('@'))return;setSaving(true);await addAllowedUser(newE.trim());setNewE('');await load();setSaving(false);}
-  async function handleRm(e){if(!confirm(`Remove ${e}?`))return;await removeAllowedUser(e);await load();}
-  return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:900,padding:20}}>
-      <div style={{width:'100%',maxWidth:440,maxHeight:'80vh',background:'#12131e',borderRadius:16,border:'1px solid #1e2130',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #1e2130'}}>
-          <div><div style={{fontSize:16,fontWeight:700}}>User Access</div><div style={{fontSize:12,color:'#6b7094',marginTop:2}}>{users.length} user{users.length!==1?'s':''}</div></div>
-          <button onClick={onClose} style={{background:'none',border:'none',color:'#6b7094',fontSize:18,padding:'4px 8px',cursor:'pointer'}}>✕</button>
-        </div>
-        <div style={{padding:'12px 20px',borderBottom:'1px solid #1e2130',display:'flex',gap:8}}>
-          <input value={newE} onChange={e=>setNewE(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="email@company.com" style={{flex:1,padding:'10px 14px',borderRadius:10,border:'1px solid #1e2130',background:'#0a0b12',color:'#e2e4ed',fontSize:13,outline:'none'}}/>
-          <button onClick={handleAdd} disabled={saving} style={{padding:'10px 16px',borderRadius:10,border:'none',background:'#5b6eea',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',opacity:saving?0.5:1}}>{saving?'...':'+ Add'}</button>
-        </div>
-        <div style={{flex:1,overflow:'auto',padding:'8px 12px'}}>
-          {loading?<div style={{padding:20,textAlign:'center',color:'#6b7094'}}>Loading...</div>:
-            users.map(u=>(
-              <div key={u.email} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:8,marginBottom:4,background:u.isAdmin?'rgba(91,110,234,0.06)':'transparent'}}>
-                <div><div style={{fontSize:13,color:'#e2e4ed'}}>{u.email}</div><span style={{fontSize:10,fontWeight:600,padding:'1px 6px',borderRadius:4,background:u.isAdmin?'rgba(91,110,234,0.15)':'rgba(255,255,255,0.04)',color:u.isAdmin?'#5b6eea':'#6b7094'}}>{u.isAdmin?'ADMIN':'USER'}</span></div>
-                {!u.isAdmin&&<button onClick={()=>handleRm(u.email)} style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'#f87171',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer',opacity:0.6}}>Remove</button>}
-              </div>))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ===================== MAIN APP =====================
-
-function App() {
-  const [user,setUser]=useState(null);
-  const [allowed,setAllowed]=useState(null);
-  const [adminUser,setAdminUser]=useState(false);
-  const [authLoading,setAuthLoading]=useState(true);
-  const [hasToken,setHasToken]=useState(false);
-  const [sheetsData,setSheetsData]=useState({});
-  const [dataLoading,setDataLoading]=useState(false);
-  const [validations,setValidations]=useState({});
-  const [screen,setScreen]=useState('search');
-  const [searchInput,setSearchInput]=useState('');
-  const [parsedPreview,setParsedPreview]=useState(null);
-  const [result,setResult]=useState(null);
-  const [tree,setTree]=useState(null);
-  const [expanded,setExpanded]=useState(new Set());
-  const [editing,setEditing]=useState(null);
-  const [editValue,setEditValue]=useState('');
-  const [toast,setToast]=useState(null);
-  const [showScanner,setShowScanner]=useState(false);
-  const [showAdmin,setShowAdmin]=useState(false);
-  const inputRef=useRef(null);
-
-  function showToastMsg(m,t='success'){setToast({msg:m,type:t});}
-
-  // Auth
-  useEffect(()=>{
-    // Restore token from session
-    const stored = sessionStorage.getItem('sheets_token');
-    if (stored) { sheetsAccessToken = stored; setHasToken(true); }
-
-    const unsub = auth.onAuthStateChanged(async(fbUser)=>{
-      setUser(fbUser);
-      if(fbUser){
-        const ok=await isUserAllowed(fbUser.email);
-        setAllowed(ok);
-        if(ok) setAdminUser(await checkIsAdmin(fbUser.email));
-      } else { setAllowed(null); }
-      setAuthLoading(false);
-    });
-    return unsub;
-  },[]);
-
-  useEffect(()=>{setParsedPreview(searchInput.trim()?parseInput(searchInput):null);},[searchInput]);
-  useEffect(()=>{if(screen==='search'&&inputRef.current)inputRef.current.focus();},[screen]);
-
-  async function handleSignIn() {
-    try {
-      const result = await auth.signInWithPopup(googleProvider);
-      // Now get Sheets token via GIS
-      try {
-        await requestSheetsToken();
-        setHasToken(true);
-      } catch(e) {
-        console.warn('Auto token failed, user will need to click Connect:', e);
+async function fetchSheetTab(tabName) {
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${tabName}`);
+  const text = await resp.text();
+  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);?\s*$/);
+  if (!match) throw new Error(`Invalid response for ${tabName}`);
+  const json = JSON.parse(match[1]);
+  if (json.status === 'error') throw new Error(json.errors?.[0]?.detailed_message || `Error loading ${tabName}`);
+  const cols = json.table.cols.map(c => c.label || '');
+  const rows = [];
+  for (const r of (json.table.rows || [])) {
+    const obj = {};
+    let hasData = false;
+    (r.c || []).forEach((cell, i) => {
+      if (i < cols.length && cols[i]) {
+        const val = cell ? (cell.f || (cell.v !== null && cell.v !== undefined ? String(cell.v) : '')) : '';
+        obj[cols[i]] = val;
+        if (val) hasData = true;
       }
-    } catch(err) { showToastMsg('Sign-in failed: '+err.message,'error'); }
+    });
+    if (hasData) rows.push(obj);
   }
+  return rows;
+}
 
-  async function connectSheets() {
+async function loadAllData(onProgress) {
+  LOADING = true;
+  const entries = Object.entries(CONFIG.tabs);
+  const total = entries.length;
+  let loaded = 0;
+  const errors = [];
+  for (const [key, tabName] of entries) {
     try {
-      await requestSheetsTokenWithConsent();
-      setHasToken(true);
-    } catch(e) { showToastMsg('Failed to connect: '+e.message,'error'); }
-  }
-
-  async function handleSignOut() {
-    await auth.signOut();
-    sheetsAccessToken=null; sessionStorage.removeItem('sheets_token');
-    setUser(null);setAllowed(null);setHasToken(false);setSheetsData({});setScreen('search');
-  }
-
-  // Load data
-  useEffect(()=>{if(allowed&&hasToken&&sheetsAccessToken)loadData();},[allowed,hasToken]);
-
-  async function loadData() {
-    setDataLoading(true);
-    try {
-      const data=await fetchAllSheets();
-      setSheetsData(data);
-      const valMap={};
-      for(const name of Object.keys(data)){try{const v=await fetchDataValidations(name);if(Object.keys(v).length>0)valMap[name]=v;}catch(e){}}
-      setValidations(valMap);
-    } catch(err) {
-      console.error('Load failed:', err);
-      if (err.message.includes('401') || err.message.includes('403')) {
-        sheetsAccessToken=null; sessionStorage.removeItem('sheets_token'); setHasToken(false);
-        showToastMsg('Sheets token expired — click Connect to reconnect','error');
-      } else { showToastMsg('Failed to load data: '+err.message,'error'); }
+      onProgress?.(loaded, total, tabName);
+      DATA[key] = await fetchSheetTab(tabName);
+      loaded++;
+    } catch (err) {
+      console.error(`Failed to load ${tabName}:`, err);
+      errors.push({ tab: tabName, error: err.message });
+      DATA[key] = [];
+      loaded++;
     }
-    setDataLoading(false);
   }
+  LOADING = false;
+  onProgress?.(total, total, 'Done');
+  return errors;
+}
 
-  function handleSearch() {
-    if(!searchInput.trim())return;
-    const r=traceToGhost(searchInput,sheetsData);
-    if(r){setResult(r);const gt=buildGhostTree(r.ghostRow,r.ghostData,sheetsData);setTree(gt);
-      const ek=new Set(['ghost']);const mk=Object.entries(SHEET_KEYS).find(([s])=>s===r.matchedSheet)?.[1];
-      if(mk)ek.add(mk);setExpanded(ek);setScreen('result');
-    } else { showToastMsg(`No match for "${searchInput}"`,'error'); }
+// ===================== DYNAMIC FIELD DETECTION =====================
+// Auto-detect the S/N field name in each dataset
+function getSNField(rows) {
+  if (!rows || !rows.length) return 'sn';
+  const keys = Object.keys(rows[0]);
+  // Look for a key that looks like a S/N column (case insensitive)
+  const snKey = keys.find(k => /^s\/?n$/i.test(k.trim()) || k === 'sn');
+  if (snKey) return snKey;
+  // Look for first key containing GT format values
+  for (const k of keys) {
+    if (rows.some(r => /^GT\d{3}-[A-Z0-9]{2,3}-\d{3,5}$/i.test(r[k] || ''))) return k;
   }
+  return keys[0]; // fallback to first column
+}
 
-  function handleQRScan(value) {
-    setShowScanner(false);setSearchInput(value);
-    setTimeout(()=>{
-      const r=traceToGhost(value,sheetsData);
-      if(r){setResult(r);const gt=buildGhostTree(r.ghostRow,r.ghostData,sheetsData);setTree(gt);
-        const ek=new Set(['ghost']);const mk=Object.entries(SHEET_KEYS).find(([s])=>s===r.matchedSheet)?.[1];
-        if(mk)ek.add(mk);setExpanded(ek);setScreen('result');
-      } else { showToastMsg(`No match for "${value}"`,'error'); }
-    },100);
+function getField(row, ...candidates) {
+  for (const c of candidates) {
+    // Exact match
+    if (row[c] !== undefined && row[c] !== '') return row[c];
+    // Case-insensitive
+    const key = Object.keys(row).find(k => k.toLowerCase().replace(/[\s_\/]/g,'') === c.toLowerCase().replace(/[\s_\/]/g,''));
+    if (key && row[key] !== undefined && row[key] !== '') return row[key];
   }
+  return '';
+}
 
-  function getVal(sn,r,c){return validations[sn]?.[`${r},${c}`]||null;}
+// ===================== TRACE LOGIC =====================
+function findBySN(collection, sn) {
+  if (!collection || !sn) return null;
+  const snField = getSNField(collection);
+  return collection.find(item => (item[snField] || '').toUpperCase() === sn.toUpperCase());
+}
 
-  function startEdit(sn,row,col,hdr,val) {
-    const v=getVal(sn,row,col); const isDate=hdr.toLowerCase().includes('date')||hdr.includes('完了');
-    setEditing({sheetName:sn,row,col,headerName:hdr,value:val,validation:v||(isDate?{type:'date'}:null)});
-    setEditValue(val||'');setScreen('edit');
-  }
+function findByNum(collection, num) {
+  if (!collection) return null;
+  const snField = getSNField(collection);
+  return collection.find(item => {
+    const m = (item[snField] || '').match(/(\d+)$/);
+    return m && parseInt(m[1]) === num;
+  });
+}
 
-  async function saveEdit() {
-    if(!editing)return;showToastMsg('Saving...','saving');
-    try{await writeCell(editing.sheetName,makeCellRef(editing.row,editing.col),editValue);
-      if(sheetsData[editing.sheetName]?.[editing.row]){sheetsData[editing.sheetName][editing.row][editing.col]=editValue;setSheetsData({...sheetsData});}
-      showToastMsg(`Saved ${editing.headerName}: ${editValue}`);setScreen('result');setEditing(null);
-    }catch(e){showToastMsg('Save failed: '+e.message,'error');}
-  }
-
-  function goBack(){if(screen==='edit'){setScreen('result');setEditing(null);}else{setScreen('search');setSearchInput('');setResult(null);setTree(null);}}
-  const toggle=(k)=>setExpanded(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
-
-  // FieldRow
-  function FR({sn,row,col,hdr,val,hl}) {
-    if(['ghostsn','parentsn','parenttype'].some(p=>hdr.toLowerCase().replace(/[^a-z0-9]/g,'').includes(p)))return null;
-    const v=getVal(sn,row,col); const isDate=v?.type==='date'||hdr.toLowerCase().includes('date')||hdr.includes('完了');
-    const isCheck=v?.type==='checkbox'||val==='✓'||val==='✗'; const isDrop=v?.type==='dropdown';
-    return (
-      <div onClick={()=>startEdit(sn,row,col,hdr,val)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 16px',cursor:'pointer',borderRadius:8,background:hl?'rgba(91,110,234,0.08)':'transparent',borderLeft:hl?'3px solid #5b6eea':'3px solid transparent',margin:'0 4px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,flex:1}}>
-          <span style={{fontSize:12,color:'#6b7094',flexShrink:0}}>{hdr}</span>
-          {isDrop&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(91,110,234,0.12)',color:'#5b6eea',fontWeight:700}}>▾</span>}
-          {isCheck&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(251,191,36,0.12)',color:'#fbbf24',fontWeight:700}}>☐</span>}
-          {isDate&&!isCheck&&<span style={{fontSize:8,padding:'1px 4px',borderRadius:3,background:'rgba(56,189,248,0.12)',color:'#38bdf8',fontWeight:700}}>📅</span>}
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-          {isCheck?<span style={{width:20,height:20,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',background:val==='✓'?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.1)',border:`1.5px solid ${val==='✓'?'#34d399':'#f8717155'}`,fontSize:12,color:val==='✓'?'#34d399':'#f87171'}}>{val==='✓'?'✓':'✗'}</span>
-            :<span style={{fontSize:12,color:'#b0b4cc',fontFamily:"'Courier New',monospace",maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{val||'—'}</span>}
-          <span style={{fontSize:10,color:'#3d4060'}}>✎</span>
-        </div>
-      </div>
-    );
-  }
-
-  // SectionCard
-  function SC({sk,data}) {
-    if(!data)return null; const cfg=SEC[sk]; if(!cfg)return null;
-    const isOpen=expanded.has(sk); const isM=result?.matchedSheet===data.sheetName||(data.items&&data.items.some(i=>i.sn===result?.matchedSN));
-    const items=data.items||[data];
-    return (
-      <div style={{marginBottom:6}}>
-        <div onClick={()=>toggle(sk)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:cfg.bg,borderRadius:isOpen?'12px 12px 0 0':12,border:`1px solid ${cfg.color}${isM?'55':'22'}`,borderLeft:isM?`4px solid ${cfg.color}`:`1px solid ${cfg.color}22`,cursor:'pointer'}}>
-          <span style={{fontSize:22,lineHeight:1}}>{cfg.icon}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:cfg.color}}>{cfg.label}</div>
-            <div style={{fontSize:11,color:'#6b7094',marginTop:2,fontFamily:"'Courier New',monospace",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{items.map(i=>i.sn||i.data?.['#']||'').filter(Boolean).join(' · ')||data.sheetName}</div></div>
-          {isM&&<span style={{padding:'2px 8px',borderRadius:6,fontSize:10,fontWeight:600,background:`${cfg.color}22`,color:cfg.color}}>MATCH</span>}
-          <span style={{fontSize:11,color:'#3d4060',transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▼</span>
-        </div>
-        {isOpen&&items.map((item,idx)=>{const rd=item.data||{};return(
-          <div key={idx} style={{background:'#0d0e17',border:`1px solid ${cfg.color}15`,borderTop:'none',borderRadius:idx===items.length-1?'0 0 12px 12px':0,paddingTop:4,paddingBottom:4}}>
-            {items.length>1&&<div style={{padding:'6px 16px',fontSize:11,fontWeight:600,color:cfg.color,opacity:0.7,fontFamily:"'Courier New',monospace"}}>{item.sn||''}</div>}
-            {Object.entries(rd).map(([k,v],ci)=><FR key={k} sn={data.sheetName||item.sheetName} row={item.row} col={ci} hdr={k} val={v} hl={result?.matchedSN===v}/>)}
-          </div>);})}
-      </div>
-    );
-  }
-
-  const Spinner=({text})=><div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16}}><div style={{width:40,height:40,border:'3px solid #1e2130',borderTopColor:'#5b6eea',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#6b7094',fontSize:14}}>{text}</p></div>;
-
-  if(authLoading) return <Spinner text="Loading..."/>;
-
-  // Sign in
-  if(!user) return (
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
-      <div style={{width:80,height:80,borderRadius:24,background:'linear-gradient(135deg,#5b6eea,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40,marginBottom:24,boxShadow:'0 12px 48px rgba(91,110,234,0.25)'}}>👻</div>
-      <h1 style={{fontSize:26,fontWeight:700,marginBottom:8}}>Ghost Tracker</h1>
-      <p style={{color:'#6b7094',fontSize:14,marginBottom:32,textAlign:'center',maxWidth:320,lineHeight:1.5}}>Sign in with your company Google account</p>
-      <button onClick={handleSignIn} style={{padding:'14px 36px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 24px rgba(91,110,234,0.3)',cursor:'pointer'}}>Sign in with Google</button>
-      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-    </div>
-  );
-
-  // Denied
-  if(allowed===false) return (
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
-      <div style={{width:64,height:64,borderRadius:16,background:'rgba(248,113,113,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:20}}>🔒</div>
-      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Access Denied</h2>
-      <p style={{color:'#6b7094',fontSize:14,maxWidth:300,lineHeight:1.5,marginBottom:8}}>Your account <strong style={{color:'#e2e4ed'}}>{user.email}</strong> is not authorized.</p>
-      <p style={{color:'#6b7094',fontSize:13,marginBottom:24}}>Contact admin for access.</p>
-      <button onClick={handleSignOut} style={{padding:'10px 24px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#8b8fa7',fontSize:13,cursor:'pointer'}}>Sign out</button>
-    </div>
-  );
-
-  if(allowed===null||dataLoading) return <Spinner text="Loading assembly data..."/>;
-
-  // Need Sheets token
-  if(allowed&&!hasToken) return (
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
-      <div style={{width:64,height:64,borderRadius:16,background:'rgba(251,191,36,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:20}}>📋</div>
-      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Connect to Google Sheets</h2>
-      <p style={{color:'#6b7094',fontSize:14,maxWidth:320,lineHeight:1.5,marginBottom:24}}>Signed in as <strong style={{color:'#e2e4ed'}}>{user.email}</strong>. Grant access to read/write assembly data.</p>
-      <button onClick={connectSheets} style={{padding:'14px 36px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 24px rgba(91,110,234,0.3)',cursor:'pointer'}}>Connect to Sheets</button>
-      <button onClick={handleSignOut} style={{marginTop:12,padding:'10px 24px',borderRadius:8,border:'1px solid #1e2130',background:'transparent',color:'#6b7094',fontSize:13,cursor:'pointer'}}>Sign out</button>
-      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-    </div>
-  );
-
-  // =================== SEARCH SCREEN ===================
-  if(screen==='search') return (
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',borderBottom:'1px solid #14152a'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {user.photoURL&&<img src={user.photoURL} alt="" style={{width:28,height:28,borderRadius:14}}/>}
-          <span style={{fontSize:12,color:'#6b7094'}}>{user.email}</span>
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          {adminUser&&<button onClick={()=>setShowAdmin(true)} style={{background:'none',border:'1px solid #1e2130',color:'#5b6eea',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer'}}>👥 Users</button>}
-          <button onClick={handleSignOut} style={{background:'none',border:'1px solid #1e2130',color:'#6b7094',fontSize:11,padding:'4px 10px',borderRadius:6,cursor:'pointer'}}>Sign out</button>
-        </div>
-      </div>
-      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
-        <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#5b6eea,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:20,boxShadow:'0 12px 48px rgba(91,110,234,0.25)'}}>👻</div>
-        <h1 style={{fontSize:24,fontWeight:700,letterSpacing:-0.5,marginBottom:6}}>Ghost Tracker</h1>
-        <p style={{color:'#6b7094',fontSize:14,marginBottom:32,textAlign:'center',maxWidth:340,lineHeight:1.5}}>Scan QR or type any S/N to find and edit assembly data</p>
-        <div style={{width:'100%',maxWidth:400,marginBottom:12}}>
-          <input ref={inputRef} value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} placeholder="GT418-GST-00001 or GR-1 or 240002..." autoFocus
-            style={{width:'100%',padding:'15px 18px',borderRadius:14,border:'1px solid #1e2130',background:'#12131e',color:'#e2e4ed',fontSize:16,fontFamily:"'Courier New',monospace",outline:'none'}}
-            onFocus={e=>{e.target.style.borderColor='#5b6eea';e.target.style.boxShadow='0 0 0 3px rgba(91,110,234,0.12)';}} onBlur={e=>{e.target.style.borderColor='#1e2130';e.target.style.boxShadow='none';}}/>
-        </div>
-        {parsedPreview&&<div style={{width:'100%',maxWidth:400,padding:'8px 14px',borderRadius:10,background:'rgba(91,110,234,0.06)',border:'1px solid rgba(91,110,234,0.12)',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:11,color:'#5b6eea',fontWeight:600}}>{parsedPreview.inputType==='qr'?'📷 QR':parsedPreview.inputType==='shorthand'?'⌨️ Quick':'🔢'}</span>
-          <span style={{fontSize:12,color:'#8b8fa7'}}>→</span>
-          <span style={{fontSize:12,color:'#e2e4ed',fontWeight:500}}>{parsedPreview.label}</span>
-          {parsedPreview.sheet&&<span style={{fontSize:11,color:'#6b7094',marginLeft:'auto',fontFamily:'monospace'}}>{parsedPreview.sheet}</span>}
-        </div>}
-        <div style={{display:'flex',gap:10,width:'100%',maxWidth:400}}>
-          <button onClick={handleSearch} style={{flex:1,padding:'14px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#5b6eea,#7c5cf6)',color:'#fff',fontSize:15,fontWeight:600,boxShadow:'0 4px 20px rgba(91,110,234,0.25)',cursor:'pointer'}}>Search</button>
-          <button onClick={()=>setShowScanner(true)} style={{flex:1,padding:'14px',borderRadius:12,border:'1px solid #1e2130',background:'#12131e',color:'#e2e4ed',fontSize:15,fontWeight:600,cursor:'pointer'}}>📷 Scan QR</button>
-        </div>
-        <div style={{marginTop:32,width:'100%',maxWidth:400,padding:'16px',borderRadius:12,background:'#0d0e17',border:'1px solid #1a1c2a'}}>
-          <div style={{fontSize:11,color:'#3d4060',fontWeight:600,marginBottom:10,letterSpacing:1}}>ACCEPTED FORMATS</div>
-          {[{f:'GT418-GST-00001',d:'Full S/N (QR)',t:'QR'},{f:'MB-1, ARM-10',d:'Quick shorthand',t:'Type'},{f:'PDB-4421, IOB-5567',d:'Sub-component',t:'Type'},{f:'240002',d:'GALINA number',t:'QR'}].map((i,x)=>
-            <div key={x} style={{display:'flex',alignItems:'center',gap:10,padding:'5px 0'}}>
-              <span style={{padding:'2px 6px',borderRadius:4,fontSize:9,fontWeight:600,background:i.t==='QR'?'rgba(91,110,234,0.12)':'rgba(251,191,36,0.12)',color:i.t==='QR'?'#5b6eea':'#fbbf24'}}>{i.t}</span>
-              <code style={{fontSize:12,color:'#8b8fa7',fontFamily:"'Courier New',monospace"}}>{i.f}</code>
-              <span style={{fontSize:11,color:'#3d4060',marginLeft:'auto'}}>{i.d}</span>
-            </div>)}
-        </div>
-        <div style={{marginTop:16,fontSize:11,color:'#2d3050'}}>{Object.keys(sheetsData).length} sheets · {Object.values(sheetsData).reduce((s,d)=>s+(d?.length||0),0)} rows</div>
-      </div>
-      {showScanner&&<QRScanner onScan={handleQRScan} onClose={()=>setShowScanner(false)}/>}
-      {showAdmin&&<AdminPanel onClose={()=>setShowAdmin(false)}/>}
-      {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-    </div>
-  );
-
-  // =================== RESULT SCREEN ===================
-  if(screen==='result'&&tree) {
-    const all=Object.entries(tree).map(([k,d])=>({key:k,data:d}));
-    const matched=all.filter(s=>s.data?.sheetName===result?.matchedSheet&&s.key!=='ghost');
-    const rest=all.filter(s=>s.data?.sheetName!==result?.matchedSheet&&s.key!=='ghost');
-    const gs=all.find(s=>s.key==='ghost');
-    const isGM=result?.matchedSheet==='00_GHOST';
-    const sorted=isGM?all:[gs,...matched,...rest].filter(Boolean);
-    const seen=new Set(); const final=sorted.filter(s=>{if(seen.has(s.key))return false;seen.add(s.key);return true;});
-
-    return (
-      <div style={{minHeight:'100vh'}}>
-        <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid #14152a',background:'#0d0e18',position:'sticky',top:0,zIndex:100}}>
-          <button onClick={goBack} style={{background:'none',border:'none',color:'#5b6eea',fontSize:13,padding:'6px 10px',borderRadius:6,cursor:'pointer'}}>← Back</button>
-          <div style={{flex:1,textAlign:'center'}}><span style={{fontSize:14,fontWeight:700,fontFamily:"'Courier New',monospace"}}>👻 {tree.ghost?.data?.['#']||tree.ghost?.data?.['S/N']||`Row ${result?.ghostRow}`}</span></div>
-          <button onClick={loadData} style={{background:'none',border:'none',color:'#6b7094',fontSize:12,padding:'6px 8px',cursor:'pointer'}}>↻</button>
-        </div>
-        <div style={{margin:'12px 16px 8px',padding:'12px 14px',borderRadius:10,background:'rgba(91,110,234,0.04)',border:'1px solid rgba(91,110,234,0.1)'}}>
-          <div style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1,marginBottom:8}}>TRACE PATH</div>
-          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
-            {result.path.map((step,i)=><span key={i} style={{display:'flex',alignItems:'center',gap:4}}>
-              <span style={{padding:'3px 8px',borderRadius:5,fontSize:12,background:i===0?'rgba(91,110,234,0.15)':'rgba(255,255,255,0.03)',color:i===0?'#5b6eea':'#6b7094',fontWeight:i===0?600:400}}>{step}</span>
-              {i<result.path.length-1&&<span style={{color:'#2d3050',fontSize:10}}>→</span>}</span>)}
-          </div>
-        </div>
-        <div style={{padding:'4px 16px 100px'}}>
-          {!isGM&&matched.length>0&&<div style={{padding:'6px 12px',marginBottom:8,borderRadius:8,background:'rgba(91,110,234,0.06)',border:'1px solid rgba(91,110,234,0.1)',display:'flex',alignItems:'center',gap:6}}><span style={{fontSize:10,color:'#5b6eea',fontWeight:700,letterSpacing:1}}>▲ MATCHED</span><span style={{fontSize:10,color:'#3d4060'}}>— shown first</span></div>}
-          {final.map((s,i)=>{
-            const showDiv=!isGM&&matched.length>0&&i===matched.length+1;
-            return <div key={s.key}>
-              {showDiv&&<div style={{padding:'6px 12px',margin:'12px 0 8px',borderRadius:8,background:'rgba(255,255,255,0.02)',border:'1px solid #1a1c2a'}}><span style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1}}>▼ OTHER ASSEMBLIES</span></div>}
-              <SC sk={s.key} data={s.data}/>
-            </div>;})}
-        </div>
-        {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-      </div>
-    );
-  }
-
-  // =================== EDIT SCREEN ===================
-  if(screen==='edit'&&editing) {
-    const v=editing.validation; const isDrop=v?.type==='dropdown';
-    const isCheck=v?.type==='checkbox'||editing.value==='✓'||editing.value==='✗';
-    const isDate=v?.type==='date';
-    const d2i=d=>d?d.replace(/\//g,'-'):''; const i2d=d=>d?d.replace(/-/g,'/') :'';
-
-    return (
-      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #14152a',background:'#0d0e18'}}>
-          <button onClick={goBack} style={{background:'none',border:'none',color:'#f87171',fontSize:13,padding:'6px 10px',cursor:'pointer'}}>Cancel</button>
-          <span style={{fontSize:14,fontWeight:600}}>Edit Field</span>
-          <button onClick={saveEdit} style={{background:'none',border:'none',color:'#5b6eea',fontSize:13,padding:'6px 10px',fontWeight:600,cursor:'pointer'}}>Save ✓</button>
-        </div>
-        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',padding:24,paddingTop:32}}>
-          <div style={{fontSize:11,color:'#3d4060',fontFamily:'monospace',marginBottom:20}}>{editing.sheetName} · Row {editing.row+1}</div>
-          <div style={{fontSize:15,color:'#b0b4cc',fontWeight:500,marginBottom:16}}>{editing.headerName}</div>
-          <div style={{padding:'8px 16px',borderRadius:8,marginBottom:24,background:'rgba(248,113,113,0.04)',border:'1px solid rgba(248,113,113,0.1)',fontFamily:'monospace',fontSize:13,color:'#f87171',textDecoration:'line-through',opacity:0.5,width:'100%',maxWidth:380,textAlign:'center'}}>{editing.value||'empty'}</div>
-
-          {isDrop&&<div style={{width:'100%',maxWidth:380}}>
-            <div style={{fontSize:10,color:'#3d4060',fontWeight:600,letterSpacing:1,marginBottom:8}}>SELECT VALUE</div>
-            {v.options.map(opt=><div key={opt} onClick={()=>setEditValue(opt)} style={{padding:'12px 16px',borderRadius:10,cursor:'pointer',marginBottom:4,border:editValue===opt?'2px solid #5b6eea':'1px solid #1e2130',background:editValue===opt?'rgba(91,110,234,0.1)':'#12131e',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{width:20,height:20,borderRadius:10,border:`2px solid ${editValue===opt?'#5b6eea':'#2a2d3e'}`,display:'flex',alignItems:'center',justifyContent:'center'}}>{editValue===opt&&<div style={{width:10,height:10,borderRadius:5,background:'#5b6eea'}}/>}</div>
-                <span style={{fontSize:14,fontFamily:"'Courier New',monospace",color:editValue===opt?'#e2e4ed':'#8b8fa7'}}>{opt}</span>
-              </div>
-              {editing.value===opt&&<span style={{fontSize:9,padding:'2px 6px',borderRadius:4,background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontWeight:600}}>CURRENT</span>}
-            </div>)}
-          </div>}
-
-          {isCheck&&!isDrop&&<div style={{width:'100%',maxWidth:380,display:'flex',gap:12}}>
-            {['✓','✗'].map(val=>{const sel=editValue===val;const ip=val==='✓';const c=ip?'#34d399':'#f87171';
-              return <div key={val} onClick={()=>setEditValue(val)} style={{flex:1,padding:'24px 16px',borderRadius:14,cursor:'pointer',textAlign:'center',border:sel?`2px solid ${c}`:'1px solid #1e2130',background:sel?`${c}10`:'#12131e'}}>
-                <div style={{width:56,height:56,borderRadius:16,margin:'0 auto 12px',display:'flex',alignItems:'center',justifyContent:'center',background:sel?`${c}22`:'rgba(255,255,255,0.03)',border:`2px solid ${sel?c:'#2a2d3e'}`,fontSize:28,color:sel?c:'#3d4060'}}>{val}</div>
-                <div style={{fontSize:14,fontWeight:600,color:sel?c:'#4d5070'}}>{ip?'Pass':'Fail'}</div>
-              </div>;})}
-          </div>}
-
-          {isDate&&!isCheck&&<div style={{width:'100%',maxWidth:380}}>
-            <input type="date" value={d2i(editValue)} onChange={e=>setEditValue(i2d(e.target.value))} style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #38bdf8',background:'#12131e',color:'#e2e4ed',fontSize:18,fontFamily:"'Courier New',monospace",fontWeight:600,outline:'none',textAlign:'center',colorScheme:'dark'}}/>
-            <div style={{display:'flex',gap:8,marginTop:12}}>
-              <button onClick={()=>{const d=new Date();setEditValue(`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`);}} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#38bdf8',fontSize:13,fontWeight:500,cursor:'pointer'}}>Today</button>
-              <button onClick={()=>{const d=new Date();d.setDate(d.getDate()-1);setEditValue(`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`);}} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #1e2130',background:'#12131e',color:'#38bdf8',fontSize:13,fontWeight:500,cursor:'pointer'}}>Yesterday</button>
-            </div>
-          </div>}
-
-          {!isDrop&&!isCheck&&!isDate&&<div style={{width:'100%',maxWidth:380}}>
-            <input autoFocus value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveEdit()}
-              style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #5b6eea',background:'#12131e',color:'#e2e4ed',fontSize:18,fontFamily:"'Courier New',monospace",fontWeight:600,outline:'none',boxShadow:'0 0 0 4px rgba(91,110,234,0.1)',textAlign:'center'}}/>
-          </div>}
-
-          <button onClick={saveEdit} style={{marginTop:28,padding:'14px 40px',borderRadius:12,border:'none',background:editValue!==editing.value&&editValue?'linear-gradient(135deg,#5b6eea,#7c5cf6)':'#1e2130',color:editValue!==editing.value&&editValue?'#fff':'#4d5070',fontSize:15,fontWeight:600,cursor:editValue!==editing.value?'pointer':'default'}}>
-            {editValue!==editing.value&&editValue?'Save to Sheet':'No changes'}
-          </button>
-        </div>
-        {toast&&<Toast message={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-      </div>
-    );
+function findBySubField(collection, fieldCandidates, val) {
+  if (!collection) return null;
+  for (const row of collection) {
+    for (const fc of (Array.isArray(fieldCandidates) ? fieldCandidates : [fieldCandidates])) {
+      const v = getField(row, fc);
+      if (v && (v === val || v === String(val))) return row;
+    }
   }
   return null;
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+function getRowSN(row, collection) {
+  const snField = getSNField(collection || [row]);
+  return row[snField] || '';
+}
+
+function traceToGhost(input) {
+  const parsed = parseInput(input);
+  if (!parsed) return null;
+
+  let ghost, path = [], matchedIn = parsed.label, matchedSN = '';
+  const D = DATA;
+
+  const findItem = (list) => {
+    let item = parsed.fullSN.match(/^GT/) ? findBySN(list, parsed.fullSN) : null;
+    if (!item) item = findByNum(list, parsed.num);
+    return item;
+  };
+
+  const findGhostByAssembly = (assemblySN, listKey) => {
+    // Try to find Ghost that references this assembly
+    if (!D.ghosts) return null;
+    for (const g of D.ghosts) {
+      const vals = Object.values(g);
+      if (vals.some(v => v && v.toUpperCase() === assemblySN.toUpperCase())) return g;
+    }
+    return null;
+  };
+
+  const findGhostBySN = (gSN) => {
+    if (!gSN || !D.ghosts) return null;
+    return findBySN(D.ghosts, gSN) || D.ghosts.find(g => Object.values(g).some(v => v === gSN));
+  };
+
+  const getGhostFromRow = (row) => {
+    const gSN = getField(row, 'ghostSN', 'Ghost S/N', 'Ghost', 'ghost_sn');
+    if (gSN) return findGhostBySN(gSN);
+    return null;
+  };
+
+  const getGhostFromAssembly = (row, list) => {
+    const sn = getRowSN(row, list);
+    // Try ghostSN field first
+    let g = getGhostFromRow(row);
+    if (g) return g;
+    // Try finding Ghost that references this SN
+    g = findGhostByAssembly(sn);
+    return g;
+  };
+
+  switch (parsed.type) {
+    case 'ghost': {
+      const g = findItem(D.ghosts);
+      if (g) { ghost = g; path = ['Ghost']; matchedSN = getRowSN(g, D.ghosts); }
+      break;
+    }
+    case 'mobileBase': {
+      const mb = findItem(D.mobileBases);
+      if (mb) { ghost = getGhostFromAssembly(mb, D.mobileBases); path = ['Mobile Base','Ghost']; matchedSN = getRowSN(mb, D.mobileBases); }
+      break;
+    }
+    case 'pillar': {
+      const pl = findItem(D.pillars);
+      if (pl) { ghost = getGhostFromAssembly(pl, D.pillars); path = ['Pillar','Ghost']; matchedSN = getRowSN(pl, D.pillars); }
+      break;
+    }
+    case 'headBody': {
+      const hb = findItem(D.headBodies);
+      if (hb) { ghost = getGhostFromAssembly(hb, D.headBodies); path = ['Head & Body','Ghost']; matchedSN = getRowSN(hb, D.headBodies); }
+      break;
+    }
+    case 'arm': {
+      const arm = findItem(D.arms);
+      if (arm) { ghost = getGhostFromAssembly(arm, D.arms); path = ['Arm','Ghost']; matchedSN = getRowSN(arm, D.arms); }
+      break;
+    }
+    case 'gripper': {
+      const gr = findItem(D.grippers);
+      if (gr) { ghost = getGhostFromAssembly(gr, D.grippers); path = ['Gripper','Arm','Ghost']; matchedSN = getRowSN(gr, D.grippers); }
+      break;
+    }
+    case 'deployKit': {
+      const dk = findItem(D.deployKits);
+      if (dk) { ghost = getGhostFromAssembly(dk, D.deployKits); path = ['Deploy Kit','Ghost']; matchedSN = getRowSN(dk, D.deployKits); }
+      break;
+    }
+    case 'lMotor': {
+      const lm = findItem(D.lMotors);
+      if (lm) {
+        const parentSN = getField(lm, 'parentSN', 'Parent S/N', 'Parent');
+        const parentType = getField(lm, 'parentType', 'Parent Type');
+        const via = parentType?.toLowerCase().includes('pillar') ? 'Pillar' : 'Mobile Base';
+        const parentList = via === 'Pillar' ? D.pillars : D.mobileBases;
+        const parent = findBySN(parentList, parentSN);
+        ghost = parent ? getGhostFromAssembly(parent, parentList) : null;
+        const slot = getField(lm, 'slot', 'Slot');
+        path = [`L-Motor${slot ? ' ('+slot+')' : ''}`, via, 'Ghost'];
+        matchedSN = getRowSN(lm, D.lMotors);
+      }
+      break;
+    }
+    case 'a12Motor': case 'a35Motor': case 'a4Motor': {
+      const listKey = parsed.type === 'a12Motor' ? 'a12Motors' : parsed.type === 'a35Motor' ? 'a35Motors' : 'a4Motors';
+      const m = findItem(D[listKey]);
+      if (m) {
+        const parentSN = getField(m, 'parentSN', 'Parent S/N', 'Parent');
+        const arm = findBySN(D.arms, parentSN);
+        ghost = arm ? getGhostFromAssembly(arm, D.arms) : null;
+        const slot = getField(m, 'slot', 'Slot');
+        const prefix = parsed.type === 'a12Motor' ? 'A12' : parsed.type === 'a35Motor' ? 'A35' : 'A4';
+        path = [`${prefix}${slot ? ' ('+slot+')' : ''}`, 'Arm', 'Ghost'];
+        matchedSN = getRowSN(m, D[listKey]);
+      }
+      break;
+    }
+    case 'galina': {
+      const hb = findBySubField(D.headBodies, ['galinaSN','GALINA S/N','GALINA','galina_sn'], String(parsed.num));
+      if (hb) { ghost = getGhostFromAssembly(hb, D.headBodies); path = ['GALINA','Head & Body','Ghost']; matchedSN = String(parsed.num); }
+      break;
+    }
+    case 'pdb': {
+      const mb = findBySubField(D.mobileBases, ['pdbSN','PDB S/N','PDB','pdb_sn'], `PDB-${parsed.num}`);
+      if (mb) { ghost = getGhostFromAssembly(mb, D.mobileBases); path = ['PDB','Mobile Base','Ghost']; matchedSN = `PDB-${parsed.num}`; }
+      break;
+    }
+    case 'iob': {
+      let hb = findBySubField(D.headBodies, ['iobSN','IOB S/N','IOB','iob_sn'], `IOB-${parsed.num}`);
+      if (hb) { ghost = getGhostFromAssembly(hb, D.headBodies); path = ['IOB','Head & Body','Ghost']; matchedSN = `IOB-${parsed.num}`; break; }
+      let gr = findBySubField(D.grippers, ['iobSN','IOB S/N','IOB','iob_sn'], `IOB-${parsed.num}`);
+      if (gr) { ghost = getGhostFromAssembly(gr, D.grippers); path = ['IOB','Gripper','Arm','Ghost']; matchedSN = `IOB-${parsed.num}`; }
+      break;
+    }
+    case 'mdb': {
+      for (const listKey of ['lMotors','a12Motors','a35Motors','a4Motors']) {
+        const m = findBySubField(D[listKey], ['mdbSN','MDB S/N','MDB','mdb_sn'], `MDB-${parsed.num}`);
+        if (m) {
+          const parentSN = getField(m, 'parentSN', 'Parent S/N', 'Parent');
+          const arm = findBySN(D.arms, parentSN);
+          const mb = findBySN(D.mobileBases, parentSN);
+          const pl = findBySN(D.pillars, parentSN);
+          const parent = arm || mb || pl;
+          const parentList = arm ? D.arms : mb ? D.mobileBases : D.pillars;
+          ghost = parent ? getGhostFromAssembly(parent, parentList) : null;
+          const slot = getField(m, 'slot', 'Slot');
+          const via = arm ? 'Arm' : mb ? 'Mobile Base' : 'Pillar';
+          path = ['MDB', slot || 'Motor', via, 'Ghost'];
+          matchedSN = `MDB-${parsed.num}`;
+          break;
+        }
+      }
+      break;
+    }
+    case 'brk': {
+      const pl = findBySubField(D.pillars, ['brkSN','Brake S/N','BRK','brk_sn'], `BRK-${parsed.num}`);
+      if (pl) { ghost = getGhostFromAssembly(pl, D.pillars); path = ['Brake','Pillar','Ghost']; matchedSN = `BRK-${parsed.num}`; }
+      break;
+    }
+    case 'bat': {
+      const arm = findBySubField(D.arms, ['batSN','Battery S/N','BAT','bat_sn'], `BAT-${parsed.num}`);
+      if (arm) { ghost = getGhostFromAssembly(arm, D.arms); path = ['Battery','Arm','Ghost']; matchedSN = `BAT-${parsed.num}`; }
+      break;
+    }
+  }
+  if (!ghost) return null;
+  return { ghost, path, matchedIn, matchedSN, parsed };
+}
+
+function getGhostTree(ghostRow) {
+  if (!ghostRow) return null;
+  const ghostSN = getRowSN(ghostRow, DATA.ghosts);
+  const vals = Object.values(ghostRow);
+
+  const findLinked = (list, backRefFields) => {
+    if (!list) return null;
+    // Strategy 1: Ghost row contains the assembly SN
+    const snField = getSNField(list);
+    for (const item of list) {
+      const sn = item[snField] || '';
+      if (sn && vals.includes(sn)) return item;
+    }
+    // Strategy 2: Assembly row has ghostSN back-reference
+    for (const item of list) {
+      const gRef = getField(item, 'ghostSN', 'Ghost S/N', 'Ghost', 'ghost_sn');
+      if (gRef && gRef === ghostSN) return item;
+    }
+    return null;
+  };
+
+  const findMotors = (list, parentSN) => {
+    if (!list || !parentSN) return [];
+    return list.filter(m => {
+      const p = getField(m, 'parentSN', 'Parent S/N', 'Parent');
+      return p && p === parentSN;
+    });
+  };
+
+  const mb = findLinked(DATA.mobileBases);
+  const pl = findLinked(DATA.pillars);
+  const hb = findLinked(DATA.headBodies);
+  const arm = findLinked(DATA.arms);
+  const gr = findLinked(DATA.grippers);
+  const dk = findLinked(DATA.deployKits);
+
+  const mbSN = mb ? getRowSN(mb, DATA.mobileBases) : '';
+  const plSN = pl ? getRowSN(pl, DATA.pillars) : '';
+  const armSN = arm ? getRowSN(arm, DATA.arms) : '';
+
+  return {
+    ghost: ghostRow, mb, pl, hb, arm, gr, dk,
+    mbMotors: findMotors(DATA.lMotors, mbSN),
+    plMotors: findMotors(DATA.lMotors, plSN),
+    armA12: findMotors(DATA.a12Motors, armSN),
+    armA35: findMotors(DATA.a35Motors, armSN),
+    armA4: findMotors(DATA.a4Motors, armSN),
+  };
+}
+
+// ===================== APP STATE =====================
+const state = {
+  screen: 'loading', // loading | search | result | edit
+  searchInput: '',
+  parsedPreview: null,
+  result: null,
+  tree: null,
+  expanded: new Set(),
+  editing: null,
+  editValue: '',
+  toast: null,
+  scanning: false,
+  loadErrors: [],
+  configOpen: false,
+  refreshing: false,
+};
+
+// ===================== RENDER ENGINE =====================
+const $ = (sel) => document.querySelector(sel);
+const app = () => document.getElementById('app');
+
+function render() {
+  switch (state.screen) {
+    case 'loading': renderLoading(); break;
+    case 'search': renderSearch(); break;
+    case 'result': renderResult(); break;
+    case 'edit': renderEdit(); break;
+  }
+}
+
+// --- Loading ---
+let loadProgress = { loaded: 0, total: 11, current: '' };
+function renderLoading() {
+  const pct = loadProgress.total ? Math.round((loadProgress.loaded / loadProgress.total) * 100) : 0;
+  app().innerHTML = `
+    <div class="loading-screen">
+      <div class="loading-spinner">👻</div>
+      <div class="loading-text">Loading assembly data...</div>
+      <div class="loading-progress"><div class="loading-bar" style="width:${pct}%"></div></div>
+      <div class="loading-detail">${loadProgress.current || 'Connecting...'}</div>
+    </div>`;
+}
+
+// --- Search ---
+function renderSearch() {
+  const preview = state.parsedPreview;
+  const demoSNs = [];
+  // Grab up to 8 real S/Ns from data
+  if (DATA.ghosts?.length) { const f = getSNField(DATA.ghosts); DATA.ghosts.slice(0,2).forEach(r => r[f] && demoSNs.push(r[f])); }
+  if (DATA.mobileBases?.length) { const f = getSNField(DATA.mobileBases); DATA.mobileBases.slice(0,1).forEach(r => r[f] && demoSNs.push(r[f])); }
+  if (DATA.arms?.length) { const f = getSNField(DATA.arms); DATA.arms.slice(0,1).forEach(r => r[f] && demoSNs.push(r[f])); }
+  if (DATA.grippers?.length) { const f = getSNField(DATA.grippers); DATA.grippers.slice(0,1).forEach(r => r[f] && demoSNs.push(r[f])); }
+  // Add some sub-component demos from actual data
+  if (DATA.headBodies?.length) {
+    const hb = DATA.headBodies[0];
+    const iob = getField(hb, 'iobSN','IOB S/N','IOB');
+    if (iob) demoSNs.push(iob);
+    const gal = getField(hb, 'galinaSN','GALINA S/N','GALINA');
+    if (gal) demoSNs.push(gal);
+  }
+
+  const totalRows = Object.values(DATA).reduce((s, arr) => s + (arr?.length || 0), 0);
+
+  app().innerHTML = `
+    <div class="search-screen">
+      <div class="search-bg"></div>
+      <div class="data-status data-status-live"><div class="data-status-dot"></div> ${totalRows} records loaded</div>
+      <button class="config-toggle" onclick="toggleConfig()">⚙</button>
+      <div class="search-content">
+        <div class="search-logo">👻</div>
+        <h1 class="search-title">Ghost Tracker</h1>
+        <p class="search-subtitle">Scan QR or type any S/N to trace assembly data from Google Sheets</p>
+        <div class="search-input-wrap">
+          <input class="search-input" id="searchInput" value="${escHtml(state.searchInput)}"
+            placeholder="GT418-GST-00001 or GR-1 or 240002..."
+            autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        ${preview ? `
+          <div class="parse-preview">
+            <span class="parse-tag">${preview.inputType === 'qr' ? '📷 QR' : preview.inputType === 'shorthand' ? '⌨️ Quick' : '🔢'}</span>
+            <span class="parse-arrow">→</span>
+            <span class="parse-label">${escHtml(preview.label)}</span>
+            ${preview.sheet ? `<span class="parse-sheet">${escHtml(preview.sheet)}</span>` : ''}
+          </div>
+        ` : ''}
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="handleSearch()">Search</button>
+          <button class="btn btn-secondary" onclick="handleDemoScan()">📷 Scan QR</button>
+        </div>
+        <div class="formats-box">
+          <div class="formats-title">ACCEPTED FORMATS</div>
+          ${[
+            { fmt:'GT418-GST-00001', desc:'Full S/N (QR scan)', tag:'QR' },
+            { fmt:'MB-1, ARM-10',    desc:'Quick shorthand',    tag:'Type' },
+            { fmt:'PDB-4421, IOB-5567', desc:'Sub-component',   tag:'Type' },
+            { fmt:'240002',          desc:'GALINA number',       tag:'QR' },
+          ].map(f => `
+            <div class="format-row">
+              <span class="format-tag format-tag-${f.tag.toLowerCase()}">${f.tag}</span>
+              <code class="format-code">${f.fmt}</code>
+              <span class="format-desc">${f.desc}</span>
+            </div>
+          `).join('')}
+        </div>
+        ${demoSNs.length ? `
+          <div class="demo-section">
+            <div class="demo-label">Try real values from your sheet</div>
+            <div class="demo-chips">
+              ${demoSNs.map(sn => `<button class="demo-chip" onclick="setSearch('${escHtml(sn)}')">${escHtml(sn)}</button>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${state.loadErrors.length ? `
+          <div class="error-banner" style="margin-top:24px;max-width:400px;">
+            ⚠ Some sheets failed to load: ${state.loadErrors.map(e => e.tab).join(', ')}
+            <code>${escHtml(state.loadErrors[0].error)}</code>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+    ${state.scanning ? renderScanOverlay() : ''}
+    ${renderToast()}
+    ${renderConfigPanel()}`;
+
+  const inp = $('#searchInput');
+  inp?.addEventListener('input', e => { state.searchInput = e.target.value; state.parsedPreview = parseInput(e.target.value); render(); });
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+  setTimeout(() => $('#searchInput')?.focus(), 50);
+}
+
+// --- Result ---
+function renderResult() {
+  const { result, tree } = state;
+  if (!result || !tree) return;
+  const ghostSN = getRowSN(tree.ghost, DATA.ghosts);
+
+  // All sections in hierarchy order
+  const allSections = [
+    { key:'ghost', data:tree.ghost },
+    { key:'mobileBase', data:tree.mb },
+    { key:'mbMotors', data:tree.mbMotors },
+    { key:'pillar', data:tree.pl },
+    { key:'plMotors', data:tree.plMotors },
+    { key:'headBody', data:tree.hb },
+    { key:'arm', data:tree.arm },
+    { key:'armA12', data:tree.armA12 },
+    { key:'armA35', data:tree.armA35 },
+    { key:'armA4', data:tree.armA4 },
+    { key:'gripper', data:tree.gr },
+    { key:'deployKit', data:tree.dk },
+  ];
+
+  const matchedIn = (result.matchedIn || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const matchedPath = (result.path || []).map(p => p.toLowerCase().replace(/[^a-z0-9]/g,''));
+  const subMap = {
+    pdb:['mobilebase'], iob:['headbody','gripper'],
+    mdb:['mbmotors','plmotors','arma12','arma35','arma4'],
+    brk:['pillar'], bat:['arm'], galina:['headbody'],
+    lmotor:['mbmotors','plmotors'], a12motor:['arma12'], a35motor:['arma35'], a4motor:['arma4'],
+  };
+
+  const isMatched = (key) => {
+    const k = key.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if (matchedIn.includes(k) || k.includes(matchedIn)) return true;
+    for (const p of matchedPath) { if (p.includes(k) || k.includes(p)) return true; }
+    for (const [sub, targets] of Object.entries(subMap)) {
+      if (matchedIn.includes(sub) && targets.some(t => k.includes(t) || t.includes(k))) return true;
+    }
+    return false;
+  };
+
+  const isGhostMatch = matchedIn === 'ghost';
+  const matched = allSections.filter(s => isMatched(s.key));
+  const rest = allSections.filter(s => !isMatched(s.key));
+  const seen = new Set();
+  const sorted = isGhostMatch ? allSections : [...matched, ...rest];
+  const final = sorted.filter(s => { if (seen.has(s.key)) return false; seen.add(s.key); return true; });
+
+  let sectionsHTML = '';
+  if (!isGhostMatch && matched.length > 0) {
+    sectionsHTML += `<div class="section-divider section-divider-match">▲ MATCHED <span class="section-divider-hint">— shown first</span></div>`;
+  }
+  final.forEach((s, i) => {
+    if (!isGhostMatch && matched.length > 0 && i === matched.length) {
+      sectionsHTML += `<div class="section-divider section-divider-other" style="margin-top:12px;">▼ OTHER ASSEMBLIES</div>`;
+    }
+    sectionsHTML += renderSectionCard(s.key, s.data, isMatched(s.key));
+  });
+
+  app().innerHTML = `
+    <div class="result-screen">
+      <div class="result-header">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <div class="result-ghost-id">👻 ${escHtml(ghostSN)}</div>
+        <span class="live-badge">LIVE</span>
+      </div>
+      <div class="trace-box">
+        <div class="trace-title">TRACE PATH</div>
+        <div class="trace-steps">
+          ${result.path.map((step, i) => `
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span class="trace-step ${i === 0 ? 'trace-step-first' : 'trace-step-rest'}">${escHtml(step)}</span>
+              ${i < result.path.length - 1 ? '<span class="trace-arrow">→</span>' : ''}
+            </span>
+          `).join('')}
+        </div>
+        <div class="trace-summary">
+          <span class="hl">${escHtml(state.searchInput)}</span> → ${escHtml(result.matchedIn)} → <span class="hl2">${escHtml(ghostSN)}</span>
+        </div>
+      </div>
+      <div class="val-legend">
+        <div class="val-tag" style="background:rgba(91,110,234,0.1)"><span style="color:var(--accent)">▾ LIST</span> <span class="val-tag-desc">Dropdown</span></div>
+        <div class="val-tag" style="background:rgba(251,191,36,0.1)"><span style="color:var(--yellow)">☐ CHECK</span> <span class="val-tag-desc">Toggle ✓/✗</span></div>
+        <div class="val-tag" style="background:rgba(56,189,248,0.1)"><span style="color:var(--blue)">📅 DATE</span> <span class="val-tag-desc">Date picker</span></div>
+      </div>
+      <div class="sections-wrap">${sectionsHTML}</div>
+      <button class="refresh-btn ${state.refreshing ? 'refresh-spinning' : ''}" onclick="refreshData()" title="Refresh data">↻</button>
+    </div>
+    ${renderToast()}`;
+}
+
+function renderSectionCard(sectionKey, data, isMatchedSection) {
+  if (!data || (Array.isArray(data) && data.length === 0)) return '';
+  const config = SECTION_CONFIG[sectionKey];
+  if (!config) return '';
+  const items = Array.isArray(data) ? data : [data];
+  if (items.length === 0) return '';
+  const isOpen = state.expanded.has(sectionKey);
+  const listKey = { ghost:'ghosts', mobileBase:'mobileBases', pillar:'pillars', headBody:'headBodies',
+    arm:'arms', gripper:'grippers', deployKit:'deployKits',
+    mbMotors:'lMotors', plMotors:'lMotors', armA12:'a12Motors', armA35:'a35Motors', armA4:'a4Motors' }[sectionKey] || sectionKey;
+  const snField = getSNField(DATA[listKey] || items);
+
+  return `
+    <div class="section-card">
+      <div class="section-header" onclick="toggleSection('${sectionKey}')"
+        style="background:${config.bg};
+          border-radius:${isOpen ? '12px 12px 0 0' : '12px'};
+          border:1px solid ${config.color}${isMatchedSection ? '55' : '22'};
+          border-left:${isMatchedSection ? '4px solid '+config.color : '1px solid '+config.color+'22'};">
+        <span class="section-icon">${config.icon}</span>
+        <div class="section-info">
+          <div class="section-label" style="color:${config.color}">${config.label}</div>
+          <div class="section-sns">${items.map(i => escHtml(i[snField] || '?')).join(' · ')}</div>
+        </div>
+        ${isMatchedSection ? `<span class="match-badge" style="background:${config.color}22;color:${config.color}">MATCH</span>` : ''}
+        <span class="section-chevron ${isOpen ? 'section-chevron-open' : ''}">▼</span>
+      </div>
+      ${isOpen ? items.map((item, idx) => `
+        <div class="field-group" style="background:var(--bg-card);border:1px solid ${config.color}15;border-top:none;
+          border-radius:${idx === items.length - 1 ? '0 0 12px 12px' : '0'};">
+          ${items.length > 1 ? `<div class="field-group-label" style="color:${config.color};border-bottom:1px solid ${config.color}10">
+            ${escHtml(getField(item,'slot','Slot') ? getField(item,'slot','Slot')+' → ' : '')}${escHtml(item[snField] || '?')}
+          </div>` : ''}
+          ${Object.entries(item).map(([k, v]) => renderFieldRow(sectionKey, item[snField] || '', k, v, listKey)).join('')}
+        </div>
+      `).join('') : ''}
+    </div>`;
+}
+
+function renderFieldRow(section, sn, field, value, listKey) {
+  if (SKIP_FIELDS.has(field)) return '';
+  const label = FIELD_LABELS[field] || field;
+  const validation = getValidation(section, field);
+  const isSN = field === getSNField(DATA[listKey] || []) || /sn$/i.test(field) || /motor$/i.test(field.toLowerCase());
+  const isCheck = validation?.type === 'checkbox';
+  const isDate = validation?.type === 'date';
+  const isDrop = validation?.type === 'dropdown';
+  const isHighlight = state.result?.matchedSN === value || (state.result?.matchedSN === sn && (field === getSNField(DATA[listKey] || []) || field === 'sn'));
+
+  let valueHTML;
+  if (isCheck) {
+    const pass = value === '✓' || value === 'TRUE' || value === 'true' || value === '1' || value === 'OK';
+    valueHTML = `<span class="check-display ${pass ? 'check-pass' : 'check-fail'}">${pass ? '✓' : '✗'}</span>`;
+  } else {
+    valueHTML = `<span class="field-value ${isSN ? 'field-value-sn' : ''}">${escHtml(value || '—')}</span>`;
+  }
+
+  return `
+    <div class="field-row ${isHighlight ? 'field-row-highlight' : ''}"
+      onclick="startEdit('${escAttr(section)}','${escAttr(sn)}','${escAttr(field)}','${escAttr(value || '')}')">
+      <div class="field-left">
+        <span class="field-label">${escHtml(label)}</span>
+        ${isDrop ? '<span class="inline-badge badge-list">▾ LIST</span>' : ''}
+        ${isCheck ? '<span class="inline-badge badge-check">☐ CHECK</span>' : ''}
+        ${isDate ? '<span class="inline-badge badge-date">📅 DATE</span>' : ''}
+      </div>
+      <div class="field-right">
+        ${valueHTML}
+        <span class="field-edit-icon">✎</span>
+      </div>
+    </div>`;
+}
+
+// --- Edit ---
+function renderEdit() {
+  const { editing, editValue } = state;
+  if (!editing) return;
+  const label = FIELD_LABELS[editing.field] || editing.field;
+  const config = SECTION_CONFIG[editing.section];
+  const validation = getValidation(editing.section, editing.field);
+  const isDropdown = validation?.type === 'dropdown';
+  const isCheckbox = validation?.type === 'checkbox';
+  const isDate = validation?.type === 'date';
+  const isFreeText = !validation;
+  const changed = editValue !== editing.value && editValue !== '';
+
+  let inputHTML = '';
+
+  if (isDropdown) {
+    inputHTML = `
+      <div class="edit-input-wrap">
+        <div class="edit-input-label">SELECT NEW VALUE</div>
+        <div class="dropdown-list">
+          ${validation.options.map(opt => {
+            const sel = editValue === opt;
+            const cur = editing.value === opt;
+            return `<div class="dropdown-option ${sel ? 'dropdown-option-selected' : ''}" onclick="setEditValue('${escAttr(opt)}')">
+              <div class="dropdown-option-inner">
+                <div class="radio-circle ${sel ? 'radio-circle-selected' : ''}">${sel ? '<div class="radio-dot"></div>' : ''}</div>
+                <span class="dropdown-option-text ${sel ? 'dropdown-option-text-selected' : ''}">${escHtml(opt)}</span>
+              </div>
+              ${cur ? '<span class="current-tag">CURRENT</span>' : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else if (isCheckbox) {
+    const pass = editValue === '✓';
+    inputHTML = `
+      <div class="edit-input-wrap">
+        <div class="edit-input-label">TOGGLE VALUE</div>
+        <div class="check-options">
+          ${['✓','✗'].map(val => {
+            const sel = editValue === val;
+            const isP = val === '✓';
+            const col = isP ? 'var(--green)' : 'var(--red)';
+            const bg = isP ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)';
+            return `<div class="check-option" onclick="setEditValue('${val}')"
+              style="${sel ? `border:2px solid ${col};background:${bg}` : ''}">
+              <div class="check-icon-wrap" style="${sel ? `background:${col}22;border-color:${col};color:${col}` : ''}">
+                ${val}
+              </div>
+              <div class="check-option-label" style="${sel ? `color:${col}` : ''}">${isP ? 'Pass' : 'Fail'}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else if (isDate) {
+    const dateVal = (editValue || '').replace(/\//g, '-');
+    inputHTML = `
+      <div class="edit-input-wrap">
+        <div class="edit-input-label">SELECT DATE</div>
+        <input type="date" class="edit-date-input" id="editDateInput" value="${dateVal}">
+        <div class="date-quick-btns">
+          <button class="date-quick-btn" onclick="setDateToday()">Today</button>
+          <button class="date-quick-btn" onclick="setDateYesterday()">Yesterday</button>
+        </div>
+        <div class="date-format-hint">Format: <span style="color:var(--blue);font-family:var(--font-mono)">YYYY/MM/DD</span></div>
+      </div>`;
+  } else {
+    inputHTML = `
+      <div class="edit-input-wrap">
+        <div class="edit-input-label">NEW VALUE</div>
+        <input type="text" class="edit-text-input" id="editTextInput" value="${escAttr(editValue)}">
+      </div>`;
+  }
+
+  app().innerHTML = `
+    <div class="edit-screen">
+      <div class="edit-header">
+        <button class="cancel-btn" onclick="goBack()">Cancel</button>
+        <span style="font-size:14px;font-weight:600">Edit Field</span>
+        <button class="save-btn" onclick="saveEdit()">Save ✓</button>
+      </div>
+      <div class="edit-body">
+        <div class="edit-context" style="background:${config ? config.color+'10' : 'var(--bg-input)'};border:1px solid ${config ? config.color+'22' : 'var(--border-base)'}">
+          <span>${config?.icon || '📋'}</span>
+          <span style="font-size:12px;color:${config?.color || 'var(--text-dim)'};font-weight:600">${config?.label || editing.section}</span>
+        </div>
+        <div class="edit-sn">${escHtml(editing.sn)}</div>
+        <div class="edit-field-name">
+          <span class="edit-field-label">${escHtml(label)}</span>
+          ${isDropdown ? '<span class="inline-badge badge-list">▾ LIST</span>' : ''}
+          ${isCheckbox ? '<span class="inline-badge badge-check">☐ CHECK</span>' : ''}
+          ${isDate ? '<span class="inline-badge badge-date">📅 DATE</span>' : ''}
+          ${isFreeText ? '<span class="inline-badge" style="background:rgba(255,255,255,0.04);color:var(--text-muted)">ABC TEXT</span>' : ''}
+        </div>
+        <div class="edit-old-value">${escHtml(editing.value || 'empty')}</div>
+        ${inputHTML}
+        <button class="save-action-btn ${changed ? 'save-active' : 'save-inactive'}" onclick="saveEdit()">
+          ${changed ? 'Save to Sheet' : 'No changes'}
+        </button>
+        <p class="edit-api-hint">Updates ${escHtml(config?.label || editing.section)} → ${escHtml(label)} via Google Sheets API</p>
+      </div>
+    </div>
+    ${renderToast()}`;
+
+  // Bind inputs
+  const textInp = $('#editTextInput');
+  if (textInp) {
+    textInp.addEventListener('input', e => { state.editValue = e.target.value; });
+    textInp.addEventListener('keydown', e => { if (e.key === 'Enter') saveEdit(); });
+    setTimeout(() => textInp.focus(), 50);
+  }
+  const dateInp = $('#editDateInput');
+  if (dateInp) {
+    dateInp.addEventListener('change', e => { state.editValue = e.target.value.replace(/-/g, '/'); });
+  }
+}
+
+function renderScanOverlay() {
+  return `
+    <div class="scan-overlay">
+      <div class="scan-frame">
+        ${[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v,h]) =>
+          `<div class="scan-corner" style="${v}:-2px;${h}:-2px;
+            border-${v}:3px solid var(--accent);border-${h}:3px solid var(--accent);
+            border-radius:${v==='top'&&h==='left'?'8px 0 0 0':v==='top'?'0 8px 0 0':h==='left'?'0 0 0 8px':'0 0 8px 0'}"></div>`
+        ).join('')}
+        <div class="scan-line"></div>
+      </div>
+      <p style="color:var(--text-dim);font-size:13px">Scanning...</p>
+    </div>`;
+}
+
+function renderToast() {
+  if (!state.toast) return '';
+  return `<div class="toast toast-${state.toast.type}">${escHtml(state.toast.msg)}</div>`;
+}
+
+function renderConfigPanel() {
+  return `
+    ${state.configOpen ? '<div class="config-backdrop" onclick="toggleConfig()"></div>' : ''}
+    <div class="config-panel ${state.configOpen ? 'config-panel-open' : ''}">
+      <div class="config-title">
+        Settings
+        <button class="config-close" onclick="toggleConfig()">✕</button>
+      </div>
+      <div class="config-field">
+        <div class="config-label">GOOGLE SHEET ID</div>
+        <input class="config-input" id="cfgSheetId" value="${escAttr(CONFIG.sheetId)}">
+        <div class="config-hint">The ID from your Google Sheets URL</div>
+      </div>
+      <div class="config-field">
+        <div class="config-label">APPS SCRIPT WRITE URL (optional)</div>
+        <input class="config-input" id="cfgWriteUrl" value="${escAttr(CONFIG.writeUrl)}" placeholder="https://script.google.com/macros/s/...">
+        <div class="config-hint">Deploy a Google Apps Script web app to enable write-back</div>
+      </div>
+      <button class="config-btn" onclick="saveConfig()">Save & Reload Data</button>
+    </div>`;
+}
+
+// ===================== ACTIONS =====================
+function handleSearch() {
+  if (!state.searchInput.trim()) return;
+  const r = traceToGhost(state.searchInput);
+  if (r) {
+    state.result = r;
+    state.tree = getGhostTree(r.ghost);
+    const expandKeys = new Set(['ghost']);
+    const mt = r.parsed?.type || '';
+    const typeToSections = {
+      ghost:['ghost'], mobileBase:['mobileBase'], pillar:['pillar'],
+      headBody:['headBody'], arm:['arm'], gripper:['gripper'], deployKit:['deployKit'],
+      lMotor:['mbMotors','plMotors'], a12Motor:['armA12'], a35Motor:['armA35'], a4Motor:['armA4'],
+      pdb:['mobileBase'], iob:['headBody','gripper'], mdb:['mbMotors','plMotors','armA12','armA35','armA4'],
+      brk:['pillar'], bat:['arm'], galina:['headBody'],
+    };
+    (typeToSections[mt] || []).forEach(s => expandKeys.add(s));
+    state.expanded = expandKeys;
+    state.screen = 'result';
+  } else {
+    showToast(`No match for "${state.searchInput}"`, 'error');
+  }
+  render();
+}
+
+function handleDemoScan() {
+  state.scanning = true;
+  render();
+  // Pick the first Ghost S/N from real data, or fallback
+  let demoSN = 'GT418-GST-00001';
+  if (DATA.mobileBases?.length) {
+    const f = getSNField(DATA.mobileBases);
+    demoSN = DATA.mobileBases[0][f] || demoSN;
+  }
+  setTimeout(() => {
+    state.searchInput = demoSN;
+    state.scanning = false;
+    setTimeout(() => { handleSearch(); }, 300);
+  }, 1800);
+  render();
+}
+
+function setSearch(val) { state.searchInput = val; state.parsedPreview = parseInput(val); render(); }
+function toggleSection(key) {
+  state.expanded.has(key) ? state.expanded.delete(key) : state.expanded.add(key);
+  render();
+}
+
+function startEdit(section, sn, field, value) {
+  state.editing = { section, sn, field, value, validation: getValidation(section, field) };
+  state.editValue = value || '';
+  state.screen = 'edit';
+  render();
+}
+function setEditValue(val) { state.editValue = val; render(); }
+
+function setDateToday() {
+  const d = new Date();
+  state.editValue = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  render();
+}
+function setDateYesterday() {
+  const d = new Date(); d.setDate(d.getDate()-1);
+  state.editValue = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  render();
+}
+
+async function saveEdit() {
+  if (!state.editing || state.editValue === state.editing.value) return;
+  const { section, sn, field } = state.editing;
+  const newValue = state.editValue;
+
+  if (CONFIG.writeUrl) {
+    try {
+      const resp = await fetch(CONFIG.writeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section, sn, field, value: newValue, sheetId: CONFIG.sheetId }),
+      });
+      if (!resp.ok) throw new Error('Write failed');
+      showToast(`Saved ${FIELD_LABELS[field] || field}: ${newValue}`);
+    } catch (err) {
+      showToast(`Write error: ${err.message}`, 'error');
+    }
+  } else {
+    showToast(`${FIELD_LABELS[field] || field}: ${newValue} (no write URL configured)`);
+  }
+  state.screen = 'result';
+  state.editing = null;
+  render();
+}
+
+function goBack() {
+  if (state.screen === 'edit') { state.screen = 'result'; state.editing = null; }
+  else { state.screen = 'search'; state.searchInput = ''; state.result = null; state.tree = null; state.parsedPreview = null; }
+  render();
+}
+
+async function refreshData() {
+  state.refreshing = true;
+  render();
+  state.loadErrors = await loadAllData((loaded, total, current) => {
+    loadProgress = { loaded, total, current };
+  });
+  state.refreshing = false;
+  showToast('Data refreshed');
+  render();
+}
+
+function showToast(msg, type = 'success') {
+  state.toast = { msg, type };
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 3000);
+}
+
+function toggleConfig() { state.configOpen = !state.configOpen; render(); }
+function saveConfig() {
+  const sid = $('#cfgSheetId');
+  const wurl = $('#cfgWriteUrl');
+  if (sid) CONFIG.sheetId = sid.value.trim();
+  if (wurl) CONFIG.writeUrl = wurl.value.trim();
+  state.configOpen = false;
+  state.screen = 'loading';
+  render();
+  init();
+}
+
+// ===================== UTILS =====================
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\\/g,'\\\\'); }
+
+// ===================== INIT =====================
+async function init() {
+  state.screen = 'loading';
+  render();
+  state.loadErrors = await loadAllData((loaded, total, current) => {
+    loadProgress = { loaded, total, current };
+    renderLoading();
+  });
+  state.screen = 'search';
+  render();
+}
+
+init();
 </script>
 </body>
 </html>

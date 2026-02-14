@@ -585,6 +585,7 @@
 // ===================== CONFIGURATION =====================
 const CONFIG = {
   sheetId: '1mUhNDzucbHpS2y-IYu3A5ML1x5I_opUeNnqqyOtg95M',
+  apiKey: localStorage.getItem('ghost_api_key') || '',
   // Apps Script Web App URL for write-back (optional — deploy your own)
   writeUrl: '',
   // Sheet tab names — adjust if your sheet uses different names
@@ -736,23 +737,27 @@ let DATA = {};
 let LOADING = false;
 
 async function fetchSheetTab(tabName) {
-  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
+  if (!CONFIG.apiKey) throw new Error('API key not set');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values/${encodeURIComponent(tabName)}?key=${CONFIG.apiKey}`;
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${tabName}`);
-  const text = await resp.text();
-  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);?\s*$/);
-  if (!match) throw new Error(`Invalid response for ${tabName}`);
-  const json = JSON.parse(match[1]);
-  if (json.status === 'error') throw new Error(json.errors?.[0]?.detailed_message || `Error loading ${tabName}`);
-  const cols = json.table.cols.map(c => c.label || '');
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => '');
+    let msg = `HTTP ${resp.status} for ${tabName}`;
+    try { const ej = JSON.parse(errBody); msg = ej.error?.message || msg; } catch {}
+    throw new Error(msg);
+  }
+  const json = await resp.json();
+  const rawRows = json.values || [];
+  if (rawRows.length < 2) return []; // Need at least header + 1 data row
+  const headers = rawRows[0];
   const rows = [];
-  for (const r of (json.table.rows || [])) {
+  for (let i = 1; i < rawRows.length; i++) {
     const obj = {};
     let hasData = false;
-    (r.c || []).forEach((cell, i) => {
-      if (i < cols.length && cols[i]) {
-        const val = cell ? (cell.f || (cell.v !== null && cell.v !== undefined ? String(cell.v) : '')) : '';
-        obj[cols[i]] = val;
+    headers.forEach((h, ci) => {
+      if (h) {
+        const val = rawRows[i][ci] !== undefined && rawRows[i][ci] !== null ? String(rawRows[i][ci]) : '';
+        obj[h] = val;
         if (val) hasData = true;
       }
     });
@@ -767,18 +772,60 @@ async function loadAllData(onProgress) {
   const total = entries.length;
   let loaded = 0;
   const errors = [];
-  for (const [key, tabName] of entries) {
+
+  // Batch fetch: use batchGet to load all tabs in one request
+  if (CONFIG.apiKey) {
     try {
-      onProgress?.(loaded, total, tabName);
-      DATA[key] = await fetchSheetTab(tabName);
-      loaded++;
-    } catch (err) {
-      console.error(`Failed to load ${tabName}:`, err);
-      errors.push({ tab: tabName, error: err.message });
-      DATA[key] = [];
-      loaded++;
+      const ranges = entries.map(([, tab]) => encodeURIComponent(tab));
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values:batchGet?key=${CONFIG.apiKey}&${ranges.map(r => `ranges=${r}`).join('&')}`;
+      onProgress?.(0, total, 'Fetching all tabs...');
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      const valueRanges = json.valueRanges || [];
+
+      valueRanges.forEach((vr, idx) => {
+        const [key] = entries[idx];
+        const rawRows = vr.values || [];
+        if (rawRows.length < 2) { DATA[key] = []; loaded++; onProgress?.(loaded, total, entries[idx][1]); return; }
+        const headers = rawRows[0];
+        const rows = [];
+        for (let i = 1; i < rawRows.length; i++) {
+          const obj = {};
+          let hasData = false;
+          headers.forEach((h, ci) => {
+            if (h) {
+              const val = rawRows[i]?.[ci] !== undefined && rawRows[i]?.[ci] !== null ? String(rawRows[i][ci]) : '';
+              obj[h] = val;
+              if (val) hasData = true;
+            }
+          });
+          if (hasData) rows.push(obj);
+        }
+        DATA[key] = rows;
+        loaded++;
+        onProgress?.(loaded, total, entries[idx][1]);
+      });
+    } catch (batchErr) {
+      console.warn('Batch fetch failed, falling back to individual:', batchErr);
+      // Fallback: fetch each tab individually
+      for (const [key, tabName] of entries) {
+        try {
+          onProgress?.(loaded, total, tabName);
+          DATA[key] = await fetchSheetTab(tabName);
+          loaded++;
+        } catch (err) {
+          console.error(`Failed to load ${tabName}:`, err);
+          errors.push({ tab: tabName, error: err.message });
+          DATA[key] = [];
+          loaded++;
+        }
+      }
     }
+  } else {
+    errors.push({ tab: 'All', error: 'No API key configured. Tap ⚙ to set it.' });
   }
+
   LOADING = false;
   onProgress?.(total, total, 'Done');
   return errors;
@@ -1076,11 +1123,57 @@ const app = () => document.getElementById('app');
 
 function render() {
   switch (state.screen) {
+    case 'setup': renderSetup(); break;
     case 'loading': renderLoading(); break;
     case 'search': renderSearch(); break;
     case 'result': renderResult(); break;
     case 'edit': renderEdit(); break;
   }
+}
+
+// --- Setup (first run) ---
+function renderSetup() {
+  app().innerHTML = `
+    <div class="search-screen">
+      <div class="search-bg"></div>
+      <div class="search-content">
+        <div class="search-logo">👻</div>
+        <h1 class="search-title">Ghost Tracker</h1>
+        <p class="search-subtitle">Enter your Google Sheets API key to connect to your assembly data</p>
+        <div class="edit-input-wrap" style="margin-bottom:16px">
+          <div class="edit-input-label">GOOGLE SHEETS API KEY</div>
+          <input type="password" class="edit-text-input" id="setupApiKey" placeholder="AIza..."
+            style="font-size:14px;border-color:var(--accent);">
+        </div>
+        <div class="edit-input-wrap" style="margin-bottom:20px">
+          <div class="edit-input-label">SHEET ID</div>
+          <input type="text" class="edit-text-input" id="setupSheetId" value="${escAttr(CONFIG.sheetId)}"
+            style="font-size:12px;border-color:var(--border-base);">
+        </div>
+        <button class="btn btn-primary" style="width:100%;max-width:380px;padding:16px" onclick="submitSetup()">Connect</button>
+        <p style="margin-top:16px;font-size:11px;color:var(--text-faint);text-align:center;max-width:360px;line-height:1.5">
+          Your API key is saved locally in your browser and never sent anywhere except to Google's Sheets API.
+        </p>
+      </div>
+    </div>
+    ${renderToast()}`;
+  setTimeout(() => $('#setupApiKey')?.focus(), 50);
+  const inp = document.getElementById('setupApiKey');
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
+}
+
+function submitSetup() {
+  const keyInp = $('#setupApiKey');
+  const sidInp = $('#setupSheetId');
+  const key = keyInp?.value?.trim();
+  const sid = sidInp?.value?.trim();
+  if (!key) { showToast('Please enter an API key', 'error'); return; }
+  CONFIG.apiKey = key;
+  localStorage.setItem('ghost_api_key', key);
+  if (sid) CONFIG.sheetId = sid;
+  state.screen = 'loading';
+  render();
+  init();
 }
 
 // --- Loading ---
@@ -1493,6 +1586,11 @@ function renderConfigPanel() {
         <button class="config-close" onclick="toggleConfig()">✕</button>
       </div>
       <div class="config-field">
+        <div class="config-label">GOOGLE SHEETS API KEY</div>
+        <input class="config-input" id="cfgApiKey" type="password" value="${escAttr(CONFIG.apiKey)}" placeholder="AIza...">
+        <div class="config-hint">Your Google Cloud API key with Sheets API enabled. Saved in browser localStorage.</div>
+      </div>
+      <div class="config-field">
         <div class="config-label">GOOGLE SHEET ID</div>
         <input class="config-input" id="cfgSheetId" value="${escAttr(CONFIG.sheetId)}">
         <div class="config-hint">The ID from your Google Sheets URL</div>
@@ -1623,8 +1721,10 @@ function showToast(msg, type = 'success') {
 
 function toggleConfig() { state.configOpen = !state.configOpen; render(); }
 function saveConfig() {
+  const key = $('#cfgApiKey');
   const sid = $('#cfgSheetId');
   const wurl = $('#cfgWriteUrl');
+  if (key) { CONFIG.apiKey = key.value.trim(); localStorage.setItem('ghost_api_key', CONFIG.apiKey); }
   if (sid) CONFIG.sheetId = sid.value.trim();
   if (wurl) CONFIG.writeUrl = wurl.value.trim();
   state.configOpen = false;
@@ -1639,6 +1739,11 @@ function escAttr(s) { return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot
 
 // ===================== INIT =====================
 async function init() {
+  if (!CONFIG.apiKey) {
+    state.screen = 'setup';
+    render();
+    return;
+  }
   state.screen = 'loading';
   render();
   state.loadErrors = await loadAllData((loaded, total, current) => {
