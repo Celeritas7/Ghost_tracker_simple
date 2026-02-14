@@ -156,78 +156,26 @@ function shouldSkipField(f){if(f==='#'||f==='_rowIdx')return true;if(/^\d+$/.tes
   if(/点検|修正|変更|追加|削る|対策|緩み|防水|ケーブル|グリス|ばね|はんだ|マーキング|ピン|合格|Bracket|Dummy|STOCK|成型/.test(f))return true;
   return false;}
 
-// ===== VALIDATION (from actual Google Sheets data validation rules) =====
+// ===== VALIDATION =====
 const V={};
-
-// Shared SOP version list
-const SOP_VERS=['v2.0.0','v2.0.3','v2.4.2','v2.5.0','v2.6.0','v2.7.2','v2.8.2','v2.9.0','v2.9.2','v2.11.0','v2.11.1','v2.13.1'];
-const USAGE_OPTS=['new','old'];
-const DONE_OPTS=['done','no'];
-const PDB_FW=['1.1.4.0','old','テスト待ち'];
-const MDB_FW=['2.0.0.0','1.1.4.1','1.1.4.0','262144','none','unknown'];
-const ECB_VERS=['TX_ECB_V1','TX_ECB_V2'];
-const IOB_FW_HB=['1.1.4.0','1.1.4.1','IOB 2.0.0.0','bootloader / iob','bootloader / IOB','bootloader_stable / downgrade_IOB','unknown'];
-const IOB_FW_GR=['1.1.4.0','IOB 2.0.0.0','GPR 2.0.0.0','bootloader/iob','bootloader_stable/downgrade_IOB','unknown'];
-const MOTOR_FW=['2.0.0.0','1.1.4.1','1.1.4.0','20240403','unknown'];
-
-// Ghost
+['ghost.SW','ghost.SoraFW','ghost.FW','ghost.Sora Time zone'].forEach(k=>{V[k]={type:'dropdown',options:['v3.0.0','v3.1.0','v3.2.0','v3.2.1','v3.3.0']};});
 V['ghost.完了日']={type:'date'};
-
-// Mobile Base
-V['mobileBase.PDB FW']={type:'dropdown',options:PDB_FW};
-V['mobileBase.ECB Ver.']={type:'dropdown',options:ECB_VERS};
-V['mobileBase.使用手順書 ver.']={type:'dropdown',options:SOP_VERS};
-V['mobileBase.手順書 ver.']={type:'dropdown',options:SOP_VERS};
-V['mobileBase.使用']={type:'dropdown',options:USAGE_OPTS};
-V['mobileBase.完了日']={type:'date'};
-
-// Pillar
-V['pillar.SOP ver.']={type:'dropdown',options:SOP_VERS};
-V['pillar.使用']={type:'dropdown',options:USAGE_OPTS};
-V['pillar.完了日']={type:'date'};
-
-// Head & Body
-V['headBody.IOB FW']={type:'dropdown',options:IOB_FW_HB};
-V['headBody.使用SOP ver.']={type:'dropdown',options:SOP_VERS};
-V['headBody.使用']={type:'dropdown',options:USAGE_OPTS};
-V['headBody.完了日']={type:'date'};
-
-// Arm
-V['arm.手順書 ver.']={type:'dropdown',options:SOP_VERS};
-V['arm.使用']={type:'dropdown',options:USAGE_OPTS};
-V['arm.完了日']={type:'date'};
-
-// Gripper
-V['gripper.IOB FW']={type:'dropdown',options:IOB_FW_GR};
-V['gripper.使用SOP ver.']={type:'dropdown',options:SOP_VERS};
-V['gripper.使用']={type:'dropdown',options:USAGE_OPTS};
-V['gripper.完了日']={type:'date'};
-
-// Deploy Kit
-V['deployKit.手順書 ver.']={type:'dropdown',options:SOP_VERS};
-V['deployKit.使用']={type:'dropdown',options:USAGE_OPTS};
-V['deployKit.完了日']={type:'date'};
-
-// Motors (all types share same MDB FW + enc checkbox)
-['mbMotors','plMotors','armA12','armA35','armA4'].forEach(s=>{
-  V[`${s}.MDB FW`]={type:'dropdown',options:MDB_FW};
-  V[`${s}.enc`]={type:'checkbox'};
-  V[`${s}.完了日`]={type:'date'};
-  V[`${s}.使用`]={type:'dropdown',options:USAGE_OPTS};
-});
+['mobileBase.PDB FW','headBody.IOB FW','gripper.IOB FW'].forEach(k=>{V[k]={type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']};});
+['mobileBase.完了日','pillar.完了日','headBody.完了日','arm.完了日','gripper.完了日','deployKit.完了日'].forEach(k=>{V[k]={type:'date'};});
+['mbMotors','plMotors','armA12','armA35','armA4'].forEach(s=>{V[`${s}.MDB FW`]={type:'dropdown',options:['1.9.0.0','1.9.2.0','2.0.0.0','2.1.0.0']};V[`${s}.enc`]={type:'checkbox'};V[`${s}.完了日`]={type:'date'};});
 function getV(s,f){
   let v=V[`${s}.${f}`];if(v)return v;
-  // Partial match: "IOB FW 2.0.0.0" → match "IOB FW", "PDB FW 2.0.0.0" → match "PDB FW"
-  for(const[k,val]of Object.entries(V)){const[ks,kf]=k.split('.',2);if(ks===s&&f.startsWith(kf))return val;}
-  // Common patterns across sections
-  if(f==='使用')return{type:'dropdown',options:USAGE_OPTS};
-  if(f==='完了日'||f.includes('完了'))return{type:'date'};
+  // Try partial match: "IOB FW 2.0.0.0" should match "IOB FW"
+  for(const[k,val]of Object.entries(V)){
+    const[ks,kf]=k.split('.',2);
+    if(ks===s && f.startsWith(kf))return val;
+  }
+  // Motor groups
+  if(f==='完了日'||f==='enc')return V[`mbMotors.${f}`]||null;
+  if(f.toLowerCase().includes('完了'))return{type:'date'};
   if(f==='enc')return{type:'checkbox'};
-  if(f==='完了'||f==='梱包完了')return{type:'dropdown',options:DONE_OPTS};
-  // FW fields fallback
-  if(/FW/i.test(f)&&/MDB/.test(f))return{type:'dropdown',options:MDB_FW};
-  if(/FW/i.test(f)&&/IOB/.test(f))return{type:'dropdown',options:IOB_FW_HB};
-  if(/FW/i.test(f)&&/PDB/.test(f))return{type:'dropdown',options:PDB_FW};
+  // FW fields are typically dropdowns
+  if(/FW\b/i.test(f)||/fw\b/.test(f))return{type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']};
   return null;
 }
 
