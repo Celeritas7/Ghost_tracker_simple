@@ -147,7 +147,14 @@ function parseInput(raw){const i=raw.trim();if(!i)return null;const f=i.match(/^
 // ===== SECTION CONFIG =====
 const SC={ghost:{icon:'👻',label:'Ghost',color:'#5b6eea',bg:'#151728'},mobileBase:{icon:'🛞',label:'Mobile Base',color:'#34d399',bg:'#13201a'},mbMotors:{icon:'⚙️',label:'L-Motors (MB)',color:'#6ee7b7',bg:'#131d19'},pillar:{icon:'🏛️',label:'Pillar',color:'#a78bfa',bg:'#1a1528'},plMotors:{icon:'⚙️',label:'L-Motor (Pillar)',color:'#6ee7b7',bg:'#131d19'},headBody:{icon:'🧠',label:'Head & Body',color:'#f87171',bg:'#201414'},arm:{icon:'🦾',label:'Arm',color:'#fbbf24',bg:'#201c12'},armA12:{icon:'⚙️',label:'A12 Motors',color:'#6ee7b7',bg:'#131d19'},armA35:{icon:'⚙️',label:'A35 Motor',color:'#6ee7b7',bg:'#131d19'},armA4:{icon:'⚙️',label:'A4 Motor',color:'#6ee7b7',bg:'#131d19'},gripper:{icon:'🤏',label:'Gripper',color:'#38bdf8',bg:'#121a20'},deployKit:{icon:'📦',label:'Deploy Kit',color:'#fb923c',bg:'#1e1812'}};
 const FIELD_LABELS={'S/N':'S/N','SW':'SW','Endpoint':'Endpoint','SoraFW':'Sora FW','Sora FW':'Sora FW','FW':'FW','Sora Time zone':'Sora TZ','Mobile Base':'Mobile Base S/N','Pillar':'Pillar S/N','Body&Head':'Head & Body S/N','Arm':'Arm S/N','Deploy Kit':'Deploy Kit S/N','手順書 ver.':'SOP Ver.','SOP ver.':'SOP Ver.','使用SOP ver.':'SOP Ver.','M-BOM ver.':'M-BOM Ver.','組立人員':'Assembler','時間':'Time','完了日':'Completed','備考':'Notes','L1 motor S/N':'L1 Motor','L2 motor S/N':'L2 Motor','L3 motor S/N':'L3 Motor','PDB S/N':'PDB S/N','PDB FW':'PDB FW','ECB Ver.':'ECB Ver.','L2 belt tension [N]':'L2 Belt (N)','L3 belt tension (N)':'L3 Belt (N)','BRK S/N':'Brake S/N','GALINA S/N':'GALINA S/N','AGX image':'AGX Image','IP':'IP Address','IOB S/N':'IOB S/N','IOB FW':'IOB FW','A1 motor S/N':'A1 Motor','A2 motor S/N':'A2 Motor','A3 motor S/N':'A3 Motor','A4 motor S/N':'A4 Motor','A5 motor S/N':'A5 Motor','Gripper S/N':'Gripper S/N','BAT S/N':'Battery S/N','A4 belt tension':'A4 Belt','MDB S/N':'MDB S/N','MDB FW':'MDB FW','enc':'Encoder','mod':'Mod','抵抗 cN･m':'Resistance','GANTRY長さ':'Gantry Length','pick up config':'Pickup Config','fail status':'Fail Status','fail status/comment':'Fail Status','使用':'Usage','部品出庫日':'Parts Issue','部品 出庫日':'Parts Issue','組立 時間':'Assy Time','組立時間':'Assy Time','stator frame':'Stator Frame','rotor frame':'Rotor Frame','motor cap':'Motor Cap','梱包完了':'Packing Done','完了':'Done','setup':'Setup','token':'Token','配置':'Placement','出庫日':'Issue Date','部署':'Dept','目的':'Purpose','使用手順書 ver.':'SOP Ver.'};
-function shouldSkipField(f){if(f==='#')return true;if(/^\d+$/.test(f))return true;if(/^(共通|特定)$/.test(f))return true;if(f.includes('ECN')&&(f.includes('対応')||f.includes('自動入力')))return true;if(/^(GP-)?ECN-/.test(f)||f.startsWith('ecn-'))return true;if(/^\d+\.\d+\.\d+/.test(f))return true;if(f.startsWith('__'))return true;if(/^(ACT|ecn-)/.test(f))return true;return false;}
+function shouldSkipField(f){if(f==='#')return true;if(/^\d+$/.test(f))return true;if(/^(共通|特定)$/.test(f))return true;if(f.includes('ECN')&&(f.includes('対応')||f.includes('自動入力')||f.includes('統合')))return true;if(/^(GP-)?ECN-/.test(f)||f.startsWith('ecn-'))return true;if(/^\d+\.\d+\.\d+/.test(f))return true;if(f.startsWith('__'))return true;if(/^(ACT|ecn-)/.test(f))return true;
+  // Row 1 group headers (from merged cells)
+  if(/^(SW関連|構成|出庫先|ロボット出荷準備|ARM以外)$/.test(f))return true;
+  if(f==='ARM'&&f!=='Arm')return true; // skip uppercase-only ARM group header
+  // ECN detail columns with specific patterns
+  if(/^(i55|i61|i64|issue|RCM|リワーク|テスト|テープ|検査|注意|425|MP2|最新)/.test(f))return true;
+  if(/点検|修正|変更|追加|削る|対策|緩み|防水|ケーブル|グリス|ばね|はんだ|マーキング|ピン|合格|Bracket|Dummy|STOCK|成型/.test(f))return true;
+  return false;}
 
 // ===== VALIDATION =====
 const V={};
@@ -162,11 +169,38 @@ function getV(s,f){let v=V[`${s}.${f}`];if(v)return v;if(f==='完了日'||f==='e
 let DATA={},LOADING=false;
 
 async function loadAllData(onP){LOADING=true;const E=Object.entries(CONFIG.TABS);const T=E.length;let L=0;const errs=[];
+
+  function parseSheet(raw){
+    if(raw.length<2)return[];
+    let hdr=raw[0];let startRow=1;
+    // Detect multi-row headers: if row 1 has many empty cells, combine with row 2
+    const emptyCount=hdr.filter(h=>!h||!h.trim()).length;
+    const totalCols=Math.max(hdr.length,raw.length>1?raw[1].length:0);
+    if(totalCols>5 && emptyCount/totalCols>0.3 && raw.length>2){
+      // Merge row 1 + row 2: prefer row 2 value, fall back to row 1
+      const row2=raw[1]||[];
+      const merged=[];
+      for(let ci=0;ci<totalCols;ci++){
+        const h1=(hdr[ci]||'').trim();
+        const h2=(row2[ci]||'').trim();
+        merged[ci]=h2||h1; // prefer row 2 (actual col names) over row 1 (group headers)
+      }
+      hdr=merged;startRow=2;
+      console.log('[Parse] Multi-row header detected, merged:',hdr.filter(Boolean).join(', '));
+    }
+    // Handle duplicate column names by appending _2, _3 etc
+    const seen={};
+    hdr=hdr.map(h=>{if(!h)return h;if(!seen[h]){seen[h]=1;return h;}seen[h]++;return`${h}_${seen[h]}`;});
+    console.log('[Parse] Final headers:',hdr.filter(Boolean).join(', '));
+    return raw.slice(startRow).map(row=>{const o={};let has=false;
+      hdr.forEach((c,ci)=>{if(c){const v=row[ci]!=null?String(row[ci]):'';o[c]=v;if(v)has=true;}});
+      return has?o:null;}).filter(Boolean);
+  }
+
   try{const R=E.map(([,t])=>encodeURIComponent(t));const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values:batchGet?${R.map(r=>`ranges=${r}`).join('&')}`;onP?.(0,T,'Fetching...');
     const resp=await fetch(url,{headers:{'Authorization':`Bearer ${accessToken}`}});if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const j=await resp.json();
-    (j.valueRanges||[]).forEach((vr,i)=>{const[key]=E[i];const raw=vr.values||[];if(raw.length<2){DATA[key]=[];L++;onP?.(L,T,E[i][1]);return;}
-      const hdr=raw[0];DATA[key]=raw.slice(1).map(row=>{const o={};let h=false;hdr.forEach((c,ci)=>{if(c){const v=row[ci]!=null?String(row[ci]):'';o[c]=v;if(v)h=true;}});return h?o:null;}).filter(Boolean);L++;onP?.(L,T,E[i][1]);});
-  }catch(e){console.warn('Batch failed:',e);for(const[key,tab]of E){try{onP?.(L,T,tab);const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(tab)}`,{headers:{'Authorization':`Bearer ${accessToken}`}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const j=await r.json();const raw=j.values||[];if(raw.length<2){DATA[key]=[];}else{const hdr=raw[0];DATA[key]=raw.slice(1).map(row=>{const o={};let h=false;hdr.forEach((c,ci)=>{if(c){const v=row[ci]!=null?String(row[ci]):'';o[c]=v;if(v)h=true;}});return h?o:null;}).filter(Boolean);}L++;}catch(er){errs.push({tab,error:er.message});DATA[key]=[];L++;}}}
+    (j.valueRanges||[]).forEach((vr,i)=>{const[key]=E[i];const raw=vr.values||[];DATA[key]=parseSheet(raw);L++;onP?.(L,T,E[i][1]);});
+  }catch(e){console.warn('Batch failed:',e);for(const[key,tab]of E){try{onP?.(L,T,tab);const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(tab)}`,{headers:{'Authorization':`Bearer ${accessToken}`}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const j=await r.json();const raw=j.values||[];DATA[key]=parseSheet(raw);L++;}catch(er){errs.push({tab,error:er.message});DATA[key]=[];L++;}}}
   LOADING=false;onP?.(T,T,'Done');buildDebugInfo();return errs;}
 
 // ===== FLEXIBLE COLUMN MATCHING =====
