@@ -252,59 +252,13 @@ function parseInput(raw){const input=raw.trim();if(!input)return null;const full
 
 // ===== SECTION CONFIG =====
 const SECTION_CONFIG={ghost:{icon:'👻',label:'Ghost',color:'#5b6eea',bg:'#151728'},mobileBase:{icon:'🛞',label:'Mobile Base',color:'#34d399',bg:'#13201a'},mbMotors:{icon:'⚙️',label:'L-Motors (MB)',color:'#6ee7b7',bg:'#131d19'},pillar:{icon:'🏛️',label:'Pillar',color:'#a78bfa',bg:'#1a1528'},plMotors:{icon:'⚙️',label:'L-Motor (Pillar)',color:'#6ee7b7',bg:'#131d19'},headBody:{icon:'🧠',label:'Head & Body',color:'#f87171',bg:'#201414'},arm:{icon:'🦾',label:'Arm',color:'#fbbf24',bg:'#201c12'},armA12:{icon:'⚙️',label:'A12 Motors',color:'#6ee7b7',bg:'#131d19'},armA35:{icon:'⚙️',label:'A35 Motor',color:'#6ee7b7',bg:'#131d19'},armA4:{icon:'⚙️',label:'A4 Motor',color:'#6ee7b7',bg:'#131d19'},gripper:{icon:'🤏',label:'Gripper',color:'#38bdf8',bg:'#121a20'},deployKit:{icon:'📦',label:'Deploy Kit',color:'#fb923c',bg:'#1e1812'}};
-const FIELD_LABELS={'S/N':'S/N','#':'#','SW':'SW Version','Endpoint':'Endpoint','Sora Time zone':'Sora TZ','SoraFW':'Sora FW','Sora FW':'Sora FW','FW':'FW Version','Mobile Base':'Mobile Base S/N','Pillar':'Pillar S/N','Body&Head':'Head & Body S/N','Arm':'Arm S/N','Deploy Kit':'Deploy Kit S/N','DPK#':'DPK #','手順書 ver.':'SOP Ver.','SOP ver.':'SOP Ver.','M-BOM ver.':'M-BOM Ver.','組立人員':'Assembler','組立人員 A4 reducer':'Assembler (A4R)','組立人員 本体':'Assembler (Main)','時間':'Time','時間 A4R':'Time (A4R)','時間 本体':'Time (Main)','完了日':'Completed','備考':'Notes','完了':'Done','梱包完了':'Packing Done','setup':'Setup','token':'Token','配置':'Placement','出庫日':'Issue Date','部署':'Dept','目的':'Purpose','使用':'Usage','部品出庫日':'Parts Issue Date','部品 出庫日':'Parts Issue Date','組立 時間':'Assy Time','組立時間':'Assy Time','L1 motor S/N':'L1 Motor S/N','L2 motor S/N':'L2 Motor S/N','L3 motor S/N':'L3 Motor S/N','PDB S/N':'PDB S/N','PDB FW':'PDB FW','ECB Ver.':'ECB Ver.','L2 belt tension [N]':'L2 Belt Tension (N)','L3 belt tension (N)':'L3 Belt Tension (N)','BRK S/N':'Brake S/N','GALINA S/N':'GALINA S/N','AGX image':'AGX Image','IP':'IP Address','IOB S/N':'IOB S/N','IOB FW':'IOB FW','A1 motor S/N':'A1 Motor S/N','A2 motor S/N':'A2 Motor S/N','A3 motor S/N':'A3 Motor S/N','A4 motor S/N':'A4 Motor S/N','A5 motor S/N':'A5 Motor S/N','Gripper S/N':'Gripper S/N','BAT S/N':'Battery S/N','A4 belt tension':'A4 Belt Tension','MDB S/N':'MDB S/N','MDB FW':'MDB FW','enc':'Encoder','mod':'Mod','抵抗 cN･m':'Resistance (cN·m)','encM':'Encoder M','GANTRY長さ':'Gantry Length','pick up config':'Pickup Config','対応の':'For','stator frame':'Stator Frame','rotor frame':'Rotor Frame','motor cap':'Motor Cap','fail status':'Fail Status','fail status/comment':'Fail Status'};
-const SKIP_FIELDS=new Set(['#']);
-// Also skip columns that are just numbers (ECN refs like 110, 214) or ECN tracking headers
-function shouldSkipField(field) {
-  if (SKIP_FIELDS.has(field)) return true;
-  if (/^\d+$/.test(field)) return true; // pure numbers like 110, 214, 298
-  if (/^(共通|特定)$/.test(field)) return true;
-  if (field.includes('ECN') && (field.includes('対応') || field.includes('自動入力'))) return true;
-  if (field.startsWith('GP-ECN-') || field.startsWith('ECN-') || field.startsWith('ecn-')) return true;
-  if (/^\d+\.\d+\.\d+/.test(field)) return true; // version-as-column like "2.0.0.0"
-  if (field.startsWith('__')) return true;
-  return false;
-}
+const FIELD_LABELS={sn:'S/N',sopVer:'SOP Ver.',mbomVer:'M-BOM Ver.',pdbSN:'PDB S/N',pdbFW:'PDB FW',l1Motor:'L1 Motor',l2Motor:'L2 Motor',l2BeltTension:'L2 Belt Tension',l3Motor:'L3 Motor',brkSN:'Brake S/N',l3BeltTension:'L3 Belt Tension',ecbVer:'ECB Ver.',galinaSN:'GALINA S/N',agxImage:'AGX Image',ip:'IP Address',iobSN:'IOB S/N',iobFW:'IOB FW',batSN:'Battery S/N',a1Motor:'A1 Motor',a2Motor:'A2 Motor',a3Motor:'A3 Motor',a4Motor:'A4 Motor',a5Motor:'A5 Motor',gripperSN:'Gripper S/N',a4BeltTension:'A4 Belt Tension',gantryLength:'Gantry Length',mdbSN:'MDB S/N',mdbFW:'MDB FW',resistance:'Resistance',enc:'Encoder',completionDate:'Completed',sw:'SW Version',endpoint:'Endpoint',soraTimezone:'Sora TZ',soraFW:'Sora FW',fw:'FW Version',assembler:'Assembler',slot:'Slot'};
+const SKIP_FIELDS=new Set(['ghostSN','parentSN','parentType','mobileBase','pillar','headBody','arm','deployKit']);
 
 // ===== VALIDATION =====
-const VALIDATIONS={
-  'ghost.SW':{type:'dropdown',options:['v3.0.0','v3.1.0','v3.1.9','v3.2.0','v3.2.1','v3.3.0']},
-  'ghost.SoraFW':{type:'dropdown',options:['2.0.0','2.0.5','2.0.8','2.1.0','2.1.1']},
-  'ghost.Sora FW':{type:'dropdown',options:['2.0.0','2.0.5','2.0.8','2.1.0','2.1.1']},
-  'ghost.FW':{type:'dropdown',options:['3.9.0','4.0.0','4.0.1','4.1.0']},
-  'ghost.Sora Time zone':{type:'dropdown',options:['Asia/Tokyo','America/New_York','Europe/London','America/Los_Angeles']},
-  'ghost.完了日':{type:'date'},
-  'mobileBase.PDB FW':{type:'dropdown',options:['1.9.0.0','1.9.1.0','1.9.2.0','2.0.0.0','2.1.0.0']},
-  'mobileBase.ECB Ver.':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3','v1.4']},
-  'mobileBase.手順書 ver.':{type:'dropdown',options:['v2.0','v2.1','v2.2','v2.3','v2.4']},
-  'mobileBase.M-BOM ver.':{type:'dropdown',options:['v1.5','v1.6','v1.7','v1.8','v1.9']},
-  'mobileBase.完了日':{type:'date'},
-  'pillar.SOP ver.':{type:'dropdown',options:['v1.6','v1.7','v1.8','v1.9','v2.0']},
-  'pillar.M-BOM ver.':{type:'dropdown',options:['v1.2','v1.3','v1.4','v1.5','v1.6']},
-  'pillar.完了日':{type:'date'},
-  'headBody.IOB FW':{type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']},
-  'headBody.AGX image':{type:'dropdown',options:['r35.3.1','r35.4.1','r35.5.0','r36.0.0']},
-  'headBody.使用SOP ver.':{type:'dropdown',options:['v1.8','v1.9','v2.0','v2.1','v2.2']},
-  'headBody.M-BOM ver.':{type:'dropdown',options:['v1.3','v1.4','v1.5','v1.6','v1.7']},
-  'headBody.完了日':{type:'date'},
-  'arm.手順書 ver.':{type:'dropdown',options:['v2.1','v2.2','v2.3','v2.4','v2.5']},
-  'arm.M-BOM ver.':{type:'dropdown',options:['v1.6','v1.7','v1.8','v1.9','v2.0']},
-  'arm.完了日':{type:'date'},
-  'gripper.IOB FW':{type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']},
-  'gripper.使用SOP ver.':{type:'dropdown',options:['v1.4','v1.5','v1.6','v1.7','v1.8']},
-  'gripper.M-BOM ver.':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3','v1.4']},
-  'gripper.完了日':{type:'date'},
-  'deployKit.手順書 ver.':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3']},
-  'deployKit.M-BOM ver.':{type:'dropdown',options:['v1.0','v1.1','v1.2']},
-  'deployKit.GANTRY長さ':{type:'dropdown',options:['900mm','1000mm','1100mm','1200mm','1300mm']},
-  'deployKit.完了日':{type:'date'},
-};
-['mbMotors','plMotors','armA12','armA35','armA4'].forEach(mt=>{
-  VALIDATIONS[`${mt}.MDB FW`]={type:'dropdown',options:['1.9.0.0','1.9.2.0','2.0.0.0','2.1.0.0']};
-  VALIDATIONS[`${mt}.enc`]={type:'checkbox'};
-  VALIDATIONS[`${mt}.完了日`]={type:'date'};
-});
-function getValidation(s,f){let v=VALIDATIONS[`${s}.${f}`];if(v)return v;const m={mbMotors:'mbMotors',plMotors:'plMotors',armA12:'armA12',armA35:'armA35',armA4:'armA4'};if(m[s]){v=VALIDATIONS[`${m[s]}.${f}`];if(v)return v;}if(f==='完了日'||f.toLowerCase().includes('date'))return{type:'date'};if(f==='enc')return{type:'checkbox'};return null;}
+const VALIDATIONS={'ghost.sw':{type:'dropdown',options:['v3.0.0','v3.1.0','v3.1.9','v3.2.0','v3.2.1','v3.3.0']},'ghost.soraFW':{type:'dropdown',options:['2.0.0','2.0.5','2.0.8','2.1.0','2.1.1']},'ghost.fw':{type:'dropdown',options:['3.9.0','4.0.0','4.0.1','4.1.0']},'ghost.soraTimezone':{type:'dropdown',options:['Asia/Tokyo','America/New_York','Europe/London','America/Los_Angeles']},'ghost.completionDate':{type:'date'},'mobileBase.pdbFW':{type:'dropdown',options:['1.9.0.0','1.9.1.0','1.9.2.0','2.0.0.0','2.1.0.0']},'mobileBase.ecbVer':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3','v1.4']},'mobileBase.sopVer':{type:'dropdown',options:['v2.0','v2.1','v2.2','v2.3','v2.4']},'mobileBase.mbomVer':{type:'dropdown',options:['v1.5','v1.6','v1.7','v1.8','v1.9']},'mobileBase.completionDate':{type:'date'},'pillar.sopVer':{type:'dropdown',options:['v1.6','v1.7','v1.8','v1.9','v2.0']},'pillar.mbomVer':{type:'dropdown',options:['v1.2','v1.3','v1.4','v1.5','v1.6']},'pillar.completionDate':{type:'date'},'headBody.iobFW':{type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']},'headBody.agxImage':{type:'dropdown',options:['r35.3.1','r35.4.1','r35.5.0','r36.0.0']},'headBody.sopVer':{type:'dropdown',options:['v1.8','v1.9','v2.0','v2.1','v2.2']},'headBody.mbomVer':{type:'dropdown',options:['v1.3','v1.4','v1.5','v1.6','v1.7']},'headBody.completionDate':{type:'date'},'arm.sopVer':{type:'dropdown',options:['v2.1','v2.2','v2.3','v2.4','v2.5']},'arm.mbomVer':{type:'dropdown',options:['v1.6','v1.7','v1.8','v1.9','v2.0']},'arm.completionDate':{type:'date'},'gripper.iobFW':{type:'dropdown',options:['1.8.0.0','1.9.0.0','1.9.1.0','2.0.0.0','2.1.0.0']},'gripper.sopVer':{type:'dropdown',options:['v1.4','v1.5','v1.6','v1.7','v1.8']},'gripper.mbomVer':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3','v1.4']},'gripper.completionDate':{type:'date'},'deployKit.sopVer':{type:'dropdown',options:['v1.0','v1.1','v1.2','v1.3']},'deployKit.mbomVer':{type:'dropdown',options:['v1.0','v1.1','v1.2']},'deployKit.gantryLength':{type:'dropdown',options:['900mm','1000mm','1100mm','1200mm','1300mm']},'deployKit.completionDate':{type:'date'}};
+['lMotors','a12Motors','a35Motors','a4Motors'].forEach(mt=>{VALIDATIONS[`${mt}.mdbFW`]={type:'dropdown',options:['1.9.0.0','1.9.2.0','2.0.0.0','2.1.0.0']};VALIDATIONS[`${mt}.enc`]={type:'checkbox'};});
+function getValidation(s,f){let v=VALIDATIONS[`${s}.${f}`];if(v)return v;const m={mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};if(m[s]){v=VALIDATIONS[`${m[s]}.${f}`];if(v)return v;}if(f.toLowerCase().includes('date'))return{type:'date'};return null;}
 
 // ===== DATA (fetched via Sheets API with Bearer token, same as inventory app) =====
 let DATA = {};
@@ -370,254 +324,37 @@ function findBySN(col,sn){if(!col||!sn)return null;const f=getSNField(col);retur
 function findByNum(col,num){if(!col)return null;const f=getSNField(col);return col.find(i=>{const m=(i[f]||'').match(/(\d+)$/);return m&&parseInt(m[1])===num;});}
 function findBySubField(col,fcs,val){if(!col)return null;for(const row of col){for(const fc of(Array.isArray(fcs)?fcs:[fcs])){const v=getField(row,fc);if(v&&(v===val||v===String(val)))return row;}}return null;}
 
-// ===== LINKING HELPERS (based on actual sheet column names) =====
-// Ghost sheet cols: 'Mobile Base', 'Pillar', 'Body&Head', 'Arm', 'Deploy Kit'
-// MB cols: 'L1 motor S/N', 'L2 motor S/N', 'PDB S/N'
-// Pillar cols: 'L3 motor S/N', 'BRK S/N'
-// H&B cols: 'GALINA S/N', 'IOB S/N'
-// Arm cols: 'A1-A5 motor S/N', 'Gripper S/N', 'BAT S/N'
-// Gripper cols: 'IOB S/N'
-// Motors: 'MDB S/N' — no parent col, parents reference them
-
-function findGhostByCol(colName, subSN) {
-  if (!DATA.ghosts || !subSN) return null;
-  const up = subSN.toUpperCase();
-  return DATA.ghosts.find(g => (g[colName]||'').toUpperCase() === up) || null;
-}
-
-function findByCol(list, colName, val) {
-  if (!list || !val) return null;
-  const up = val.toUpperCase();
-  return list.find(r => (r[colName]||'').toUpperCase() === up) || null;
-}
-
-function findLMotorParent(motorSN) {
-  const up = motorSN.toUpperCase();
-  for (const mb of (DATA.mobileBases||[])) {
-    if ((mb['L1 motor S/N']||'').toUpperCase()===up) return {row:mb,ghostCol:'Mobile Base',list:DATA.mobileBases,slot:'L1',via:'Mobile Base'};
-    if ((mb['L2 motor S/N']||'').toUpperCase()===up) return {row:mb,ghostCol:'Mobile Base',list:DATA.mobileBases,slot:'L2',via:'Mobile Base'};
-  }
-  for (const pl of (DATA.pillars||[])) {
-    if ((pl['L3 motor S/N']||'').toUpperCase()===up) return {row:pl,ghostCol:'Pillar',list:DATA.pillars,slot:'L3',via:'Pillar'};
-  }
-  return null;
-}
-
-function findArmByMotorSN(motorSN, cols) {
-  const up = motorSN.toUpperCase();
-  for (const arm of (DATA.arms||[])) {
-    for (const col of cols) {
-      if ((arm[col]||'').toUpperCase()===up) return {row:arm,slot:col.replace(' motor S/N','')};
-    }
-  }
-  return null;
-}
-
 // ===== TRACE =====
-function traceToGhost(input) {
-  const parsed = parseInput(input); if (!parsed) return null;
-  let ghost, path=[], matchedIn=parsed.label, matchedSN='';
-  const D = DATA;
-  const sn = (row,list) => getRowSN(row,list);
-  const findItem = (list) => {
-    if(!list) return null;
-    let it = parsed.fullSN.match(/^GT/) ? findBySN(list,parsed.fullSN) : null;
-    if(!it) it = findByNum(list,parsed.num);
-    return it;
-  };
-
-  switch(parsed.type) {
-    case 'ghost': {
-      const g = findItem(D.ghosts);
-      if(g) { ghost=g; path=['Ghost']; matchedSN=sn(g,D.ghosts); }
-      break;
-    }
-    case 'mobileBase': {
-      const mb = findItem(D.mobileBases);
-      if(mb) { const s=sn(mb,D.mobileBases); ghost=findGhostByCol('Mobile Base',s); path=['Mobile Base','Ghost']; matchedSN=s; }
-      break;
-    }
-    case 'pillar': {
-      const pl = findItem(D.pillars);
-      if(pl) { const s=sn(pl,D.pillars); ghost=findGhostByCol('Pillar',s); path=['Pillar','Ghost']; matchedSN=s; }
-      break;
-    }
-    case 'headBody': {
-      const hb = findItem(D.headBodies);
-      if(hb) { const s=sn(hb,D.headBodies); ghost=findGhostByCol('Body&Head',s); path=['Head & Body','Ghost']; matchedSN=s; }
-      break;
-    }
-    case 'arm': {
-      const arm = findItem(D.arms);
-      if(arm) { const s=sn(arm,D.arms); ghost=findGhostByCol('Arm',s); path=['Arm','Ghost']; matchedSN=s; }
-      break;
-    }
-    case 'gripper': {
-      const gr = findItem(D.grippers);
-      if(gr) {
-        const grS=sn(gr,D.grippers);
-        const arm=findByCol(D.arms,'Gripper S/N',grS);
-        if(arm) { const aS=sn(arm,D.arms); ghost=findGhostByCol('Arm',aS); }
-        path=['Gripper','Arm','Ghost']; matchedSN=grS;
-      }
-      break;
-    }
-    case 'deployKit': {
-      const dk = findItem(D.deployKits);
-      if(dk) { const s=sn(dk,D.deployKits); ghost=findGhostByCol('Deploy Kit',s); path=['Deploy Kit','Ghost']; matchedSN=s; }
-      break;
-    }
-    case 'lMotor': {
-      const lm = findItem(D.lMotors);
-      if(lm) {
-        const lS=sn(lm,D.lMotors);
-        const parent=findLMotorParent(lS);
-        if(parent) { const pS=sn(parent.row,parent.list); ghost=findGhostByCol(parent.ghostCol,pS); path=[`L-Motor (${parent.slot})`,parent.via,'Ghost']; }
-        else path=['L-Motor','?','Ghost'];
-        matchedSN=lS;
-      }
-      break;
-    }
-    case 'a12Motor': {
-      const m = findItem(D.a12Motors);
-      if(m) {
-        const mS=sn(m,D.a12Motors);
-        const arm=findArmByMotorSN(mS,['A1 motor S/N','A2 motor S/N']);
-        if(arm) { const aS=sn(arm.row,D.arms); ghost=findGhostByCol('Arm',aS); path=[`A12 (${arm.slot})`,'Arm','Ghost']; }
-        else path=['A12','?','Ghost'];
-        matchedSN=mS;
-      }
-      break;
-    }
-    case 'a35Motor': {
-      const m = findItem(D.a35Motors);
-      if(m) {
-        const mS=sn(m,D.a35Motors);
-        const arm=findArmByMotorSN(mS,['A3 motor S/N','A5 motor S/N']);
-        if(arm) { const aS=sn(arm.row,D.arms); ghost=findGhostByCol('Arm',aS); path=[`A35 (${arm.slot})`,'Arm','Ghost']; }
-        else path=['A35','?','Ghost'];
-        matchedSN=mS;
-      }
-      break;
-    }
-    case 'a4Motor': {
-      const m = findItem(D.a4Motors);
-      if(m) {
-        const mS=sn(m,D.a4Motors);
-        const arm=findArmByMotorSN(mS,['A4 motor S/N']);
-        if(arm) { const aS=sn(arm.row,D.arms); ghost=findGhostByCol('Arm',aS); path=['A4 Motor','Arm','Ghost']; }
-        else path=['A4','?','Ghost'];
-        matchedSN=mS;
-      }
-      break;
-    }
-    case 'galina': {
-      const hb = findByCol(D.headBodies,'GALINA S/N',String(parsed.num));
-      if(hb) { const s=sn(hb,D.headBodies); ghost=findGhostByCol('Body&Head',s); path=['GALINA','Head & Body','Ghost']; matchedSN=String(parsed.num); }
-      break;
-    }
-    case 'pdb': {
-      const val=`PDB-${parsed.num}`;
-      const mb = findByCol(D.mobileBases,'PDB S/N',val) || findByCol(D.mobileBases,'PDB S/N',String(parsed.num));
-      if(mb) { const s=sn(mb,D.mobileBases); ghost=findGhostByCol('Mobile Base',s); path=['PDB','Mobile Base','Ghost']; matchedSN=val; }
-      break;
-    }
-    case 'iob': {
-      const val=`IOB-${parsed.num}`;
-      let hb = findByCol(D.headBodies,'IOB S/N',val) || findByCol(D.headBodies,'IOB S/N',String(parsed.num));
-      if(hb) { const s=sn(hb,D.headBodies); ghost=findGhostByCol('Body&Head',s); path=['IOB','Head & Body','Ghost']; matchedSN=val; break; }
-      let gr = findByCol(D.grippers,'IOB S/N',val) || findByCol(D.grippers,'IOB S/N',String(parsed.num));
-      if(gr) {
-        const grS=sn(gr,D.grippers); const arm=findByCol(D.arms,'Gripper S/N',grS);
-        if(arm) { const aS=sn(arm,D.arms); ghost=findGhostByCol('Arm',aS); }
-        path=['IOB','Gripper','Arm','Ghost']; matchedSN=val;
-      }
-      break;
-    }
-    case 'mdb': {
-      const val=`MDB-${parsed.num}`;
-      // Search L-motors
-      let m=findByCol(D.lMotors,'MDB S/N',val)||findByCol(D.lMotors,'MDB S/N',String(parsed.num));
-      if(m) { const mS=sn(m,D.lMotors); const p=findLMotorParent(mS); if(p){const pS=sn(p.row,p.list);ghost=findGhostByCol(p.ghostCol,pS);path=['MDB',`L-Motor (${p.slot})`,p.via,'Ghost'];} matchedSN=val; break; }
-      // Search A12 motors
-      m=findByCol(D.a12Motors,'MDB S/N',val)||findByCol(D.a12Motors,'MDB S/N',String(parsed.num));
-      if(m){const mS=sn(m,D.a12Motors);const arm=findArmByMotorSN(mS,['A1 motor S/N','A2 motor S/N']);if(arm){const aS=sn(arm.row,D.arms);ghost=findGhostByCol('Arm',aS);path=['MDB',`A12 (${arm.slot})`,'Arm','Ghost'];}matchedSN=val;break;}
-      // Search A35 motors
-      m=findByCol(D.a35Motors,'MDB S/N',val)||findByCol(D.a35Motors,'MDB S/N',String(parsed.num));
-      if(m){const mS=sn(m,D.a35Motors);const arm=findArmByMotorSN(mS,['A3 motor S/N','A5 motor S/N']);if(arm){const aS=sn(arm.row,D.arms);ghost=findGhostByCol('Arm',aS);path=['MDB',`A35 (${arm.slot})`,'Arm','Ghost'];}matchedSN=val;break;}
-      // Search A4 motors
-      m=findByCol(D.a4Motors,'MDB S/N',val)||findByCol(D.a4Motors,'MDB S/N',String(parsed.num));
-      if(m){const mS=sn(m,D.a4Motors);const arm=findArmByMotorSN(mS,['A4 motor S/N']);if(arm){const aS=sn(arm.row,D.arms);ghost=findGhostByCol('Arm',aS);path=['MDB','A4 Motor','Arm','Ghost'];}matchedSN=val;break;}
-      break;
-    }
-    case 'brk': {
-      const val=`BRK-${parsed.num}`;
-      const pl=findByCol(D.pillars,'BRK S/N',val)||findByCol(D.pillars,'BRK S/N',String(parsed.num));
-      if(pl){const s=sn(pl,D.pillars);ghost=findGhostByCol('Pillar',s);path=['Brake','Pillar','Ghost'];matchedSN=val;}
-      break;
-    }
-    case 'bat': {
-      const val=`BAT-${parsed.num}`;
-      const arm=findByCol(D.arms,'BAT S/N',val)||findByCol(D.arms,'BAT S/N',String(parsed.num));
-      if(arm){const s=sn(arm,D.arms);ghost=findGhostByCol('Arm',s);path=['Battery','Arm','Ghost'];matchedSN=val;}
-      break;
-    }
+function traceToGhost(input){const parsed=parseInput(input);if(!parsed)return null;let ghost,path=[],matchedIn=parsed.label,matchedSN='';const D=DATA;
+  const findItem=(list)=>{let it=parsed.fullSN.match(/^GT/)?findBySN(list,parsed.fullSN):null;if(!it)it=findByNum(list,parsed.num);return it;};
+  const findGhostByAssembly=(sn)=>{if(!D.ghosts)return null;for(const g of D.ghosts){if(Object.values(g).some(v=>v&&v.toUpperCase()===sn.toUpperCase()))return g;}return null;};
+  const getGhostFromRow=(row)=>{const gSN=getField(row,'ghostSN','Ghost S/N','Ghost','ghost_sn');return gSN?(findBySN(D.ghosts,gSN)||D.ghosts?.find(g=>Object.values(g).some(v=>v===gSN))):null;};
+  const getGhostFromAssembly=(row,list)=>{let g=getGhostFromRow(row);if(g)return g;return findGhostByAssembly(getRowSN(row,list));};
+  switch(parsed.type){
+    case'ghost':{const g=findItem(D.ghosts);if(g){ghost=g;path=['Ghost'];matchedSN=getRowSN(g,D.ghosts);}break;}
+    case'mobileBase':{const mb=findItem(D.mobileBases);if(mb){ghost=getGhostFromAssembly(mb,D.mobileBases);path=['Mobile Base','Ghost'];matchedSN=getRowSN(mb,D.mobileBases);}break;}
+    case'pillar':{const pl=findItem(D.pillars);if(pl){ghost=getGhostFromAssembly(pl,D.pillars);path=['Pillar','Ghost'];matchedSN=getRowSN(pl,D.pillars);}break;}
+    case'headBody':{const hb=findItem(D.headBodies);if(hb){ghost=getGhostFromAssembly(hb,D.headBodies);path=['Head & Body','Ghost'];matchedSN=getRowSN(hb,D.headBodies);}break;}
+    case'arm':{const a=findItem(D.arms);if(a){ghost=getGhostFromAssembly(a,D.arms);path=['Arm','Ghost'];matchedSN=getRowSN(a,D.arms);}break;}
+    case'gripper':{const gr=findItem(D.grippers);if(gr){ghost=getGhostFromAssembly(gr,D.grippers);path=['Gripper','Arm','Ghost'];matchedSN=getRowSN(gr,D.grippers);}break;}
+    case'deployKit':{const dk=findItem(D.deployKits);if(dk){ghost=getGhostFromAssembly(dk,D.deployKits);path=['Deploy Kit','Ghost'];matchedSN=getRowSN(dk,D.deployKits);}break;}
+    case'lMotor':{const lm=findItem(D.lMotors);if(lm){const pt=getField(lm,'parentType','Parent Type');const ps=getField(lm,'parentSN','Parent S/N','Parent');const via=pt?.toLowerCase().includes('pillar')?'Pillar':'Mobile Base';const pl=via==='Pillar'?D.pillars:D.mobileBases;const p=findBySN(pl,ps);ghost=p?getGhostFromAssembly(p,pl):null;const sl=getField(lm,'slot','Slot');path=[`L-Motor${sl?' ('+sl+')':''}`,via,'Ghost'];matchedSN=getRowSN(lm,D.lMotors);}break;}
+    case'a12Motor':case'a35Motor':case'a4Motor':{const lk=parsed.type==='a12Motor'?'a12Motors':parsed.type==='a35Motor'?'a35Motors':'a4Motors';const m=findItem(D[lk]);if(m){const ps=getField(m,'parentSN','Parent S/N','Parent');const a=findBySN(D.arms,ps);ghost=a?getGhostFromAssembly(a,D.arms):null;const sl=getField(m,'slot','Slot');const pf=parsed.type==='a12Motor'?'A12':parsed.type==='a35Motor'?'A35':'A4';path=[`${pf}${sl?' ('+sl+')':''}`,'Arm','Ghost'];matchedSN=getRowSN(m,D[lk]);}break;}
+    case'galina':{const hb=findBySubField(D.headBodies,['galinaSN','GALINA S/N','GALINA'],String(parsed.num));if(hb){ghost=getGhostFromAssembly(hb,D.headBodies);path=['GALINA','Head & Body','Ghost'];matchedSN=String(parsed.num);}break;}
+    case'pdb':{const mb=findBySubField(D.mobileBases,['pdbSN','PDB S/N','PDB'],`PDB-${parsed.num}`);if(mb){ghost=getGhostFromAssembly(mb,D.mobileBases);path=['PDB','Mobile Base','Ghost'];matchedSN=`PDB-${parsed.num}`;}break;}
+    case'iob':{let hb=findBySubField(D.headBodies,['iobSN','IOB S/N','IOB'],`IOB-${parsed.num}`);if(hb){ghost=getGhostFromAssembly(hb,D.headBodies);path=['IOB','Head & Body','Ghost'];matchedSN=`IOB-${parsed.num}`;break;}let gr=findBySubField(D.grippers,['iobSN','IOB S/N','IOB'],`IOB-${parsed.num}`);if(gr){ghost=getGhostFromAssembly(gr,D.grippers);path=['IOB','Gripper','Arm','Ghost'];matchedSN=`IOB-${parsed.num}`;}break;}
+    case'mdb':{for(const lk of['lMotors','a12Motors','a35Motors','a4Motors']){const m=findBySubField(D[lk],['mdbSN','MDB S/N','MDB'],`MDB-${parsed.num}`);if(m){const ps=getField(m,'parentSN','Parent S/N','Parent');const a=findBySN(D.arms,ps);const mb=findBySN(D.mobileBases,ps);const pl=findBySN(D.pillars,ps);const p=a||mb||pl;const pL=a?D.arms:mb?D.mobileBases:D.pillars;ghost=p?getGhostFromAssembly(p,pL):null;const sl=getField(m,'slot','Slot');const via=a?'Arm':mb?'Mobile Base':'Pillar';path=['MDB',sl||'Motor',via,'Ghost'];matchedSN=`MDB-${parsed.num}`;break;}}break;}
+    case'brk':{const pl=findBySubField(D.pillars,['brkSN','Brake S/N','BRK'],`BRK-${parsed.num}`);if(pl){ghost=getGhostFromAssembly(pl,D.pillars);path=['Brake','Pillar','Ghost'];matchedSN=`BRK-${parsed.num}`;}break;}
+    case'bat':{const a=findBySubField(D.arms,['batSN','Battery S/N','BAT'],`BAT-${parsed.num}`);if(a){ghost=getGhostFromAssembly(a,D.arms);path=['Battery','Arm','Ghost'];matchedSN=`BAT-${parsed.num}`;}break;}
   }
-  if(!ghost) return null;
-  return {ghost,path,matchedIn,matchedSN,parsed};
-}
+  if(!ghost)return null;return{ghost,path,matchedIn,matchedSN,parsed};}
 
-// ===== GHOST TREE (top-down using actual column names) =====
-function getGhostTree(ghostRow) {
-  if(!ghostRow) return null;
-  const D = DATA;
-
-  // Ghost → sub-assemblies via Ghost sheet columns
-  const mbSN  = ghostRow['Mobile Base'] || '';
-  const plSN  = ghostRow['Pillar'] || '';
-  const hbSN  = ghostRow['Body&Head'] || '';
-  const armSN = ghostRow['Arm'] || '';
-  const dkSN  = ghostRow['Deploy Kit'] || '';
-
-  const mb  = mbSN  ? findBySN(D.mobileBases, mbSN)  : null;
-  const pl  = plSN  ? findBySN(D.pillars, plSN)       : null;
-  const hb  = hbSN  ? findBySN(D.headBodies, hbSN)    : null;
-  const arm = armSN ? findBySN(D.arms, armSN)          : null;
-  const dk  = dkSN  ? findBySN(D.deployKits, dkSN)    : null;
-
-  // Gripper referenced from Arm sheet
-  const grSN = arm ? (arm['Gripper S/N']||'') : '';
-  const gr   = grSN ? findBySN(D.grippers, grSN) : null;
-
-  // MB → L1, L2 motors
-  const mbMotors = [];
-  if(mb) {
-    ['L1 motor S/N','L2 motor S/N'].forEach(col => {
-      const s=mb[col]||''; if(s){const m=findBySN(D.lMotors,s);if(m)mbMotors.push(m);}
-    });
-  }
-
-  // Pillar → L3 motor
-  const plMotors = [];
-  if(pl) {
-    const s=pl['L3 motor S/N']||''; if(s){const m=findBySN(D.lMotors,s);if(m)plMotors.push(m);}
-  }
-
-  // Arm → A1/A2 (A12-motors), A3/A5 (A35-motors), A4 (A4-motor)
-  const armA12=[], armA35=[], armA4=[];
-  if(arm) {
-    ['A1 motor S/N','A2 motor S/N'].forEach(col => {
-      const s=arm[col]||''; if(s){const m=findBySN(D.a12Motors,s);if(m)armA12.push(m);}
-    });
-    ['A3 motor S/N','A5 motor S/N'].forEach(col => {
-      const s=arm[col]||''; if(s){const m=findBySN(D.a35Motors,s);if(m)armA35.push(m);}
-    });
-    const a4s=arm['A4 motor S/N']||'';
-    if(a4s){const m=findBySN(D.a4Motors,a4s);if(m)armA4.push(m);}
-  }
-
-  return {ghost:ghostRow,mb,pl,hb,arm,gr,dk,mbMotors,plMotors,armA12,armA35,armA4};
-}
+function getGhostTree(ghostRow){if(!ghostRow)return null;const ghostSN=getRowSN(ghostRow,DATA.ghosts);const vals=Object.values(ghostRow);
+  const findLinked=(list)=>{if(!list)return null;const sf=getSNField(list);for(const it of list){const sn=it[sf]||'';if(sn&&vals.includes(sn))return it;}for(const it of list){const gRef=getField(it,'ghostSN','Ghost S/N','Ghost','ghost_sn');if(gRef&&gRef===ghostSN)return it;}return null;};
+  const findMotors=(list,pSN)=>{if(!list||!pSN)return[];return list.filter(m=>{const p=getField(m,'parentSN','Parent S/N','Parent');return p&&p===pSN;});};
+  const mb=findLinked(DATA.mobileBases),pl=findLinked(DATA.pillars),hb=findLinked(DATA.headBodies),arm=findLinked(DATA.arms),gr=findLinked(DATA.grippers),dk=findLinked(DATA.deployKits);
+  const mbSN=mb?getRowSN(mb,DATA.mobileBases):'',plSN=pl?getRowSN(pl,DATA.pillars):'',armSN=arm?getRowSN(arm,DATA.arms):'';
+  return{ghost:ghostRow,mb,pl,hb,arm,gr,dk,mbMotors:findMotors(DATA.lMotors,mbSN),plMotors:findMotors(DATA.lMotors,plSN),armA12:findMotors(DATA.a12Motors,armSN),armA35:findMotors(DATA.a35Motors,armSN),armA4:findMotors(DATA.a4Motors,armSN)};}
 
 // ===== APP STATE =====
 const state={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showGuest:false};
@@ -745,7 +482,7 @@ function renderResult(){const{result,tree}=state;if(!result||!tree)return;const 
 function renderSectionCard(sk,data,isMS){if(!data||(Array.isArray(data)&&data.length===0))return'';const cfg=SECTION_CONFIG[sk];if(!cfg)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=state.expanded.has(sk);const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;const sf=getSNField(DATA[lk]||items);
   return`<div class="section-card"><div class="section-header" onclick="toggleSection('${sk}')" style="background:${cfg.bg};border-radius:${isO?'12px 12px 0 0':'12px'};border:1px solid ${cfg.color}${isMS?'55':'22'};border-left:${isMS?'4px solid '+cfg.color:'1px solid '+cfg.color+'22'}"><span class="section-icon">${cfg.icon}</span><div class="section-info"><div class="section-label" style="color:${cfg.color}">${cfg.label}</div><div class="section-sns">${items.map(i=>escHtml(i[sf]||'?')).join(' · ')}</div></div>${isMS?`<span class="match-badge" style="background:${cfg.color}22;color:${cfg.color}">MATCH</span>`:''}<span class="section-chevron ${isO?'section-chevron-open':''}">▼</span></div>${isO?items.map((item,idx)=>`<div class="field-group" style="background:var(--bg-card);border:1px solid ${cfg.color}15;border-top:none;border-radius:${idx===items.length-1?'0 0 12px 12px':'0'}">${items.length>1?`<div class="field-group-label" style="color:${cfg.color};border-bottom:1px solid ${cfg.color}10">${escHtml(getField(item,'slot','Slot')?getField(item,'slot','Slot')+' → ':'')}${escHtml(item[sf]||'?')}</div>`:''}${Object.entries(item).map(([k,v])=>renderFieldRow(sk,item[sf]||'',k,v,lk)).join('')}</div>`).join(''):''}</div>`;}
 
-function renderFieldRow(section,sn,field,value,lk){if(shouldSkipField(field))return'';const label=FIELD_LABELS[field]||field;const val=getValidation(section,field);const isSN=field===getSNField(DATA[lk]||[])||/sn$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=state.result?.matchedSN===value||(state.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
+function renderFieldRow(section,sn,field,value,lk){if(SKIP_FIELDS.has(field))return'';const label=FIELD_LABELS[field]||field;const val=getValidation(section,field);const isSN=field===getSNField(DATA[lk]||[])||/sn$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=state.result?.matchedSN===value||(state.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
   let vH;if(isC){const p=value==='✓'||value==='TRUE'||value==='true'||value==='1'||value==='OK';vH=`<span class="check-display ${p?'check-pass':'check-fail'}">${p?'✓':'✗'}</span>`;}else{vH=`<span class="field-value ${isSN?'field-value-sn':''}">${escHtml(value||'—')}</span>`;}
   return`<div class="field-row ${isH?'field-row-highlight':''}" onclick="startEdit('${escAttr(section)}','${escAttr(sn)}','${escAttr(field)}','${escAttr(value||'')}')"><div class="field-left"><span class="field-label">${escHtml(label)}</span>${isDr?'<span class="inline-badge badge-list">▾</span>':''}${isC?'<span class="inline-badge badge-check">☐</span>':''}${isD?'<span class="inline-badge badge-date">📅</span>':''}</div><div class="field-right">${vH}<span class="field-edit-icon">✎</span></div></div>`;}
 
