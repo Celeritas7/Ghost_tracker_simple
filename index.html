@@ -312,9 +312,14 @@ function buildDebugInfo(){const L=[];
 const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function escA(s){return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\\/g,'\\\\');}
+function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-function render(){switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;}}
+// Edit registry - avoids putting arbitrary strings in onclick handlers
+let editRegistry=[];
+function regEdit(sec,sn,field,value){const id=editRegistry.length;editRegistry.push({sec,sn,field,value});return id;}
+function doEdit(id){const e=editRegistry[id];if(e)startEdit(e.sec,e.sn,e.field,e.value);}
+
+function render(){editRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;}}
 
 // ===== LOGIN =====
 function rLogin(){app().innerHTML=`<div class="login-screen"><div class="login-bg"></div><div class="login-card"><div class="logo">👻</div><h1 class="login-title">Ghost Tracker</h1><p class="login-sub">Assembly tracking for Ghost robots.<br>Sign in to access production data.</p><button class="g-btn" onclick="doLogin()"><svg viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Sign in with Google</button><div class="login-err" id="loginErr"></div></div></div>${rToast()}`;}
@@ -370,8 +375,9 @@ function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'
   return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'12px 12px 0 0':'12px'};border:1px solid ${c.color}${isMS?'55':'22'};border-left:${isMS?'4px solid '+c.color:'1px solid '+c.color+'22'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${isO?items.map((item,idx)=>`<div class="fg" style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:${idx===items.length-1?'0 0 12px 12px':'0'}">${items.length>1?`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`:''}${Object.entries(item).map(([k,v])=>rFR(sk,item[sf]||'',k,v,lk)).join('')}</div>`).join(''):''}</div>`;}
 
 function rFR(sec,sn,field,value,lk){if(shouldSkipField(field))return'';const label=FIELD_LABELS[field]||field;const val=getV(sec,field);const isSN=field===getSNField(DATA[lk]||[])||/S\/N$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=S.result?.matchedSN===value||(S.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
+  const eid=regEdit(sec,sn,field,value||'');
   let vH;if(isC){const p=value==='✓'||/^(TRUE|true|1|OK)$/.test(value);vH=`<span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>`;}else{vH=`<span class="fv ${isSN?'fvsn':''}">${esc(value||'—')}</span>`;}
-  return`<div class="fr ${isH?'frH':''}" onclick="startEdit('${escA(sec)}','${escA(sn)}','${escA(field)}','${escA(value||'')}')"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
+  return`<div class="fr ${isH?'frH':''}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
 
 // ===== EDIT =====
 function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_LABELS[E.field]||E.field;const c=SC[E.section];const val=getV(E.section,E.field);const isDr=val?.type==='dropdown';const isC=val?.type==='checkbox';const isD=val?.type==='date';const ch=ev!==E.value&&ev!=='';
