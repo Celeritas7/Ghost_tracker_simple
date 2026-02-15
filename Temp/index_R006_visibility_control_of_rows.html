@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Ghost Assembly Tracker</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root{--bg:#0a0b12;--card:#0d0e18;--inp:#12131e;--bd:#1e2130;--bd2:#2a2d3e;--t1:#e2e4ed;--t2:#8b8fa7;--t3:#6b7094;--t4:#4d5070;--t5:#3d4060;--t6:#2d3050;--ac:#5b6eea;--ac2:#7c5cf6;--grn:#34d399;--red:#f87171;--yel:#fbbf24;--blu:#38bdf8;--org:#fb923c;--pur:#a78bfa;--fm:'Courier New',monospace;--fb:'Segoe UI',system-ui,sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}html,body{height:100%}
@@ -120,47 +118,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .dbgbtn{padding:6px 14px;border-radius:8px;border:1px solid var(--yel);background:transparent;color:var(--yel);font-size:11px;cursor:pointer;font-family:var(--fb);margin-left:8px}
 .err-b{margin:16px;padding:16px;border-radius:12px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);color:var(--red);font-size:13px;line-height:1.5}
 .err-b code{display:block;margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(248,113,113,.05);font-family:var(--fm);font-size:11px;word-break:break-all;color:var(--t2)}
-/* ECN Settings button */
-.ecnbtn{padding:5px 12px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--fb);font-weight:600;transition:all .15s}
-.ecnbtn:active{background:var(--ac);color:#fff}
-/* ECN Settings page */
-.ecns-sec{margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--bd)}
-.ecns-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--inp);cursor:pointer}
-.ecns-body{background:var(--card);padding:4px 0}
-.ecns-row{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s}
-.ecns-row:active{background:rgba(91,110,234,.06)}
-.ecns-tog{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;transition:all .15s}
-.ecns-on{background:var(--ac);color:#fff;border:2px solid var(--ac)}
-.ecns-off{background:transparent;border:2px solid var(--bd2);color:transparent}
-.ecns-fname{font-size:12px;color:var(--t2);font-family:var(--fm);word-break:break-all;line-height:1.4}
-/* ECN sub-section in result cards */
-.ecn-sub{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;border-top:1px dashed rgba(91,110,234,.15)}
-.ecn-sub-icon{font-size:14px}
-.ecn-sub-label{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--ac)}
-.ecn-sub-body{border-top:1px solid var(--bd)}
-.ecn-flbl{font-size:11px!important;color:var(--t4)!important}
-/* Chip grid */
-.chipgrid{display:flex;flex-wrap:wrap;gap:6px}
-.uchip{display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:10px;border:1.5px solid var(--bd);background:var(--inp);cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent}
-.uchip:active{transform:scale(.95)}
-.uchip-on{border-width:2px}
-.uchip-i{font-size:14px}
-.uchip-l{font-size:11px;font-weight:600;color:var(--t2);font-family:var(--fb)}
-.uchip-on .uchip-l{color:inherit}
-.btn3{flex:1;padding:14px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--inp);color:var(--t3);font-family:var(--fb);transition:all .15s}
-.btn3:active{background:var(--bd)}
-/* Compliance indicators */
-.fr-warn{background:rgba(248,113,113,.04)!important;border-left:3px solid var(--red)!important}
-.comp-tag{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(248,113,113,.1);color:var(--red);font-weight:600;letter-spacing:.3px;white-space:nowrap}
-.comp-badge{padding:2px 8px;border-radius:6px;background:rgba(248,113,113,.12);color:var(--red);font-size:10px;font-weight:700;margin-left:auto;white-space:nowrap}
-/* Compliance settings page */
-.comp-sec{margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--bd)}
-.comp-sec-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--inp);cursor:pointer}
-.comp-sec-body{background:var(--card);padding:4px 0}
-.comp-row{display:flex;align-items:center;gap:10px;padding:8px 14px}
-.comp-fname{font-size:12px;color:var(--t2);font-family:var(--fm);min-width:120px;flex-shrink:0}
-.comp-input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--inp);color:var(--t1);font-family:var(--fm);font-size:13px;outline:none}
-.comp-input:focus{border-color:var(--ac)}
 </style>
 </head>
 <body>
@@ -179,136 +136,6 @@ const CONFIG={
   TABS:{ghosts:'00_GHOST',lMotors:'01_L-motor',a12Motors:'02_A12-motor',a35Motors:'03_A35-motor',a4Motors:'04_A4-motor',mobileBases:'05_Mobile Base',pillars:'06_Pillar',headBodies:'07_Head & Body',grippers:'08_Gripper',arms:'09_Arm',deployKits:'10_Deploy Kit'},
 };
 
-// ===== FIREBASE =====
-const fbApp=firebase.initializeApp({
-  apiKey:"AIzaSyBigwohpQQU3TKImuGL3StJ-eWtX6OKFxI",
-  authDomain:"ghost-tracker-app-1b1d0.firebaseapp.com",
-  projectId:"ghost-tracker-app-1b1d0",
-  storageBucket:"ghost-tracker-app-1b1d0.firebasestorage.app",
-  messagingSenderId:"859247887158",
-  appId:"1:859247887158:web:ebefbd4c880ca15958a997"
-});
-const db=firebase.firestore();
-
-// ECN visibility settings: {dataKey: Set of visible ECN column names}
-let ECN_SETTINGS={};
-let ECN_LOADED=false;
-
-async function loadECNSettings(){
-  try{const doc=await db.collection('ghost-tracker').doc('ecn-settings').get();
-    if(doc.exists){const d=doc.data();Object.keys(d).forEach(k=>{ECN_SETTINGS[k]=new Set(d[k]||[]);});ECN_LOADED=true;console.log('[ECN] Loaded:',d);}
-    else{ECN_SETTINGS={};ECN_LOADED=true;}
-  }catch(e){console.warn('[ECN] Load failed:',e);ECN_LOADED=true;}}
-
-async function saveECNSettings(){
-  try{const d={};Object.keys(ECN_SETTINGS).forEach(k=>{d[k]=[...ECN_SETTINGS[k]];});
-    await db.collection('ghost-tracker').doc('ecn-settings').set(d);
-    showToast('ECN settings saved');
-  }catch(e){showToast('Save failed: '+e.message,'error');}}
-
-// Detect if a column name is an ECN field
-function isECNField(f){
-  if(/^(GP-)?ECN-/.test(f))return true;
-  if(f.includes('ECN')&&!/ECB/.test(f))return true;
-  if(/^(i55|i61|i64|issue\d|RCM)/.test(f))return true;
-  if(/リワーク|テスト待|テープ|注意|425|MP2/.test(f))return true;
-  if(/点検|修正|変更|追加|削る|対策|緩み|防水|ケーブル|グリス|ばね|はんだ|マーキング|ピン|合格/.test(f))return true;
-  if(/Bracket|Dummy|STOCK|成型/.test(f))return true;
-  if(/ねじ|ゴム|レール|レンジ|ロック|コネクタ|防塵|ワッシャ|スペーサ|カバー/.test(f))return true;
-  return false;
-}
-
-function getECNFields(dataKey){const rows=DATA[dataKey];if(!rows||!rows.length)return[];return Object.keys(rows[0]).filter(f=>isECNField(f));}
-function isECNVisible(dataKey,field){return ECN_SETTINGS[dataKey]&&ECN_SETTINGS[dataKey].has(field);}
-
-// ===== COMPLIANCE RULES =====
-let COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{}};
-
-async function loadCompRules(){
-  try{const doc=await db.collection('ghost-tracker').doc('compliance-rules').get();
-    if(doc.exists){COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{},...doc.data()};console.log('[COMP] Loaded:',COMP_RULES);}
-  }catch(e){console.warn('[COMP] Load failed:',e);}}
-
-async function saveCompRules(){
-  try{await db.collection('ghost-tracker').doc('compliance-rules').set(COMP_RULES);showToast('Compliance rules saved');
-  }catch(e){showToast('Save failed: '+e.message,'error');}}
-
-// Check a single field for compliance. Returns null (ok) or string (reason)
-function checkFieldComp(dataKey,field,value){
-  const v=(value||'').trim();
-  // Latest FW check - match field name partially
-  for(const[fwField,latest]of Object.entries(COMP_RULES.latestFW||{})){
-    if(field===fwField||field.startsWith(fwField)){
-      if(!v)return'empty';
-      if(v!==latest)return`not latest (${latest})`;
-      return null;
-    }
-  }
-  // Required checkbox
-  const reqC=COMP_RULES.requiredChecks?.[dataKey]||[];
-  if(reqC.includes(field)){
-    if(!/^(TRUE|true|1|OK|✓|done)$/i.test(v))return'not checked';
-    return null;
-  }
-  // Required field
-  const reqF=COMP_RULES.requiredFields?.[dataKey]||[];
-  if(reqF.includes(field)){
-    if(!v)return'required';
-    return null;
-  }
-  // Required ECN
-  const reqE=COMP_RULES.requiredECN?.[dataKey]||[];
-  if(reqE.includes(field)){
-    if(!/^(TRUE|true|1|OK|✓|done)$/i.test(v))return'ECN not applied';
-    return null;
-  }
-  return null;
-}
-
-// Check all fields in a section, return count of issues
-function countSectionIssues(dataKey,items){
-  if(!items||!items.length)return 0;
-  let issues=0;
-  items.forEach(item=>{
-    Object.entries(item).forEach(([k,v])=>{
-      if(k==='_rowIdx')return;
-      if(checkFieldComp(dataKey,k,v))issues++;
-    });
-  });
-  return issues;
-}
-
-// Auto-detect FW fields from loaded data
-function detectFWFields(){
-  const fwFields=new Set();
-  Object.values(DATA).forEach(rows=>{if(!rows||!rows.length)return;
-    Object.keys(rows[0]).forEach(k=>{if(/FW\b/i.test(k)&&!/ECB/.test(k))fwFields.add(k);});
-  });
-  return[...fwFields];
-}
-
-// Auto-detect checkbox fields
-function detectCheckboxFields(){
-  const checks={};
-  Object.entries(DATA).forEach(([dk,rows])=>{if(!rows||!rows.length)return;
-    const cFields=Object.keys(rows[0]).filter(k=>{
-      if(k==='_rowIdx')return false;
-      return rows.some(r=>/^(TRUE|true|1|OK|✓|✗|done|no|FALSE|false|0)$/i.test((r[k]||'').trim()));
-    });
-    if(cFields.length)checks[dk]=cFields;
-  });
-  return checks;
-}
-
-// Auto-detect date/required fields
-function detectFieldsByKey(){
-  const fields={};
-  Object.entries(DATA).forEach(([dk,rows])=>{if(!rows||!rows.length)return;
-    fields[dk]=Object.keys(rows[0]).filter(k=>k!=='_rowIdx'&&!shouldSkipField(k)&&!isECNField(k));
-  });
-  return fields;
-}
-
 // ===== AUTH =====
 let accessToken=null,tokenClient=null,currentUser={name:'',email:'',isAdmin:false,isGuest:false,team:''};
 
@@ -320,12 +147,13 @@ function parseInput(raw){const i=raw.trim();if(!i)return null;const f=i.match(/^
 // ===== SECTION CONFIG =====
 const SC={ghost:{icon:'👻',label:'Ghost',color:'#5b6eea',bg:'#151728'},mobileBase:{icon:'🛞',label:'Mobile Base',color:'#34d399',bg:'#13201a'},mbMotors:{icon:'⚙️',label:'L-Motors (MB)',color:'#6ee7b7',bg:'#131d19'},pillar:{icon:'🏛️',label:'Pillar',color:'#a78bfa',bg:'#1a1528'},plMotors:{icon:'⚙️',label:'L-Motor (Pillar)',color:'#6ee7b7',bg:'#131d19'},headBody:{icon:'🧠',label:'Head & Body',color:'#f87171',bg:'#201414'},arm:{icon:'🦾',label:'Arm',color:'#fbbf24',bg:'#201c12'},armA12:{icon:'⚙️',label:'A12 Motors',color:'#6ee7b7',bg:'#131d19'},armA35:{icon:'⚙️',label:'A35 Motor',color:'#6ee7b7',bg:'#131d19'},armA4:{icon:'⚙️',label:'A4 Motor',color:'#6ee7b7',bg:'#131d19'},gripper:{icon:'🤏',label:'Gripper',color:'#38bdf8',bg:'#121a20'},deployKit:{icon:'📦',label:'Deploy Kit',color:'#fb923c',bg:'#1e1812'}};
 const FIELD_LABELS={'S/N':'S/N','SW':'SW','Endpoint':'Endpoint','SoraFW':'Sora FW','Sora FW':'Sora FW','FW':'FW','Sora Time zone':'Sora TZ','Mobile Base':'Mobile Base S/N','Pillar':'Pillar S/N','Body&Head':'Head & Body S/N','Arm':'Arm S/N','Deploy Kit':'Deploy Kit S/N','手順書 ver.':'SOP Ver.','SOP ver.':'SOP Ver.','使用SOP ver.':'SOP Ver.','M-BOM ver.':'M-BOM Ver.','組立人員':'Assembler','時間':'Time','完了日':'Completed','備考':'Notes','L1 motor S/N':'L1 Motor','L2 motor S/N':'L2 Motor','L3 motor S/N':'L3 Motor','PDB S/N':'PDB S/N','PDB FW':'PDB FW','ECB Ver.':'ECB Ver.','L2 belt tension [N]':'L2 Belt (N)','L3 belt tension (N)':'L3 Belt (N)','BRK S/N':'Brake S/N','GALINA S/N':'GALINA S/N','AGX image':'AGX Image','IP':'IP Address','IOB S/N':'IOB S/N','IOB FW':'IOB FW','A1 motor S/N':'A1 Motor','A2 motor S/N':'A2 Motor','A3 motor S/N':'A3 Motor','A4 motor S/N':'A4 Motor','A5 motor S/N':'A5 Motor','Gripper S/N':'Gripper S/N','BAT S/N':'Battery S/N','A4 belt tension':'A4 Belt','MDB S/N':'MDB S/N','MDB FW':'MDB FW','enc':'Encoder','mod':'Mod','抵抗 cN･m':'Resistance','GANTRY長さ':'Gantry Length','pick up config':'Pickup Config','fail status':'Fail Status','fail status/comment':'Fail Status','使用':'Usage','部品出庫日':'Parts Issue','部品 出庫日':'Parts Issue','組立 時間':'Assy Time','組立時間':'Assy Time','stator frame':'Stator Frame','rotor frame':'Rotor Frame','motor cap':'Motor Cap','梱包完了':'Packing Done','完了':'Done','setup':'Setup','token':'Token','配置':'Placement','出庫日':'Issue Date','部署':'Dept','目的':'Purpose','使用手順書 ver.':'SOP Ver.'};
-function shouldSkipField(f){if(f==='#'||f==='_rowIdx')return true;if(/^\d+$/.test(f))return true;if(/^(共通|特定)$/.test(f))return true;if(/^\d+\.\d+\.\d+/.test(f))return true;if(f.startsWith('__'))return true;if(/^(ACT|ecn-)/.test(f))return true;
+function shouldSkipField(f){if(f==='#'||f==='_rowIdx')return true;if(/^\d+$/.test(f))return true;if(/^(共通|特定)$/.test(f))return true;if(f.includes('ECN')&&(f.includes('対応')||f.includes('自動入力')||f.includes('統合')))return true;if(/^(GP-)?ECN-/.test(f)||f.startsWith('ecn-'))return true;if(/^\d+\.\d+\.\d+/.test(f))return true;if(f.startsWith('__'))return true;if(/^(ACT|ecn-)/.test(f))return true;
   // Row 1 group headers (from merged cells)
   if(/^(SW関連|構成|出庫先|ロボット出荷準備|ARM以外)$/.test(f))return true;
-  if(f==='ARM'&&f!=='Arm')return true;
-  // ECN fields handled separately in ECN sub-section
-  if(isECNField(f))return true;
+  if(f==='ARM'&&f!=='Arm')return true; // skip uppercase-only ARM group header
+  // ECN detail columns with specific patterns
+  if(/^(i55|i61|i64|issue|RCM|リワーク|テスト|テープ|検査|注意|425|MP2|最新)/.test(f))return true;
+  if(/点検|修正|変更|追加|削る|対策|緩み|防水|ケーブル|グリス|ばね|はんだ|マーキング|ピン|合格|Bracket|Dummy|STOCK|成型/.test(f))return true;
   return false;}
 
 // ===== VALIDATION (from actual Google Sheets data validation rules) =====
@@ -533,7 +361,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:''};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -543,102 +371,40 @@ let editRegistry=[];
 function regEdit(sec,sn,field,value){const id=editRegistry.length;editRegistry.push({sec,sn,field,value});return id;}
 function doEdit(id){const e=editRegistry[id];if(e)startEdit(e.sec,e.sn,e.field,e.value);}
 
-function render(){editRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;case'ecnSettings':rECNSettings();break;case'compSettings':rCompSettings();break;}}
+function render(){editRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;}}
 
 // ===== LOGIN =====
 function rLogin(){app().innerHTML=`<div class="login-screen"><div class="login-bg"></div><div class="login-card"><div class="logo">👻</div><h1 class="login-title">Ghost Tracker</h1><p class="login-sub">Assembly tracking for Ghost robots.<br>Sign in to access production data.</p><button class="g-btn" onclick="doLogin()"><svg viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Sign in with Google</button><div class="login-err" id="loginErr"></div></div></div>${rToast()}`;}
 function doLogin(){if(!tokenClient){$('#loginErr').textContent='Google loading... try again.';$('#loginErr').style.display='block';return;}tokenClient.requestAccessToken();}
 async function fetchUser(){try{const r=await fetch('https://www.googleapis.com/oauth2/v2/userinfo',{headers:{'Authorization':`Bearer ${accessToken}`}});if(!r.ok)throw 0;const i=await r.json();const a=CONFIG.APPROVED_USERS[i.email||''];if(!a){const el=$('#loginErr');el.textContent=`Access denied.\n${i.email} not approved.`;el.style.display='block';accessToken=null;localStorage.removeItem('gat');return;}currentUser={name:a.name,email:i.email,team:a.team,isAdmin:a.isAdmin,isGuest:false};localStorage.setItem('gau',JSON.stringify(currentUser));startApp();}catch{const el=$('#loginErr');if(el){el.textContent='Login failed.';el.style.display='block';}}}
 function doLogout(){if(accessToken)try{google.accounts.oauth2.revoke(accessToken);}catch{}localStorage.removeItem('gat');localStorage.removeItem('gau');accessToken=null;currentUser={name:'',email:'',isAdmin:false,isGuest:false,team:''};S.screen='login';render();}
-async function startApp(){S.screen='loading';render();
-  // Load ECN settings from Firestore in parallel with sheet data
-  const [errs]=await Promise.all([loadAllData((l,t,c)=>{LP={l,t,c};rLoad();}),loadECNSettings(),loadCompRules()]);
-  S.loadErrors=errs;S.screen='search';render();}
+async function startApp(){S.screen='loading';render();S.loadErrors=await loadAllData((l,t,c)=>{LP={l,t,c};rLoad();});S.screen='search';render();}
 async function valToken(){try{const r=await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token='+accessToken);if(r.ok)startApp();else{localStorage.removeItem('gat');localStorage.removeItem('gau');accessToken=null;render();}}catch{localStorage.removeItem('gat');accessToken=null;render();}}
 
 // ===== LOADING =====
 let LP={l:0,t:11,c:''};
 function rLoad(){const p=LP.t?Math.round(LP.l/LP.t*100):0;app().innerHTML=`${rUBar()}<div class="ld-screen"><div class="ld-spin">👻</div><div style="color:var(--t3);font-size:14px">Loading assembly data...</div><div class="ld-bar-w"><div class="ld-bar" style="width:${p}%"></div></div><div style="color:var(--t5);font-size:12px;font-family:var(--fm)">${LP.c||'Connecting...'}</div></div>`;}
-function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;const adminBtns=currentUser.isAdmin?'<button class="ecnbtn" onclick="openECNSettings()">⚙️ ECN</button><button class="ecnbtn" onclick="openCompSettings()">📋 Rules</button>':'';return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><div style="display:flex;gap:6px;align-items:center">${adminBtns}<button class="logout" onclick="doLogout()">Sign out</button></div></div>`;}
+function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><button class="logout" onclick="doLogout()">Sign out</button></div>`;}
 
 // ===== SEARCH =====
-const CHIPS=[
-  {id:'GST',label:'Ghost',icon:'👻',short:'GST',color:'#5b6eea'},
-  {id:'MBB',label:'MB',icon:'🛞',short:'MB',color:'#34d399'},
-  {id:'PLR',label:'Pillar',icon:'🏛️',short:'PL',color:'#a78bfa'},
-  {id:'HBD',label:'H&B',icon:'🧠',short:'HB',color:'#f87171'},
-  {id:'ARM',label:'Arm',icon:'🦾',short:'ARM',color:'#fbbf24'},
-  {id:'GPR',label:'Gripper',icon:'🤏',short:'GR',color:'#38bdf8'},
-  {id:'DPK',label:'DK',icon:'📦',short:'DK',color:'#fb923c'},
-  {id:'LAC',label:'L-Mot',icon:'⚙️',short:'LM',color:'#6ee7b7'},
-  {id:'A12',label:'A12',icon:'⚙️',short:'A12',color:'#6ee7b7'},
-  {id:'A35',label:'A35',icon:'⚙️',short:'A35',color:'#6ee7b7'},
-  {id:'A4A',label:'A4',icon:'⚙️',short:'A4',color:'#6ee7b7'},
-  {id:'PDB',label:'PDB',icon:'🔌',short:'PDB',color:'#f472b6',sub:true},
-  {id:'IOB',label:'IOB',icon:'🔌',short:'IOB',color:'#f472b6',sub:true},
-  {id:'MDB',label:'MDB',icon:'🔌',short:'MDB',color:'#f472b6',sub:true},
-  {id:'BRK',label:'BRK',icon:'🔌',short:'BRK',color:'#f472b6',sub:true},
-  {id:'BAT',label:'BAT',icon:'🔋',short:'BAT',color:'#f472b6',sub:true},
-  {id:'GALINA',label:'GALINA',icon:'🔢',short:'',color:'#c084fc',sub:true},
-];
-
-function rSearch(){const tot=Object.values(DATA).reduce((s,a)=>s+(a?.length||0),0);
-  const sel=S.selectedChip;const chip=sel?CHIPS.find(c=>c.id===sel):null;
-
-  // Chip grid
-  const mainChips=CHIPS.filter(c=>!c.sub);
-  const subChips=CHIPS.filter(c=>c.sub);
-  const chipH=(list)=>list.map(c=>{
-    const active=sel===c.id;
-    return`<div class="uchip ${active?'uchip-on':''}" style="${active?`background:${c.color}22;border-color:${c.color};color:${c.color}`:''};" onclick="pickChip('${c.id}')"><span class="uchip-i">${c.icon}</span><span class="uchip-l">${c.label}</span></div>`;
-  }).join('');
-
-  // Sample values from data
-  const ds=[];
+function rSearch(){const pv=S.parsedPreview;const ds=[];
   if(DATA.ghosts?.length){const f=getSNField(DATA.ghosts);DATA.ghosts.slice(0,2).forEach(r=>r[f]&&ds.push(r[f]));}
   if(DATA.mobileBases?.length){const f=getSNField(DATA.mobileBases);DATA.mobileBases.slice(0,1).forEach(r=>r[f]&&ds.push(r[f]));}
-
+  if(DATA.arms?.length){const f=getSNField(DATA.arms);DATA.arms.slice(0,1).forEach(r=>r[f]&&ds.push(r[f]));}
+  const tot=Object.values(DATA).reduce((s,a)=>s+(a?.length||0),0);
   app().innerHTML=`${rUBar()}<div class="sch-screen"><div class="sch-bg"></div><div class="sch-c">
-    <div class="logo" style="width:64px;height:64px;border-radius:18px;font-size:32px;margin-bottom:16px">👻</div>
-    <h1 style="font-size:22px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px">Ghost Tracker</h1>
-    <div style="margin:8px 0 16px"><span class="ds"><span class="ds-dot"></span>${tot} records</span></div>
-
-    <!-- CHIP SELECTOR -->
-    <div style="width:100%;max-width:420px;margin-bottom:16px">
-      <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:6px">SELECT UNIT TYPE</div>
-      <div class="chipgrid">${chipH(mainChips)}</div>
-      <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:10px 0 6px">SUB-COMPONENTS</div>
-      <div class="chipgrid">${chipH(subChips)}</div>
-    </div>
-
-    <!-- NUMBER INPUT (when chip selected) -->
-    ${chip?`<div style="width:100%;max-width:420px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:12px;color:${chip.color};font-weight:700">${chip.icon} ${chip.label}</span>
-        <span style="font-size:10px;color:var(--t4)">Enter number ↓</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        ${chip.short?`<div style="padding:12px 16px;border-radius:12px;background:${chip.color}15;border:1px solid ${chip.color}33;color:${chip.color};font-family:var(--fm);font-size:18px;font-weight:700;white-space:nowrap">${chip.short}-</div>`:''}
-        <input class="sch-in" id="chipNum" type="number" inputmode="numeric" pattern="[0-9]*" value="${esc(S.chipNum)}" placeholder="${chip.id==='GALINA'?'240002...':'1, 24, 105...'}" style="font-size:20px;text-align:center;letter-spacing:2px" autocomplete="off">
-      </div>
-    </div>
-    <div class="br"><button class="btn btn1" onclick="doChipSearch()">Search</button><button class="btn btn3" onclick="clearChip()">✕ Clear</button></div>`
-
-    :`<!-- FULL S/N INPUT (no chip selected) -->
-    <div style="width:100%;max-width:420px;margin-bottom:12px">
-      <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:6px">OR ENTER FULL S/N</div>
-      <input class="sch-in" id="si" value="${esc(S.searchInput)}" placeholder="GT418-GST-00001 or scan QR..." autocomplete="off" spellcheck="false">
-    </div>
-    <div class="br"><button class="btn btn1" onclick="doSearch()">Search</button><button class="btn btn2" onclick="demoScan()">📷 Scan QR</button></div>`}
-
-    ${ds.length?`<div class="demo-s"><div class="demo-l">Quick</div><div class="demo-chips">${ds.map(s=>`<button class="demo-c" onclick="setSI('${esc(s)}')">${esc(s)}</button>`).join('')}</div></div>`:''}
-    ${S.loadErrors.length?`<div class="err-b" style="margin-top:16px;max-width:400px">⚠ ${S.loadErrors.map(e=>e.tab).join(', ')}</div>`:''}
+    <div class="logo" style="width:72px;height:72px;border-radius:20px;font-size:36px;margin-bottom:20px">👻</div>
+    <h1 style="font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px">Ghost Tracker</h1>
+    <p style="color:var(--t3);font-size:14px;margin-bottom:32px;text-align:center;max-width:340px;line-height:1.5">Scan QR or type any S/N to trace assembly data</p>
+    <div style="margin-bottom:16px"><span class="ds"><span class="ds-dot"></span>${tot} records</span></div>
+    <div style="width:100%;max-width:400px;margin-bottom:12px"><input class="sch-in" id="si" value="${esc(S.searchInput)}" placeholder="GT418-GST-00001 or GR-1 or 240002..." autocomplete="off" spellcheck="false"></div>
+    ${pv?`<div class="pp"><span style="font-size:11px;color:var(--ac);font-weight:600">${pv.inputType==='qr'?'📷 QR':'⌨️'}</span><span style="color:var(--t2)">→</span><span style="color:var(--t1);font-weight:500">${esc(pv.label)}</span></div>`:''}
+    <div class="br"><button class="btn btn1" onclick="doSearch()">Search</button><button class="btn btn2" onclick="demoScan()">📷 Scan QR</button></div>
+    <div class="fbox"><div class="fbox-t">ACCEPTED FORMATS</div>${[{f:'GT418-GST-00001',d:'Full S/N (QR)',t:'q'},{f:'MB-1, ARM-10',d:'Shorthand',t:'t'},{f:'PDB-4421, IOB-5567',d:'Sub-component',t:'t'},{f:'240002',d:'GALINA number',t:'q'}].map(x=>`<div class="frow"><span class="ftag ftag-${x.t}">${x.t==='q'?'QR':'Type'}</span><code class="fcode">${x.f}</code><span class="fdesc">${x.d}</span></div>`).join('')}</div>
+    ${ds.length?`<div class="demo-s"><div class="demo-l">Try values from your sheet</div><div class="demo-chips">${ds.map(s=>`<button class="demo-c" onclick="setSI('${esc(s)}')">${esc(s)}</button>`).join('')}</div></div>`:''}
+    ${S.loadErrors.length?`<div class="err-b" style="margin-top:24px;max-width:400px">⚠ ${S.loadErrors.map(e=>e.tab).join(', ')}<code>${esc(S.loadErrors[0].error)}</code></div>`:''}
   </div></div>${rToast()}`;
-
-  // Event listeners
-  const si=$('#si');if(si){si.addEventListener('input',e=>{S.searchInput=e.target.value;S.parsedPreview=parseInput(e.target.value);});si.addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});setTimeout(()=>si.focus(),50);}
-  const cn=$('#chipNum');if(cn){cn.addEventListener('input',e=>{S.chipNum=e.target.value;});cn.addEventListener('keydown',e=>{if(e.key==='Enter')doChipSearch();});setTimeout(()=>cn.focus(),100);}
-}
+  const inp=$('#si');inp?.addEventListener('input',e=>{S.searchInput=e.target.value;S.parsedPreview=parseInput(e.target.value);render();});inp?.addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});setTimeout(()=>$('#si')?.focus(),50);}
 
 // ===== RESULT =====
 function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(T.ghost,DATA.ghosts);
@@ -658,24 +424,12 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
 }
 
 function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;const sf=getSNField(DATA[lk]||items);
-  const issues=countSectionIssues(lk,items);
-  const issueBadge=issues?`<span class="comp-badge">${issues} ⚠</span>`:'';
-  let innerH='';
-  if(isO){
-    const ecnH=rECNSubSection(sk,items,lk);
-    const hasECN=ecnH.length>0;
-    innerH=items.map((item,idx)=>`<div class="fg" style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:${idx===items.length-1&&!hasECN?'0 0 12px 12px':'0'}">${items.length>1?`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`:''}${Object.entries(item).map(([k,v])=>rFR(sk,item[sf]||'',k,v,lk)).join('')}</div>`).join('');
-    if(hasECN)innerH+=`<div style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:0 0 12px 12px">${ecnH}</div>`;
-  }
-  return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'12px 12px 0 0':'12px'};border:1px solid ${c.color}${isMS?'55':'22'};border-left:${isMS?'4px solid '+c.color:'1px solid '+c.color+'22'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${issueBadge}${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${innerH}</div>`;}
+  return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'12px 12px 0 0':'12px'};border:1px solid ${c.color}${isMS?'55':'22'};border-left:${isMS?'4px solid '+c.color:'1px solid '+c.color+'22'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${isO?items.map((item,idx)=>`<div class="fg" style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:${idx===items.length-1?'0 0 12px 12px':'0'}">${items.length>1?`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`:''}${Object.entries(item).map(([k,v])=>rFR(sk,item[sf]||'',k,v,lk)).join('')}</div>`).join(''):''}</div>`;}
 
 function rFR(sec,sn,field,value,lk){if(shouldSkipField(field))return'';const label=FIELD_LABELS[field]||field;const val=getV(sec,field);const isSN=field===getSNField(DATA[lk]||[])||/S\/N$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=S.result?.matchedSN===value||(S.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
-  const compIssue=checkFieldComp(lk,field,value);
   const eid=regEdit(sec,sn,field,value||'');
   let vH;if(isC){const p=value==='✓'||/^(TRUE|true|1|OK)$/.test(value);vH=`<span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>`;}else{vH=`<span class="fv ${isSN?'fvsn':''}">${esc(value||'—')}</span>`;}
-  const compCls=compIssue?'fr-warn':'';
-  const compTag=compIssue?`<span class="comp-tag">⚠ ${esc(compIssue)}</span>`:'';
-  return`<div class="fr ${isH?'frH':''} ${compCls}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}${compTag}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
+  return`<div class="fr ${isH?'frH':''}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
 
 // ===== EDIT =====
 function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_LABELS[E.field]||E.field;const c=SC[E.section];const val=getV(E.section,E.field);const isDr=val?.type==='dropdown';const isC=val?.type==='checkbox';const isD=val?.type==='date';const ch=ev!==E.value&&ev!=='';
@@ -693,17 +447,7 @@ function rToast(){if(!S.toast)return'';return`<div class="toast toast-${S.toast.
 // ===== ACTIONS =====
 function doSearch(){if(!S.searchInput.trim())return;const r=traceToGhost(S.searchInput);if(r){S.result=r;S.tree=getGhostTree(r.ghost);const ek=new Set(['ghost']);const mt=r.parsed?.type||'';const ts={ghost:['ghost'],mobileBase:['mobileBase'],pillar:['pillar'],headBody:['headBody'],arm:['arm'],gripper:['gripper'],deployKit:['deployKit'],lMotor:['mbMotors','plMotors'],a12Motor:['armA12'],a35Motor:['armA35'],a4Motor:['armA4'],pdb:['mobileBase'],iob:['headBody','gripper'],mdb:['mbMotors','plMotors','armA12','armA35','armA4'],brk:['pillar'],bat:['arm'],galina:['headBody']};(ts[mt]||[]).forEach(s=>ek.add(s));S.expanded=ek;S.screen='result';}else{showToast(`No match for "${S.searchInput}"`,'error');}render();}
 function demoScan(){S.scanning=true;render();let d='GT418-GST-00001';if(DATA.ghosts?.length){const f=getSNField(DATA.ghosts);d=DATA.ghosts[0][f]||d;}setTimeout(()=>{S.searchInput=d;S.scanning=false;setTimeout(()=>doSearch(),300);},1800);}
-function setSI(v){S.searchInput=v;S.selectedChip=null;S.chipNum='';S.parsedPreview=parseInput(v);render();}
-function pickChip(id){S.selectedChip=S.selectedChip===id?null:id;S.chipNum='';render();}
-function clearChip(){S.selectedChip=null;S.chipNum='';render();}
-function doChipSearch(){
-  if(!S.selectedChip||!S.chipNum.trim())return;
-  const chip=CHIPS.find(c=>c.id===S.selectedChip);
-  if(!chip)return;
-  // GALINA: raw number. Others: prefix-number
-  S.searchInput=chip.id==='GALINA'?S.chipNum.trim():`${chip.short}-${S.chipNum.trim()}`;
-  doSearch();
-}
+function setSI(v){S.searchInput=v;S.parsedPreview=parseInput(v);render();}
 function togSec(k){S.expanded.has(k)?S.expanded.delete(k):S.expanded.add(k);render();}
 function toggleDebug(){S.showDebug=!S.showDebug;render();}
 function startEdit(sec,sn,field,value){S.editing={section:sec,sn,field,value};S.editValue=value||'';S.screen='edit';render();}
@@ -766,255 +510,7 @@ async function saveEdit(){
     showToast(`Save failed: ${err.message}`,'error');
   }
 }
-function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else if(S.screen==='ecnSettings'||S.screen==='compSettings'){S.screen='search';}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;S.selectedChip=null;S.chipNum='';}render();}
-
-// ===== ECN SETTINGS PAGE =====
-function openECNSettings(){S.screen='ecnSettings';S.ecnExpanded=new Set();render();}
-
-function rECNSettings(){
-  // Map section keys to data keys
-  const sections=[
-    {sk:'ghost',dk:'ghosts',label:'Ghost',icon:'👻',color:'#5b6eea'},
-    {sk:'mobileBase',dk:'mobileBases',label:'Mobile Base',icon:'🛞',color:'#34d399'},
-    {sk:'pillar',dk:'pillars',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
-    {sk:'headBody',dk:'headBodies',label:'Head & Body',icon:'🧠',color:'#f87171'},
-    {sk:'arm',dk:'arms',label:'Arm',icon:'🦾',color:'#fbbf24'},
-    {sk:'gripper',dk:'grippers',label:'Gripper',icon:'🤏',color:'#38bdf8'},
-    {sk:'deployKit',dk:'deployKits',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
-    {sk:'lMotors',dk:'lMotors',label:'L-Motors',icon:'⚙️',color:'#6ee7b7'},
-    {sk:'a12Motors',dk:'a12Motors',label:'A12 Motors',icon:'⚙️',color:'#6ee7b7'},
-    {sk:'a35Motors',dk:'a35Motors',label:'A35 Motors',icon:'⚙️',color:'#6ee7b7'},
-    {sk:'a4Motors',dk:'a4Motors',label:'A4 Motors',icon:'⚙️',color:'#6ee7b7'},
-  ];
-  let h='';
-  sections.forEach(sec=>{
-    const ecnFields=getECNFields(sec.dk);
-    if(!ecnFields.length)return;
-    const isOpen=S.ecnExpanded.has(sec.dk);
-    const visCount=ecnFields.filter(f=>isECNVisible(sec.dk,f)).length;
-    h+=`<div class="ecns-sec">
-      <div class="ecns-hdr" onclick="togECNSec('${sec.dk}')" style="border-left:3px solid ${sec.color}">
-        <span>${sec.icon}</span>
-        <span style="color:${sec.color};font-weight:600;font-size:13px">${sec.label}</span>
-        <span style="margin-left:auto;font-size:11px;color:var(--t4)">${visCount}/${ecnFields.length}</span>
-        <span class="schv ${isOpen?'schvO':''}">▼</span>
-      </div>`;
-    if(isOpen){
-      h+=`<div class="ecns-body">`;
-      ecnFields.forEach(f=>{
-        const vis=isECNVisible(sec.dk,f);
-        const eid=regEdit(sec.dk,'',f,vis?'on':'off');
-        h+=`<div class="ecns-row" onclick="togECNField('${escA(sec.dk)}','${escA(f)}')">
-          <div class="ecns-tog ${vis?'ecns-on':'ecns-off'}">${vis?'✓':''}</div>
-          <span class="ecns-fname">${esc(f)}</span>
-        </div>`;
-      });
-      h+=`</div>`;
-    }
-    h+=`</div>`;
-  });
-
-  const totalVis=Object.values(ECN_SETTINGS).reduce((s,set)=>s+set.size,0);
-  app().innerHTML=`${rUBar()}<div style="min-height:100vh">
-    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">⚙️ ECN Settings</div></div>
-    <div style="padding:16px">
-      <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:var(--inp);border:1px solid var(--bd)">
-        <div style="font-size:12px;color:var(--t3);line-height:1.6">Toggle which ECN columns are visible in result cards. Visible ECNs appear in a collapsible sub-section under each assembly.</div>
-        <div style="margin-top:8px;font-size:11px;color:var(--ac);font-weight:600">${totalVis} ECN field${totalVis!==1?'s':''} visible</div>
-      </div>
-      ${h}
-      <button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveECNAndBack()">Save & Back</button>
-    </div>
-  </div>${rToast()}`;
-}
-
-function togECNSec(dk){S.ecnExpanded.has(dk)?S.ecnExpanded.delete(dk):S.ecnExpanded.add(dk);render();}
-
-function togECNField(dk,field){
-  if(!ECN_SETTINGS[dk])ECN_SETTINGS[dk]=new Set();
-  if(ECN_SETTINGS[dk].has(field))ECN_SETTINGS[dk].delete(field);
-  else ECN_SETTINGS[dk].add(field);
-  render();
-}
-
-async function saveECNAndBack(){await saveECNSettings();S.screen='search';render();}
-
-// ===== ECN SUB-SECTION IN RESULT CARDS =====
-function rECNSubSection(sk,items,lk){
-  const dk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
-  const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
-  if(!ecnFields.length)return'';
-  const ecnKey='ecn_'+sk;
-  const isOpen=S.expanded.has(ecnKey);
-  const sf=getSNField(DATA[lk]||items);
-  let h=`<div class="ecn-sub" onclick="togSec('${ecnKey}')">
-    <span class="ecn-sub-icon">🔧</span>
-    <span class="ecn-sub-label">ECN (${ecnFields.length})</span>
-    <span class="schv ${isOpen?'schvO':''}">▼</span>
-  </div>`;
-  if(isOpen){
-    h+=`<div class="ecn-sub-body">`;
-    items.forEach(item=>{
-      ecnFields.forEach(f=>{
-        const val=item[f]||'';
-        const eid=regEdit(sk,item[sf]||'',f,val);
-        const isC=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
-        const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
-        let vH;
-        if(isC)vH='<span class="ckd ckP">✓</span>';
-        else if(isF)vH='<span class="ckd ckF">✗</span>';
-        else vH=`<span class="fv">${esc(val||'—')}</span>`;
-        h+=`<div class="fr" onclick="doEdit(${eid})"><div class="fl"><span class="flbl ecn-flbl">${esc(f)}</span></div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;
-      });
-    });
-    h+=`</div>`;
-  }
-  return h;
-}
-
-// ===== COMPLIANCE SETTINGS PAGE =====
-function openCompSettings(){S.screen='compSettings';S.ecnExpanded=new Set();render();}
-
-function rCompSettings(){
-  const fwFields=detectFWFields();
-  const chkFields=detectCheckboxFields();
-  const allFields=detectFieldsByKey();
-
-  let h='';
-
-  // Section 1: Latest FW versions
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_fw')">
-    <span>🔧</span><span style="color:var(--blu);font-weight:600">Latest FW Versions</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.keys(COMP_RULES.latestFW||{}).length} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_fw')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_fw')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Set the "latest" version for each FW field. Units not matching will be flagged.</div>`;
-    fwFields.forEach(f=>{
-      const cur=COMP_RULES.latestFW?.[f]||'';
-      h+=`<div class="comp-row">
-        <span class="comp-fname">${esc(f)}</span>
-        <input class="comp-input" id="fw_${escA(f)}" value="${escA(cur)}" placeholder="not set" onchange="setFWRule('${escA(f)}',this.value)">
-      </div>`;
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
-
-  // Section 2: Required Checkboxes
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_chk')">
-    <span>☑️</span><span style="color:var(--grn);font-weight:600">Required Checkmarks</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_chk')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_chk')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select checkbox fields that must be ✓ for compliance.</div>`;
-    Object.entries(chkFields).forEach(([dk,fields])=>{
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      fields.forEach(f=>{
-        if(f==='_rowIdx'||shouldSkipField(f))return;
-        const on=(COMP_RULES.requiredChecks?.[dk]||[]).includes(f);
-        h+=`<div class="ecns-row" onclick="togCompCheck('${escA(dk)}','${escA(f)}')">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
-
-  // Section 3: Required Fields (must not be empty)
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_req')">
-    <span>📝</span><span style="color:var(--yel);font-weight:600">Required Fields</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_req')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_req')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select fields that must not be empty.</div>`;
-    Object.entries(allFields).forEach(([dk,fields])=>{
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      fields.forEach(f=>{
-        const on=(COMP_RULES.requiredFields?.[dk]||[]).includes(f);
-        h+=`<div class="ecns-row" onclick="togCompReq('${escA(dk)}','${escA(f)}')">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
-
-  // Section 4: Required ECN
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_ecn')">
-    <span>🔧</span><span style="color:var(--pur);font-weight:600">Required ECN</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_ecn')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_ecn')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select ECN columns that must be checked/applied.</div>`;
-    Object.entries(DATA).forEach(([dk,rows])=>{
-      const ecnFs=getECNFields(dk);if(!ecnFs.length)return;
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      ecnFs.forEach(f=>{
-        const on=(COMP_RULES.requiredECN?.[dk]||[]).includes(f);
-        h+=`<div class="ecns-row" onclick="togCompECN('${escA(dk)}','${escA(f)}')">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
-
-  app().innerHTML=`${rUBar()}<div style="min-height:100vh">
-    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">📋 Compliance Rules</div></div>
-    <div style="padding:16px">
-      <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:var(--inp);border:1px solid var(--bd)">
-        <div style="font-size:12px;color:var(--t3);line-height:1.6">Set rules for what "up to date" means. Non-compliant fields show <span style="color:var(--red)">⚠</span> warnings in result cards.</div>
-      </div>
-      ${h}
-      <button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveCompAndBack()">Save & Back</button>
-    </div>
-  </div>${rToast()}`;
-}
-
-// Compliance settings actions
-function setFWRule(field,val){
-  if(!COMP_RULES.latestFW)COMP_RULES.latestFW={};
-  if(val.trim())COMP_RULES.latestFW[field]=val.trim();
-  else delete COMP_RULES.latestFW[field];
-}
-function togCompCheck(dk,f){
-  if(!COMP_RULES.requiredChecks)COMP_RULES.requiredChecks={};
-  if(!COMP_RULES.requiredChecks[dk])COMP_RULES.requiredChecks[dk]=[];
-  const idx=COMP_RULES.requiredChecks[dk].indexOf(f);
-  if(idx>=0)COMP_RULES.requiredChecks[dk].splice(idx,1);
-  else COMP_RULES.requiredChecks[dk].push(f);
-  render();
-}
-function togCompReq(dk,f){
-  if(!COMP_RULES.requiredFields)COMP_RULES.requiredFields={};
-  if(!COMP_RULES.requiredFields[dk])COMP_RULES.requiredFields[dk]=[];
-  const idx=COMP_RULES.requiredFields[dk].indexOf(f);
-  if(idx>=0)COMP_RULES.requiredFields[dk].splice(idx,1);
-  else COMP_RULES.requiredFields[dk].push(f);
-  render();
-}
-function togCompECN(dk,f){
-  if(!COMP_RULES.requiredECN)COMP_RULES.requiredECN={};
-  if(!COMP_RULES.requiredECN[dk])COMP_RULES.requiredECN[dk]=[];
-  const idx=COMP_RULES.requiredECN[dk].indexOf(f);
-  if(idx>=0)COMP_RULES.requiredECN[dk].splice(idx,1);
-  else COMP_RULES.requiredECN[dk].push(f);
-  render();
-}
-async function saveCompAndBack(){await saveCompRules();S.screen='search';render();}
+function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;}render();}
 async function doRefresh(){S.refreshing=true;render();S.loadErrors=await loadAllData((l,t,c)=>{LP={l,t,c};});S.refreshing=false;showToast('Data refreshed');render();}
 function showToast(msg,type='success'){S.toast={msg,type};render();setTimeout(()=>{S.toast=null;render();},3000);}
 
@@ -1023,11 +519,7 @@ window.onload=function(){render();
   function initGA(){if(typeof google==='undefined'||!google.accounts){setTimeout(initGA,200);return;}
     tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:CONFIG.SCOPES,callback:r=>{if(r.access_token){accessToken=r.access_token;localStorage.setItem('gat',accessToken);fetchUser();}}});
     const su=localStorage.getItem('gau'),st=localStorage.getItem('gat');
-    if(su&&st){currentUser=JSON.parse(su);accessToken=st;
-      // Re-apply config to ensure isAdmin is current
-      const cfg=CONFIG.APPROVED_USERS[currentUser.email];
-      if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
-      else doLogout();}
+    if(su&&st){currentUser=JSON.parse(su);accessToken=st;if(CONFIG.APPROVED_USERS[currentUser.email])valToken();else doLogout();}
   }initGA();};
 </script>
 </body>
