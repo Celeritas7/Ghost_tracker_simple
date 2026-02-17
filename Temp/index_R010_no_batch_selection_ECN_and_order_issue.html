@@ -1362,24 +1362,23 @@ function getBulkFields(dk){
   return fields;
 }
 
-function pickBulkField(dk,field){S.bulkField=field;S.bulkValue='';render();}
-
-function bulkGoStep(n){
-  if(n===1){S.bulkDK=null;S.bulkSelected=new Set();S.bulkField=null;S.bulkValue='';}
-  if(n===2){S.bulkField=null;S.bulkValue='';}
-  S.bulkStep=n;render();
+function pickBulkField(dk,field){S.bulkDK=dk;S.bulkField=field;S.bulkStep=3;S.bulkValue='';
+  // Start with NO units selected — user adds via number input
+  S.bulkSelected=new Set();
+  S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';
+  render();
 }
 
 function rBulkEdit(){
   const step=S.bulkStep||1;
   let h='';
 
-  // Progress steps — new order
-  const steps=['Assembly','Units','Field & Value'];
+  // Progress steps
+  const steps=['Assembly','Field','Units & Value'];
   h+=`<div style="display:flex;gap:4px;margin-bottom:20px">`;
   steps.forEach((s,i)=>{
     const n=i+1;const active=step===n;const done=step>n;
-    h+=`<div style="flex:1;text-align:center;cursor:${done?'pointer':'default'}" ${done?`onclick="bulkGoStep(${n})"`:''}><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px"><div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${active?'background:var(--ac);color:#fff':done?'background:var(--grn);color:#fff':'background:var(--bd);color:var(--t4)'}">${done?'✓':n}</div></div><div style="font-size:10px;font-weight:600;color:${active?'var(--ac)':done?'var(--grn)':'var(--t5)'}">${s}</div><div style="height:3px;border-radius:2px;margin-top:4px;background:${done?'var(--grn)':active?'var(--ac)':'var(--bd)'};transition:background .3s"></div></div>`;
+    h+=`<div style="flex:1;text-align:center;cursor:${done?'pointer':'default'}" ${done?`onclick="S.bulkStep=${n};S.bulkField=${n<2?'null':S.bulkField?`'${S.bulkField}'`:'null'};render()"`:''}><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px"><div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${active?'background:var(--ac);color:#fff':done?'background:var(--grn);color:#fff':'background:var(--bd);color:var(--t4)'}">${done?'✓':n}</div></div><div style="font-size:10px;font-weight:600;color:${active?'var(--ac)':done?'var(--grn)':'var(--t5)'}">${s}</div><div style="height:3px;border-radius:2px;margin-top:4px;background:${done?'var(--grn)':active?'var(--ac)':'var(--bd)'};transition:background .3s"></div></div>`;
   });
   h+=`</div>`;
 
@@ -1389,7 +1388,7 @@ function rBulkEdit(){
     BULK_TYPES.forEach(bt=>{
       const rows=DATA[bt.dk]||[];if(!rows.length)return;
       const fields=getBulkFields(bt.dk);
-      h+=`<div class="bulk-field" onclick="S.bulkDK='${bt.dk}';S.bulkStep=2;S.bulkSelected=new Set();S.bulkInputMode='individual';S.bulkNumInput='';render()" style="border-left:3px solid ${bt.color}">
+      h+=`<div class="bulk-field" onclick="S.bulkDK='${bt.dk}';S.bulkStep=2;render()" style="border-left:3px solid ${bt.color}">
         <span style="font-size:18px">${bt.icon}</span>
         <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</div><div style="font-size:10px;color:var(--t4)">${rows.length} units · ${fields.length} fields</div></div>
         <span style="color:var(--t5)">›</span>
@@ -1398,38 +1397,122 @@ function rBulkEdit(){
   }
 
   else if(step===2){
-    // Step 2: Select units via chip input
+    // Step 2: Pick field
     const bt=BULK_TYPES.find(t=>t.dk===S.bulkDK);
     if(!bt){S.bulkStep=1;render();return;}
+    const fields=getBulkFields(S.bulkDK);
+    const ecnFields=fields.filter(f=>f.isECN);
+    const regFields=fields.filter(f=>!f.isECN);
+
+    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:20px">${bt.icon}</span>
+      <span style="font-size:14px;font-weight:600;color:${bt.color}">${bt.label}</span>
+      <span style="font-size:11px;color:var(--t4)">${(DATA[bt.dk]||[]).length} units</span>
+    </div>`;
+
+    if(regFields.length){
+      h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:8px 0 6px">REGULAR FIELDS</div>`;
+      regFields.forEach(f=>{
+        const typeIcon=f.type==='checkbox'?'☑️':f.type==='date'?'📅':f.type==='dropdown'?'▾':'📝';
+        const needs=(DATA[S.bulkDK]||[]).filter(item=>checkFieldComp(S.bulkDK,f.name,item[f.name])).length;
+        const cid=regComp('bulk',S.bulkDK,f.name);
+        h+=`<div class="bulk-field" onclick="doComp(${cid})">
+          <span class="bulk-field-type">${typeIcon}</span>
+          <span class="bulk-field-name">${esc(FIELD_LABELS[f.name]||f.name)}</span>
+          ${needs?`<span class="comp-tag">${needs} ⚠</span>`:''}
+        </div>`;
+      });
+    }
+
+    if(ecnFields.length){
+      h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">ECN FIELDS</div>`;
+      ecnFields.forEach(f=>{
+        const typeIcon=f.type==='checkbox'?'☐':f.type==='date'?'📅':'📝';
+        const needs=(DATA[S.bulkDK]||[]).filter(item=>checkFieldComp(S.bulkDK,f.name,item[f.name])).length;
+        const cid=regComp('bulk',S.bulkDK,f.name);
+        h+=`<div class="bulk-field" onclick="doComp(${cid})">
+          <span class="bulk-field-type">${typeIcon}</span>
+          <span class="bulk-field-name">${esc(f.name)}</span>
+          ${needs?`<span class="comp-tag">${needs} ⚠</span>`:''}
+        </div>`;
+      });
+    }
+  }
+
+  else if(step===3){
+    // Step 3: Select units + set value
+    const bt=BULK_TYPES.find(t=>t.dk===S.bulkDK);
+    if(!bt||!S.bulkField){S.bulkStep=1;render();return;}
     const rows=DATA[S.bulkDK]||[];
     const sf=getSNField(rows);
+    const sk=bt.sk;
+    const fType=isECNField(S.bulkField)?guessECNType(sk,S.bulkField):getV(sk,S.bulkField);
+    const isChk=fType?.type==='checkbox';
+    const isDt=fType?.type==='date';
+    const isDr=fType?.type==='dropdown';
+    const bv=S.bulkValue;
+
+    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:16px">${bt.icon}</span>
+      <span style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</span>
+      <span style="font-size:11px;color:var(--t3)">›</span>
+      <span style="font-size:12px;color:var(--t2);font-family:var(--fm)">${esc(FIELD_LABELS[S.bulkField]||S.bulkField)}</span>
+    </div>`;
+
+    // Value selector
+    h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:12px 0 8px">SET NEW VALUE</div>`;
+    if(isChk){
+      h+=`<div style="display:flex;gap:10px;margin-bottom:12px">
+        ${['TRUE','FALSE'].map(v=>{const sel=bv===v;const p=v==='TRUE';const col=p?'var(--grn)':'var(--red)';
+        return`<div class="bulk-val ${sel?'bulk-val-on':''}" style="${sel?`border-color:${col};background:${col}08`:''}" onclick="S.bulkValue='${v}';render()">
+          <span class="ckd ${p?'ckP':'ckF'}" style="width:28px;height:28px;font-size:16px">${p?'✓':'✗'}</span>
+          <span style="font-size:12px;font-weight:600;color:${sel?col:'var(--t3)'}">${p?'Done':'Not Done'}</span>
+        </div>`;}).join('')}
+      </div>`;
+    } else if(isDt){
+      const today=new Date();const todayStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+      const yest=new Date();yest.setDate(yest.getDate()-1);const yestStr=`${yest.getFullYear()}/${String(yest.getMonth()+1).padStart(2,'0')}/${String(yest.getDate()).padStart(2,'0')}`;
+      h+=`<div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="bulk-val ${bv===todayStr?'bulk-val-on':''}" onclick="S.bulkValue='${todayStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===todayStr?'var(--blu)':'var(--t3)'}">Today</span><span style="font-size:9px;color:var(--t4)">${todayStr}</span></div>
+        <div class="bulk-val ${bv===yestStr?'bulk-val-on':''}" onclick="S.bulkValue='${yestStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===yestStr?'var(--blu)':'var(--t3)'}">Yesterday</span><span style="font-size:9px;color:var(--t4)">${yestStr}</span></div>
+      </div>
+      <input type="date" class="edin" id="bulkDate" value="${(bv||'').replace(/\//g,'-')}" style="margin-bottom:8px">`;
+    } else if(isDr&&fType?.options){
+      h+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:200px;overflow-y:auto">${fType.options.map(o=>{const sel=bv===o;return`<div class="do ${sel?'doS':''}" onclick="S.bulkValue='${escA(o)}';render()"><div class="doi"><div class="dor ${sel?'dorS':''}">${sel?'<div class="dorD"></div>':''}</div><span class="dot ${sel?'dotS':''}">${esc(o)}</span></div></div>`;}).join('')}</div>`;
+    } else {
+      h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
+    }
+
+    // Unit input — chip-based
     const selCount=S.bulkSelected.size;
+    // Extract number suffix from S/N for display
     function snNum(sn){const m=(sn||'').match(/(\d+)$/);return m?parseInt(m[1]):null;}
+    // Get short prefix from first S/N
     const firstSN=rows.length?rows[0][sf]:'';
     const snPrefix=firstSN.replace(/\d+$/,'');
 
-    h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <span style="font-size:24px">${bt.icon}</span>
-      <div><div style="font-size:16px;font-weight:700;color:${bt.color}">${bt.label}</div>
-        <div style="font-size:11px;color:var(--t4)">${rows.length} units available · prefix: <span style="color:${bt.color};font-family:var(--fm)">${esc(snPrefix)}</span></div></div>
+    h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:12px 0 8px">
+      ADD UNITS <span style="color:${bt.color}">${esc(snPrefix)}</span>
     </div>`;
 
     // Input mode tabs
     h+=`<div style="display:flex;gap:4px;margin-bottom:10px">
       <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='individual'?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="S.bulkInputMode='individual';render()">Type Numbers</button>
       <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='range'?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="S.bulkInputMode='range';render()">Range</button>
+      <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='issues'?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="bulkSelectIssues()">⚠ Issues Only</button>
     </div>`;
 
     if(S.bulkInputMode==='individual'){
+      // Chip display + input
       h+=`<div id="bulkChipBox" class="bulk-chip-box" onclick="$('#bulkNumIn')?.focus()">`;
       S.bulkSelected.forEach(sn=>{
         const n=snNum(sn);
         const uid=regComp('togunit',S.bulkDK,sn);
         h+=`<div class="bulk-chip" style="background:${bt.color}15;border-color:${bt.color}33;color:${bt.color}">${n!==null?n:esc(sn)}<span class="bulk-chip-x" onclick="event.stopPropagation();doComp(${uid})">×</span></div>`;
       });
-      h+=`<input type="text" inputmode="numeric" id="bulkNumIn" class="bulk-num-input" value="${escA(S.bulkNumInput)}" placeholder="${selCount?'Add more...':'Type numbers: 1, 2, 3...'}" autocomplete="off"></div>`;
+      h+=`<input type="text" inputmode="numeric" id="bulkNumIn" class="bulk-num-input" value="${escA(S.bulkNumInput)}" placeholder="${selCount?'':'Type numbers: 1, 2, 3...'}" autocomplete="off"></div>`;
       h+=`<div style="font-size:10px;color:var(--t5);margin-top:4px">Comma/Enter to add · Backspace to remove last</div>`;
-    } else {
+    } else if(S.bulkInputMode==='range'){
       h+=`<div style="display:flex;gap:8px;align-items:flex-end">
         <div style="flex:1"><div style="font-size:10px;color:var(--t5);margin-bottom:4px">From</div>
           <div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:${bt.color};font-weight:700;font-family:var(--fm)">${esc(snPrefix)}</span>
@@ -1440,113 +1523,21 @@ function rBulkEdit(){
           <input type="number" inputmode="numeric" id="bulkRangeE" class="etin" value="${escA(S.bulkRangeEnd)}" placeholder="10" style="font-size:14px;padding:10px;text-align:center"></div></div>
         <button class="savb savA" style="padding:10px 16px;margin:0;font-size:13px;white-space:nowrap" onclick="bulkAddRange()">+ Add</button>
       </div>`;
+    } else {
+      // Issues mode already selected — just show count
+      h+=`<div style="padding:12px 16px;border-radius:10px;background:rgba(248,113,113,.04);border:1px solid rgba(248,113,113,.12);font-size:12px;color:var(--red)">Selected ${selCount} unit${selCount!==1?'s':''} with compliance issues for this field</div>`;
     }
 
-    // Selected summary + next button
+    // Selected summary
     if(selCount>0){
       h+=`<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(91,110,234,.04);border:1px solid rgba(91,110,234,.1);display:flex;justify-content:space-between;align-items:center">
         <div><span style="font-size:14px;font-weight:700;color:var(--ac)">${selCount}</span><span style="font-size:12px;color:var(--t3);margin-left:6px">unit${selCount!==1?'s':''} selected</span></div>
         <button class="bulk-change" onclick="S.bulkSelected=new Set();render()">Clear all</button>
       </div>`;
-      h+=`<button class="savb savA" style="width:100%;margin-top:16px" onclick="S.bulkStep=3;S.bulkField=null;S.bulkValue='';render()">Next: Pick field →</button>`;
-    } else {
-      h+=`<div style="margin-top:16px;padding:14px;border-radius:10px;background:var(--inp);border:1px solid var(--bd);text-align:center;font-size:12px;color:var(--t4)">Add unit numbers above to continue</div>`;
     }
-  }
 
-  else if(step===3){
-    // Step 3: Pick field + set value
-    const bt=BULK_TYPES.find(t=>t.dk===S.bulkDK);
-    if(!bt){S.bulkStep=1;render();return;}
-    const rows=DATA[S.bulkDK]||[];
-    const sf=getSNField(rows);
-    const selCount=S.bulkSelected.size;
-
-    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-      <span style="font-size:16px">${bt.icon}</span>
-      <span style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</span>
-      <span style="font-size:11px;color:var(--t3)">·</span>
-      <span style="font-size:12px;color:var(--ac);font-weight:600">${selCount} unit${selCount!==1?'s':''}</span>
-    </div>`;
-
-    if(!S.bulkField){
-      // Sub-step 3a: Pick field
-      const fields=getBulkFields(S.bulkDK);
-      const ecnFields=fields.filter(f=>f.isECN);
-      const regFields=fields.filter(f=>!f.isECN);
-
-      // Count issues only for selected units
-      const selRows=rows.filter(r=>S.bulkSelected.has(r[sf]));
-      function issuesFor(fname){return selRows.filter(item=>checkFieldComp(S.bulkDK,fname,item[fname])).length;}
-
-      if(regFields.length){
-        h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">REGULAR FIELDS</div>`;
-        regFields.forEach(f=>{
-          const typeIcon=f.type==='checkbox'?'☑️':f.type==='date'?'📅':f.type==='dropdown'?'▾':'📝';
-          const needs=issuesFor(f.name);
-          const cid=regComp('bulk',S.bulkDK,f.name);
-          h+=`<div class="bulk-field" onclick="doComp(${cid})">
-            <span class="bulk-field-type">${typeIcon}</span>
-            <span class="bulk-field-name">${esc(FIELD_LABELS[f.name]||f.name)}</span>
-            ${needs?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
-          </div>`;
-        });
-      }
-
-      if(ecnFields.length){
-        h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">ECN FIELDS</div>`;
-        ecnFields.forEach(f=>{
-          const typeIcon=f.type==='checkbox'?'☐':f.type==='date'?'📅':'📝';
-          const needs=issuesFor(f.name);
-          const cid=regComp('bulk',S.bulkDK,f.name);
-          h+=`<div class="bulk-field" onclick="doComp(${cid})">
-            <span class="bulk-field-type">${typeIcon}</span>
-            <span class="bulk-field-name">${esc(f.name)}</span>
-            ${needs?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
-          </div>`;
-        });
-      }
-    } else {
-      // Sub-step 3b: Set value for selected field
-      const sk=bt.sk;
-      const fType=isECNField(S.bulkField)?guessECNType(sk,S.bulkField):getV(sk,S.bulkField);
-      const isChk=fType?.type==='checkbox';
-      const isDt=fType?.type==='date';
-      const isDr=fType?.type==='dropdown';
-      const bv=S.bulkValue;
-
-      h+=`<div style="display:flex;align-items:center;gap:6px;margin:8px 0 12px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--t2);font-family:var(--fm)">${esc(FIELD_LABELS[S.bulkField]||S.bulkField)}</span>
-        <button class="bulk-change" onclick="S.bulkField=null;S.bulkValue='';render()">Change field</button>
-      </div>`;
-
-      // Value selector
-      h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:8px 0 8px">SET NEW VALUE</div>`;
-      if(isChk){
-        h+=`<div style="display:flex;gap:10px;margin-bottom:12px">
-          ${['TRUE','FALSE'].map(v=>{const sel=bv===v;const p=v==='TRUE';const col=p?'var(--grn)':'var(--red)';
-          return`<div class="bulk-val ${sel?'bulk-val-on':''}" style="${sel?`border-color:${col};background:${col}08`:''}" onclick="S.bulkValue='${v}';render()">
-            <span class="ckd ${p?'ckP':'ckF'}" style="width:28px;height:28px;font-size:16px">${p?'✓':'✗'}</span>
-            <span style="font-size:12px;font-weight:600;color:${sel?col:'var(--t3)'}">${p?'Done':'Not Done'}</span>
-          </div>`;}).join('')}
-        </div>`;
-      } else if(isDt){
-        const today=new Date();const todayStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
-        const yest=new Date();yest.setDate(yest.getDate()-1);const yestStr=`${yest.getFullYear()}/${String(yest.getMonth()+1).padStart(2,'0')}/${String(yest.getDate()).padStart(2,'0')}`;
-        h+=`<div style="display:flex;gap:8px;margin-bottom:8px">
-          <div class="bulk-val ${bv===todayStr?'bulk-val-on':''}" onclick="S.bulkValue='${todayStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===todayStr?'var(--blu)':'var(--t3)'}">Today</span><span style="font-size:9px;color:var(--t4)">${todayStr}</span></div>
-          <div class="bulk-val ${bv===yestStr?'bulk-val-on':''}" onclick="S.bulkValue='${yestStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===yestStr?'var(--blu)':'var(--t3)'}">Yesterday</span><span style="font-size:9px;color:var(--t4)">${yestStr}</span></div>
-        </div>
-        <input type="date" class="edin" id="bulkDate" value="${(bv||'').replace(/\//g,'-')}" style="margin-bottom:8px">`;
-      } else if(isDr&&fType?.options){
-        h+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:200px;overflow-y:auto">${fType.options.map(o=>{const sel=bv===o;return`<div class="do ${sel?'doS':''}" onclick="S.bulkValue='${escA(o)}';render()"><div class="doi"><div class="dor ${sel?'dorS':''}">${sel?'<div class="dorD"></div>':''}</div><span class="dot ${sel?'dotS':''}">${esc(o)}</span></div></div>`;}).join('')}</div>`;
-      } else {
-        h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
-      }
-
-      const hasChange=bv!=='';
-      h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:12px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select a value above'}</button>`;
-    }
+    const hasChange=bv!==''&&selCount>0;
+    h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:16px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select value & add units'}</button>`;
   }
 
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
@@ -1556,7 +1547,7 @@ function rBulkEdit(){
 
   // Event listeners
   const bd=$('#bulkDate');if(bd)bd.addEventListener('change',e=>{S.bulkValue=e.target.value.replace(/-/g,'/');});
-  const btt=$('#bulkText');if(btt)btt.addEventListener('input',e=>{S.bulkValue=e.target.value;});
+  const bt=$('#bulkText');if(bt)bt.addEventListener('input',e=>{S.bulkValue=e.target.value;});
   const bni=$('#bulkNumIn');if(bni){
     bni.addEventListener('input',e=>{S.bulkNumInput=e.target.value.replace(/[^0-9,\s]/g,'');});
     bni.addEventListener('keydown',bulkNumKeydown);
@@ -1634,9 +1625,8 @@ function selectAllBulk(){
 }
 
 function bulkBack(){
-  if(S.bulkStep===3&&S.bulkField){S.bulkField=null;S.bulkValue='';render();}
-  else if(S.bulkStep===3){S.bulkStep=2;render();}
-  else if(S.bulkStep===2){S.bulkStep=1;S.bulkDK=null;S.bulkSelected=new Set();render();}
+  if(S.bulkStep===3){S.bulkStep=2;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';render();}
+  else if(S.bulkStep===2){S.bulkStep=1;S.bulkDK=null;render();}
   else{S.screen='search';render();}
 }
 
