@@ -647,7 +647,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:'',bulkPerUnit:{},bulkIsPerUnit:false};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:''};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1326,7 +1326,7 @@ async function saveCompAndBack(){await saveCompRules();S.screen='search';render(
 
 // ===== BULK ECN EDIT =====
 function openBulkEdit(){
-  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';S.bulkPerUnit={};S.bulkIsPerUnit=false;render();
+  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';render();
 }
 
 // All assembly types for batch
@@ -1358,34 +1358,14 @@ function getBulkFields(dk){
     const v=getV(sk,f);
     if(v?.type)type=v.type;
     else if(isECN){const g=guessECNType(sk,f);type=g?.type||null;}
-    // Include updatable fields: checkboxes, dates, dropdowns, ECN, and required/text fields (per-unit)
-    const isReq=(COMP_RULES.requiredFields?.[dk]||[]).includes(f)||(COMP_RULES.requiredChecks?.[dk]||[]).includes(f);
+    // Only include updatable fields: checkboxes, dates, dropdowns, ECN
     if(type==='checkbox'||type==='date'||type==='dropdown'||isECN)
-      fields.push({name:f,type:type||'text',isECN,perUnit:false});
-    else if(isReq)
-      fields.push({name:f,type:'text',isECN:false,perUnit:true});
+      fields.push({name:f,type:type||'text',isECN});
   });
   return fields;
 }
 
-function pickBulkField(dk,field){
-  const fields=getBulkFields(S.bulkDK);
-  const fInfo=fields.find(f=>f.name===field);
-  S.bulkField=field;S.bulkValue='';
-  S.bulkIsPerUnit=fInfo?.perUnit||false;
-  // Pre-fill per-unit values from current data
-  if(S.bulkIsPerUnit){
-    S.bulkPerUnit={};
-    const rows=DATA[S.bulkDK]||[];const sf=getSNField(rows);
-    rows.forEach(r=>{
-      const sn=r[sf];
-      if(S.bulkSelected.has(sn))S.bulkPerUnit[sn]=r[field]||'';
-    });
-  } else {
-    S.bulkPerUnit={};
-  }
-  render();
-}
+function pickBulkField(dk,field){S.bulkField=field;S.bulkValue='';render();}
 
 function bulkGoStep(n){
   if(n===1){S.bulkDK=null;S.bulkSelected=new Set();S.bulkField=null;S.bulkValue='';}
@@ -1496,15 +1476,14 @@ function rBulkEdit(){
       // Sub-step 3a: Pick field
       const fields=getBulkFields(S.bulkDK);
       const ecnFields=fields.filter(f=>f.isECN&&isECNVisible(S.bulkDK,f.name));
-      const regFields=fields.filter(f=>!f.isECN&&!f.perUnit);
-      const perUnitFields=fields.filter(f=>f.perUnit);
+      const regFields=fields.filter(f=>!f.isECN);
 
       // Count issues only for selected units
       const selRows=rows.filter(r=>S.bulkSelected.has(r[sf]));
       function issuesFor(fname){return selRows.filter(item=>checkFieldComp(S.bulkDK,fname,item[fname])).length;}
 
       if(regFields.length){
-        h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">BATCH FIELDS <span style="color:var(--t5);font-weight:400">(same value for all)</span></div>`;
+        h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">REGULAR FIELDS</div>`;
         regFields.forEach(f=>{
           const typeIcon=f.type==='checkbox'?'☑️':f.type==='date'?'📅':f.type==='dropdown'?'▾':'📝';
           const needs=issuesFor(f.name);
@@ -1530,89 +1509,46 @@ function rBulkEdit(){
           </div>`;
         });
       }
-
-      if(perUnitFields.length){
-        h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">PER-UNIT FIELDS <span style="color:var(--t5);font-weight:400">(unique value each)</span></div>`;
-        perUnitFields.forEach(f=>{
-          const needs=issuesFor(f.name);
-          const emptyCount=selRows.filter(item=>!(item[f.name]||'').trim()).length;
-          const cid=regComp('bulk',S.bulkDK,f.name);
-          h+=`<div class="bulk-field" onclick="doComp(${cid})" style="border-left:2px solid var(--yel)">
-            <span class="bulk-field-type">✏️</span>
-            <span class="bulk-field-name">${esc(FIELD_LABELS[f.name]||f.name)}</span>
-            ${emptyCount?`<span class="comp-tag" style="background:rgba(251,191,36,.1);color:var(--yel)">${emptyCount} empty</span>`:''}
-            ${needs?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
-          </div>`;
-        });
-      }
     } else {
       // Sub-step 3b: Set value for selected field
       const sk=bt.sk;
+      const fType=isECNField(S.bulkField)?guessECNType(sk,S.bulkField):getV(sk,S.bulkField);
+      const isChk=fType?.type==='checkbox';
+      const isDt=fType?.type==='date';
+      const isDr=fType?.type==='dropdown';
+      const bv=S.bulkValue;
 
       h+=`<div style="display:flex;align-items:center;gap:6px;margin:8px 0 12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2);font-family:var(--fm)">${esc(FIELD_LABELS[S.bulkField]||S.bulkField)}</span>
-        ${S.bulkIsPerUnit?'<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(251,191,36,.1);color:var(--yel);font-weight:600">PER-UNIT</span>':''}
-        <button class="bulk-change" onclick="S.bulkField=null;S.bulkValue='';S.bulkIsPerUnit=false;S.bulkPerUnit={};render()">Change field</button>
+        <button class="bulk-change" onclick="S.bulkField=null;S.bulkValue='';render()">Change field</button>
       </div>`;
 
-      if(S.bulkIsPerUnit){
-        // Per-unit mode: individual input per unit
-        h+=`<div style="font-size:10px;color:var(--yel);font-weight:600;letter-spacing:1px;margin:8px 0 8px">ENTER VALUE FOR EACH UNIT</div>`;
-        let idx=0;
-        const sortedSNs=[...S.bulkSelected].sort();
-        sortedSNs.forEach(sn=>{
-          const curVal=S.bulkPerUnit[sn]||'';
-          const compI=checkFieldComp(S.bulkDK,S.bulkField,curVal);
-          const snShort=sn.replace(/^.*?-(\d+)$/,'$1');
-          h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;${compI?'border-left:3px solid var(--red);padding-left:8px':''}">
-            <span style="font-size:11px;color:var(--t3);font-family:var(--fm);min-width:50px;white-space:nowrap" title="${esc(sn)}">${esc(sn.length>20?'...'+sn.slice(-15):sn)}</span>
-            <input type="text" class="etin bulk-pu-input" data-sn="${escA(sn)}" value="${escA(curVal)}" placeholder="Enter value..." style="flex:1;padding:8px 10px;font-size:13px">
-            ${compI?'<span style="font-size:10px;color:var(--red)">⚠</span>':''}
-          </div>`;
-          idx++;
-        });
-
-        const changed=sortedSNs.filter(sn=>{
-          const origRow=(DATA[S.bulkDK]||[]).find(r=>r[sf]===sn);
-          const orig=origRow?origRow[S.bulkField]||'':'';
-          return(S.bulkPerUnit[sn]||'')!==orig;
-        }).length;
-
-        h+=`<button class="savb ${changed?'savA':'savI'}" style="width:100%;margin-top:12px" onclick="doBulkSavePerUnit()">${S.bulkSaving?'Saving...':changed?`Save ${changed} change${changed>1?'s':''}`:'Edit values above'}</button>`;
+      // Value selector
+      h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:8px 0 8px">SET NEW VALUE</div>`;
+      if(isChk){
+        h+=`<div style="display:flex;gap:10px;margin-bottom:12px">
+          ${['TRUE','FALSE'].map(v=>{const sel=bv===v;const p=v==='TRUE';const col=p?'var(--grn)':'var(--red)';
+          return`<div class="bulk-val ${sel?'bulk-val-on':''}" style="${sel?`border-color:${col};background:${col}08`:''}" onclick="S.bulkValue='${v}';render()">
+            <span class="ckd ${p?'ckP':'ckF'}" style="width:28px;height:28px;font-size:16px">${p?'✓':'✗'}</span>
+            <span style="font-size:12px;font-weight:600;color:${sel?col:'var(--t3)'}">${p?'Done':'Not Done'}</span>
+          </div>`;}).join('')}
+        </div>`;
+      } else if(isDt){
+        const today=new Date();const todayStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+        const yest=new Date();yest.setDate(yest.getDate()-1);const yestStr=`${yest.getFullYear()}/${String(yest.getMonth()+1).padStart(2,'0')}/${String(yest.getDate()).padStart(2,'0')}`;
+        h+=`<div style="display:flex;gap:8px;margin-bottom:8px">
+          <div class="bulk-val ${bv===todayStr?'bulk-val-on':''}" onclick="S.bulkValue='${todayStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===todayStr?'var(--blu)':'var(--t3)'}">Today</span><span style="font-size:9px;color:var(--t4)">${todayStr}</span></div>
+          <div class="bulk-val ${bv===yestStr?'bulk-val-on':''}" onclick="S.bulkValue='${yestStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===yestStr?'var(--blu)':'var(--t3)'}">Yesterday</span><span style="font-size:9px;color:var(--t4)">${yestStr}</span></div>
+        </div>
+        <input type="date" class="edin" id="bulkDate" value="${(bv||'').replace(/\//g,'-')}" style="margin-bottom:8px">`;
+      } else if(isDr&&fType?.options){
+        h+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:200px;overflow-y:auto">${fType.options.map(o=>{const sel=bv===o;return`<div class="do ${sel?'doS':''}" onclick="S.bulkValue='${escA(o)}';render()"><div class="doi"><div class="dor ${sel?'dorS':''}">${sel?'<div class="dorD"></div>':''}</div><span class="dot ${sel?'dotS':''}">${esc(o)}</span></div></div>`;}).join('')}</div>`;
       } else {
-        // Same-value mode (existing)
-        const fType=isECNField(S.bulkField)?guessECNType(sk,S.bulkField):getV(sk,S.bulkField);
-        const isChk=fType?.type==='checkbox';
-        const isDt=fType?.type==='date';
-        const isDr=fType?.type==='dropdown';
-        const bv=S.bulkValue;
-
-        h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:8px 0 8px">SET NEW VALUE</div>`;
-        if(isChk){
-          h+=`<div style="display:flex;gap:10px;margin-bottom:12px">
-            ${['TRUE','FALSE'].map(v=>{const sel=bv===v;const p=v==='TRUE';const col=p?'var(--grn)':'var(--red)';
-            return`<div class="bulk-val ${sel?'bulk-val-on':''}" style="${sel?`border-color:${col};background:${col}08`:''}" onclick="S.bulkValue='${v}';render()">
-              <span class="ckd ${p?'ckP':'ckF'}" style="width:28px;height:28px;font-size:16px">${p?'✓':'✗'}</span>
-              <span style="font-size:12px;font-weight:600;color:${sel?col:'var(--t3)'}">${p?'Done':'Not Done'}</span>
-            </div>`;}).join('')}
-          </div>`;
-        } else if(isDt){
-          const today=new Date();const todayStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
-          const yest=new Date();yest.setDate(yest.getDate()-1);const yestStr=`${yest.getFullYear()}/${String(yest.getMonth()+1).padStart(2,'0')}/${String(yest.getDate()).padStart(2,'0')}`;
-          h+=`<div style="display:flex;gap:8px;margin-bottom:8px">
-            <div class="bulk-val ${bv===todayStr?'bulk-val-on':''}" onclick="S.bulkValue='${todayStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===todayStr?'var(--blu)':'var(--t3)'}">Today</span><span style="font-size:9px;color:var(--t4)">${todayStr}</span></div>
-            <div class="bulk-val ${bv===yestStr?'bulk-val-on':''}" onclick="S.bulkValue='${yestStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===yestStr?'var(--blu)':'var(--t3)'}">Yesterday</span><span style="font-size:9px;color:var(--t4)">${yestStr}</span></div>
-          </div>
-          <input type="date" class="edin" id="bulkDate" value="${(bv||'').replace(/\//g,'-')}" style="margin-bottom:8px">`;
-        } else if(isDr&&fType?.options){
-          h+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:200px;overflow-y:auto">${fType.options.map(o=>{const sel=bv===o;return`<div class="do ${sel?'doS':''}" onclick="S.bulkValue='${escA(o)}';render()"><div class="doi"><div class="dor ${sel?'dorS':''}">${sel?'<div class="dorD"></div>':''}</div><span class="dot ${sel?'dotS':''}">${esc(o)}</span></div></div>`;}).join('')}</div>`;
-        } else {
-          h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
-        }
-
-        const hasChange=bv!=='';
-        h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:12px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select a value above'}</button>`;
+        h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
       }
+
+      const hasChange=bv!=='';
+      h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:12px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select a value above'}</button>`;
     }
   }
 
@@ -1631,10 +1567,6 @@ function rBulkEdit(){
   }
   const brs=$('#bulkRangeS');if(brs)brs.addEventListener('input',e=>{S.bulkRangeStart=e.target.value;});
   const bre=$('#bulkRangeE');if(bre)bre.addEventListener('input',e=>{S.bulkRangeEnd=e.target.value;});
-  // Per-unit inputs
-  document.querySelectorAll('.bulk-pu-input').forEach(inp=>{
-    inp.addEventListener('input',e=>{S.bulkPerUnit[e.target.dataset.sn]=e.target.value;});
-  });
 }
 
 function togBulkUnit(sn){
@@ -1705,7 +1637,7 @@ function selectAllBulk(){
 }
 
 function bulkBack(){
-  if(S.bulkStep===3&&S.bulkField){S.bulkField=null;S.bulkValue='';S.bulkIsPerUnit=false;S.bulkPerUnit={};render();}
+  if(S.bulkStep===3&&S.bulkField){S.bulkField=null;S.bulkValue='';render();}
   else if(S.bulkStep===3){S.bulkStep=2;render();}
   else if(S.bulkStep===2){S.bulkStep=1;S.bulkDK=null;S.bulkSelected=new Set();render();}
   else{S.screen='search';render();}
@@ -1756,70 +1688,6 @@ async function doBulkSave(){
   if(S.result?.ghost)S.tree=getGhostTree(S.result.ghost);
   if(fail)showToast(`${ok} saved, ${fail} failed`,'error');
   else showToast(`✓ ${ok} units updated`);
-  render();
-}
-async function doBulkSavePerUnit(){
-  if(!S.bulkDK||!S.bulkField||S.bulkSaving)return;
-
-  const dk=S.bulkDK;
-  const field=S.bulkField;
-  const rows=DATA[dk]||[];
-  const sf=getSNField(rows);
-  const meta=SHEET_META[dk];
-  if(!meta){showToast('No sheet metadata','error');return;}
-
-  function colLetter(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;}return s;}
-  const colIdx=meta.headers.indexOf(field);
-  if(colIdx===-1){showToast('Column not found','error');return;}
-  const colL=colLetter(colIdx);
-
-  // Find changed rows
-  const changes=[];
-  [...S.bulkSelected].forEach(sn=>{
-    const row=rows.find(r=>r[sf]===sn);if(!row)return;
-    const oldVal=row[field]||'';
-    const newVal=S.bulkPerUnit[sn]||'';
-    if(newVal!==oldVal)changes.push({sn,row,oldVal,newVal});
-  });
-
-  if(!changes.length){showToast('No changes to save');return;}
-
-  S.bulkSaving=true;render();
-  showToast(`Saving ${changes.length} changes...`);
-
-  let ok=0,fail=0;
-  for(const c of changes){
-    const sheetRow=meta.startRow+1+c.row._rowIdx;
-    const cellRef=`${meta.tabName}!${colL}${sheetRow}`;
-    try{
-      const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(cellRef)}?valueInputOption=USER_ENTERED`;
-      let resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[c.newVal]]})});
-      if(resp.status===401&&ok===0){
-        const origCb=tokenClient.callback;let done=false;
-        await new Promise((resolve,reject)=>{
-          tokenClient.callback=r=>{if(done)return;done=true;tokenClient.callback=origCb;if(r.access_token){accessToken=r.access_token;localStorage.setItem('gat',accessToken);resolve();}else reject(new Error('Auth failed'));};
-          tokenClient.requestAccessToken({prompt:''});
-          setTimeout(()=>{if(!done){done=true;tokenClient.callback=origCb;reject(new Error('Timeout'));}},15000);
-        });
-        resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[c.newVal]]})});
-      }
-      if(resp.ok){
-        c.row[field]=c.newVal;ok++;
-        // Auto-add exchange note for S/N fields
-        if(isSNField(field)&&c.oldVal&&c.oldVal!==c.newVal){
-          const noteText=`${c.oldVal} → ${c.newVal}　交換`;
-          addCellNote(dk,c.row._rowIdx,colIdx,noteText).catch(e=>console.warn('[Note]',e));
-        }
-      }else{fail++;}
-    }catch{fail++;}
-  }
-
-  S.bulkSaving=false;
-  if(S.result?.ghost)S.tree=getGhostTree(S.result.ghost);
-  if(fail)showToast(`${ok} saved, ${fail} failed`,'error');
-  else showToast(`✓ ${ok} changes saved`);
-  // Update per-unit values from saved data
-  rows.forEach(r=>{if(S.bulkSelected.has(r[sf]))S.bulkPerUnit[r[sf]]=r[field]||'';});
   render();
 }
 async function doRefresh(){S.refreshing=true;render();S.loadErrors=await loadAllData((l,t,c)=>{LP={l,t,c};});S.refreshing=false;showToast('Data refreshed');render();}
