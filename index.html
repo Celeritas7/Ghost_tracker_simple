@@ -218,6 +218,14 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .do{transition:all .12s ease;-webkit-tap-highlight-color:transparent}
 .do:active{transform:scale(.98)}
 .bulk-val{-webkit-tap-highlight-color:transparent}
+/* Bulk chip input */
+.bulk-chip-box{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-radius:12px;border:2px solid rgba(91,110,234,.2);background:var(--inp);min-height:50px;cursor:text;transition:border-color .15s}
+.bulk-chip-box:focus-within{border-color:var(--ac);box-shadow:0 0 0 3px rgba(91,110,234,.08)}
+.bulk-chip{display:flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:6px;border:1px solid;font-size:12px;font-weight:600;font-family:var(--fm);animation:chipIn .15s ease-out}
+.bulk-chip-x{margin-left:2px;cursor:pointer;font-size:10px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(248,113,113,.1);color:var(--red);transition:background .1s}
+.bulk-chip-x:hover{background:rgba(248,113,113,.25)}
+.bulk-num-input{flex:1;min-width:80px;border:none;outline:none;background:transparent;color:var(--t1);font-size:14px;font-family:var(--fm);padding:4px 0}
+@keyframes chipIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 .rbk{transition:color .12s}
 .rbk:active{color:var(--ac2)}
 </style>
@@ -639,7 +647,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set()};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:''};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1166,101 +1174,111 @@ function rCompSettings(){
   const chkFields=detectCheckboxFields();
   const allFields=detectFieldsByKey();
 
+  // Group all rules by assembly type
+  const COMP_TYPES=[
+    {dk:'ghosts',label:'Ghost',icon:'👻',color:'#5b6eea'},
+    {dk:'mobileBases',label:'Mobile Base',icon:'🛞',color:'#34d399'},
+    {dk:'pillars',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
+    {dk:'headBodies',label:'Head & Body',icon:'🧠',color:'#f87171'},
+    {dk:'arms',label:'Arm',icon:'🦾',color:'#fbbf24'},
+    {dk:'grippers',label:'Gripper',icon:'🤏',color:'#38bdf8'},
+    {dk:'deployKits',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
+    {dk:'lMotors',label:'L-Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a12Motors',label:'A12 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a35Motors',label:'A35 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a4Motors',label:'A4 Motors',icon:'⚙️',color:'#6ee7b7'},
+  ];
+
+  // Get FW fields per dk
+  function fwForDK(dk){return fwFields.filter(f=>{const rows=DATA[dk];if(!rows||!rows.length)return false;return Object.keys(rows[0]).includes(f);});}
+  function chkForDK(dk){return chkFields[dk]||[];}
+  function reqForDK(dk){return allFields[dk]||[];}
+  function ecnForDK(dk){return getECNFields(dk);}
+
   let h='';
+  COMP_TYPES.forEach(ct=>{
+    const rows=DATA[ct.dk];if(!rows||!rows.length)return;
+    const fw=fwForDK(ct.dk);
+    const chk=chkForDK(ct.dk).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));
+    const req=reqForDK(ct.dk);
+    const ecn=ecnForDK(ct.dk);
+    if(!fw.length&&!chk.length&&!req.length&&!ecn.length)return;
 
-  // Section 1: Latest FW versions
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_fw')">
-    <span>🔧</span><span style="color:var(--blu);font-weight:600">Latest FW Versions</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.keys(COMP_RULES.latestFW||{}).length} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_fw')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_fw')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Set the "latest" version for each FW field. Units not matching will be flagged.</div>`;
-    fwFields.forEach(f=>{
-      const cur=COMP_RULES.latestFW?.[f]||'';
-      const fid=regFW(f);
-      h+=`<div class="comp-row">
-        <span class="comp-fname">${esc(f)}</span>
-        <input class="comp-input" data-fwid="${fid}" value="${escA(cur)}" placeholder="not set" onchange="doFWChange(${fid},this.value)">
-      </div>`;
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
+    // Count rules set
+    const fwSet=fw.filter(f=>(COMP_RULES.latestFW||{})[f]).length;
+    const chkSet=(COMP_RULES.requiredChecks?.[ct.dk]||[]).length;
+    const reqSet=(COMP_RULES.requiredFields?.[ct.dk]||[]).length;
+    const ecnSet=(COMP_RULES.requiredECN?.[ct.dk]||[]).length;
+    const totalSet=fwSet+chkSet+reqSet+ecnSet;
+    const totalAvail=fw.length+chk.length+req.length+ecn.length;
 
-  // Section 2: Required Checkboxes
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_chk')">
-    <span>☑️</span><span style="color:var(--grn);font-weight:600">Required Checkmarks</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_chk')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_chk')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select checkbox fields that must be ✓ for compliance.</div>`;
-    Object.entries(chkFields).forEach(([dk,fields])=>{
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      fields.forEach(f=>{
-        if(f==='_rowIdx'||shouldSkipField(f))return;
-        const on=(COMP_RULES.requiredChecks?.[dk]||[]).includes(f);
-        const cid=regComp('check',dk,f);
-        h+=`<div class="ecns-row" onclick="doComp(${cid})">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
+    const isOpen=S.ecnExpanded.has('comp_'+ct.dk);
+    h+=`<div class="comp-sec" style="border-left:3px solid ${ct.color}"><div class="comp-sec-hdr" onclick="togECNSec('comp_${ct.dk}')">
+      <span style="font-size:18px">${ct.icon}</span>
+      <span style="color:${ct.color};font-weight:600;font-size:13px">${ct.label}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--t4)">${totalSet}/${totalAvail}</span>
+      <span class="schv ${isOpen?'schvO':''}">▼</span>
+    </div>`;
 
-  // Section 3: Required Fields (must not be empty)
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_req')">
-    <span>📝</span><span style="color:var(--yel);font-weight:600">Required Fields</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_req')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_req')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select fields that must not be empty.</div>`;
-    Object.entries(allFields).forEach(([dk,fields])=>{
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      fields.forEach(f=>{
-        const on=(COMP_RULES.requiredFields?.[dk]||[]).includes(f);
-        const cid=regComp('req',dk,f);
-        h+=`<div class="ecns-row" onclick="doComp(${cid})">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
+    if(isOpen){
+      h+=`<div class="comp-sec-body" style="padding:8px 0">`;
 
-  // Section 4: Required ECN
-  h+=`<div class="comp-sec"><div class="comp-sec-hdr" onclick="togECNSec('comp_ecn')">
-    <span>🔧</span><span style="color:var(--pur);font-weight:600">Required ECN</span>
-    <span style="margin-left:auto;font-size:11px;color:var(--t4)">${Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0)} set</span>
-    <span class="schv ${S.ecnExpanded.has('comp_ecn')?'schvO':''}">▼</span>
-  </div>`;
-  if(S.ecnExpanded.has('comp_ecn')){
-    h+=`<div class="comp-sec-body">
-      <div style="font-size:11px;color:var(--t4);padding:0 14px 8px">Select ECN columns that must be checked/applied.</div>`;
-    Object.entries(DATA).forEach(([dk,rows])=>{
-      const ecnFs=getECNFields(dk);if(!ecnFs.length)return;
-      const label=CONFIG.TABS[dk]||dk;
-      h+=`<div style="padding:6px 14px;font-size:11px;color:var(--ac);font-weight:600">${esc(label)}</div>`;
-      ecnFs.forEach(f=>{
-        const on=(COMP_RULES.requiredECN?.[dk]||[]).includes(f);
-        const cid=regComp('ecn',dk,f);
-        h+=`<div class="ecns-row" onclick="doComp(${cid})">
-          <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
-          <span class="ecns-fname">${esc(f)}</span>
-        </div>`;
-      });
-    });
-    h+=`</div>`;}
-  h+=`</div>`;
+      // FW rules for this assembly
+      if(fw.length){
+        h+=`<div style="padding:4px 14px 2px;font-size:10px;color:var(--blu);font-weight:600;letter-spacing:1px">🔧 FW VERSIONS</div>`;
+        fw.forEach(f=>{
+          const cur=COMP_RULES.latestFW?.[f]||'';
+          const fid=regFW(f);
+          h+=`<div class="comp-row">
+            <span class="comp-fname">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" data-fwid="${fid}" value="${escA(cur)}" placeholder="not set" onchange="doFWChange(${fid},this.value)">
+          </div>`;
+        });
+      }
+
+      // Checkbox rules
+      if(chk.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--grn);font-weight:600;letter-spacing:1px">☑️ REQUIRED CHECKS</div>`;
+        chk.forEach(f=>{
+          const on=(COMP_RULES.requiredChecks?.[ct.dk]||[]).includes(f);
+          const cid=regComp('check',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
+
+      // Required fields
+      if(req.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--yel);font-weight:600;letter-spacing:1px">📝 REQUIRED FIELDS</div>`;
+        req.forEach(f=>{
+          const on=(COMP_RULES.requiredFields?.[ct.dk]||[]).includes(f);
+          const cid=regComp('req',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
+
+      // Required ECN
+      if(ecn.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--pur);font-weight:600;letter-spacing:1px">🔧 REQUIRED ECN</div>`;
+        ecn.forEach(f=>{
+          const on=(COMP_RULES.requiredECN?.[ct.dk]||[]).includes(f);
+          const cid=regComp('ecn',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(f)}</span>
+          </div>`;
+        });
+      }
+
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
 
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
     <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">📋 Compliance Rules</div></div>
@@ -1308,7 +1326,7 @@ async function saveCompAndBack(){await saveCompRules();S.screen='search';render(
 
 // ===== BULK ECN EDIT =====
 function openBulkEdit(){
-  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;render();
+  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';render();
 }
 
 // All assembly types for batch
@@ -1345,9 +1363,9 @@ function getBulkFields(dk){
 }
 
 function pickBulkField(dk,field){S.bulkDK=dk;S.bulkField=field;S.bulkStep=3;S.bulkValue='';
-  // Auto-select all units
-  const rows=DATA[dk]||[];const sf=getSNField(rows);
-  S.bulkSelected=new Set(rows.map(r=>r[sf]).filter(Boolean));
+  // Start with NO units selected — user adds via number input
+  S.bulkSelected=new Set();
+  S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';
   render();
 }
 
@@ -1465,35 +1483,61 @@ function rBulkEdit(){
       h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
     }
 
-    // Unit selection
+    // Unit input — chip-based
     const selCount=S.bulkSelected.size;
-    h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px">
-      <span style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px">SELECT UNITS (${selCount}/${rows.length})</span>
-      <div style="display:flex;gap:6px">
-        <button class="bulk-change" onclick="selectAllBulk()">All</button>
-        <button class="bulk-change" onclick="S.bulkSelected=new Set();render()">None</button>
-      </div>
+    // Extract number suffix from S/N for display
+    function snNum(sn){const m=(sn||'').match(/(\d+)$/);return m?parseInt(m[1]):null;}
+    // Get short prefix from first S/N
+    const firstSN=rows.length?rows[0][sf]:'';
+    const snPrefix=firstSN.replace(/\d+$/,'');
+
+    h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:12px 0 8px">
+      ADD UNITS <span style="color:${bt.color}">${esc(snPrefix)}</span>
     </div>`;
-    rows.forEach(item=>{
-      const sn=item[sf]||'?';
-      const val=item[S.bulkField]||'';
-      const compI=checkFieldComp(S.bulkDK,S.bulkField,val);
-      const selected=S.bulkSelected.has(sn);
-      let vH;
-      if(isChk){const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);vH=p?'<span class="ckd ckP" style="width:18px;height:18px;font-size:11px">✓</span>':'<span class="ckd ckF" style="width:18px;height:18px;font-size:11px">✗</span>';}
-      else vH=`<span style="font-size:11px;color:var(--t2);font-family:var(--fm)">${esc(val||'—')}</span>`;
-      const uid=regComp('togunit',S.bulkDK,sn);
-      h+=`<div class="bulk-unit ${compI?'fr-warn':''}" onclick="doComp(${uid})" style="cursor:pointer;${selected?'border-color:var(--ac);background:rgba(91,110,234,.04)':''}">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="ecns-tog ${selected?'ecns-on':'ecns-off'}" style="width:18px;height:18px;font-size:10px">${selected?'✓':''}</div>
-          <span class="bulk-unit-sn">${esc(sn)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">${vH}${compI?'<span class="comp-tag" style="font-size:8px">⚠</span>':''}</div>
+
+    // Input mode tabs
+    h+=`<div style="display:flex;gap:4px;margin-bottom:10px">
+      <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='individual'?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="S.bulkInputMode='individual';render()">Type Numbers</button>
+      <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='range'?'background:var(--ac);color:#fff;border-color:var(--ac)':''}" onclick="S.bulkInputMode='range';render()">Range</button>
+      <button class="bulk-change" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;${S.bulkInputMode==='issues'?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="bulkSelectIssues()">⚠ Issues Only</button>
+    </div>`;
+
+    if(S.bulkInputMode==='individual'){
+      // Chip display + input
+      h+=`<div id="bulkChipBox" class="bulk-chip-box" onclick="$('#bulkNumIn')?.focus()">`;
+      S.bulkSelected.forEach(sn=>{
+        const n=snNum(sn);
+        const uid=regComp('togunit',S.bulkDK,sn);
+        h+=`<div class="bulk-chip" style="background:${bt.color}15;border-color:${bt.color}33;color:${bt.color}">${n!==null?n:esc(sn)}<span class="bulk-chip-x" onclick="event.stopPropagation();doComp(${uid})">×</span></div>`;
+      });
+      h+=`<input type="text" inputmode="numeric" id="bulkNumIn" class="bulk-num-input" value="${escA(S.bulkNumInput)}" placeholder="${selCount?'':'Type numbers: 1, 2, 3...'}" autocomplete="off"></div>`;
+      h+=`<div style="font-size:10px;color:var(--t5);margin-top:4px">Comma/Enter to add · Backspace to remove last</div>`;
+    } else if(S.bulkInputMode==='range'){
+      h+=`<div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><div style="font-size:10px;color:var(--t5);margin-bottom:4px">From</div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:${bt.color};font-weight:700;font-family:var(--fm)">${esc(snPrefix)}</span>
+          <input type="number" inputmode="numeric" id="bulkRangeS" class="etin" value="${escA(S.bulkRangeStart)}" placeholder="1" style="font-size:14px;padding:10px;text-align:center"></div></div>
+        <div style="font-size:16px;color:var(--t5);padding-bottom:12px">→</div>
+        <div style="flex:1"><div style="font-size:10px;color:var(--t5);margin-bottom:4px">To</div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:${bt.color};font-weight:700;font-family:var(--fm)">${esc(snPrefix)}</span>
+          <input type="number" inputmode="numeric" id="bulkRangeE" class="etin" value="${escA(S.bulkRangeEnd)}" placeholder="10" style="font-size:14px;padding:10px;text-align:center"></div></div>
+        <button class="savb savA" style="padding:10px 16px;margin:0;font-size:13px;white-space:nowrap" onclick="bulkAddRange()">+ Add</button>
       </div>`;
-    });
+    } else {
+      // Issues mode already selected — just show count
+      h+=`<div style="padding:12px 16px;border-radius:10px;background:rgba(248,113,113,.04);border:1px solid rgba(248,113,113,.12);font-size:12px;color:var(--red)">Selected ${selCount} unit${selCount!==1?'s':''} with compliance issues for this field</div>`;
+    }
+
+    // Selected summary
+    if(selCount>0){
+      h+=`<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(91,110,234,.04);border:1px solid rgba(91,110,234,.1);display:flex;justify-content:space-between;align-items:center">
+        <div><span style="font-size:14px;font-weight:700;color:var(--ac)">${selCount}</span><span style="font-size:12px;color:var(--t3);margin-left:6px">unit${selCount!==1?'s':''} selected</span></div>
+        <button class="bulk-change" onclick="S.bulkSelected=new Set();render()">Clear all</button>
+      </div>`;
+    }
 
     const hasChange=bv!==''&&selCount>0;
-    h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:16px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select value & units'}</button>`;
+    h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:16px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select value & add units'}</button>`;
   }
 
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
@@ -1504,18 +1548,84 @@ function rBulkEdit(){
   // Event listeners
   const bd=$('#bulkDate');if(bd)bd.addEventListener('change',e=>{S.bulkValue=e.target.value.replace(/-/g,'/');});
   const bt=$('#bulkText');if(bt)bt.addEventListener('input',e=>{S.bulkValue=e.target.value;});
+  const bni=$('#bulkNumIn');if(bni){
+    bni.addEventListener('input',e=>{S.bulkNumInput=e.target.value.replace(/[^0-9,\s]/g,'');});
+    bni.addEventListener('keydown',bulkNumKeydown);
+    setTimeout(()=>bni.focus(),50);
+  }
+  const brs=$('#bulkRangeS');if(brs)brs.addEventListener('input',e=>{S.bulkRangeStart=e.target.value;});
+  const bre=$('#bulkRangeE');if(bre)bre.addEventListener('input',e=>{S.bulkRangeEnd=e.target.value;});
 }
 
 function togBulkUnit(sn){
   if(S.bulkSelected.has(sn))S.bulkSelected.delete(sn);else S.bulkSelected.add(sn);render();
 }
+
+// Find row S/N by numeric suffix
+function findSNByNum(dk,num){
+  const rows=DATA[dk]||[];const sf=getSNField(rows);
+  const r=rows.find(r=>{const m=(r[sf]||'').match(/(\d+)$/);return m&&parseInt(m[1])===num;});
+  return r?r[sf]:null;
+}
+
+// Add units by number(s)
+function bulkAddNums(numsStr){
+  if(!S.bulkDK)return;
+  const nums=numsStr.split(/[,\s]+/).map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n>0);
+  let added=0;
+  nums.forEach(n=>{
+    const sn=findSNByNum(S.bulkDK,n);
+    if(sn&&!S.bulkSelected.has(sn)){S.bulkSelected.add(sn);added++;}
+  });
+  S.bulkNumInput='';
+  if(added)render();
+  else if(nums.length)showToast('No matching units found','error');
+}
+
+function bulkNumKeydown(e){
+  if(e.key==='Enter'||e.key===','||e.key===' '){
+    e.preventDefault();
+    if(S.bulkNumInput.trim())bulkAddNums(S.bulkNumInput);
+  } else if(e.key==='Backspace'&&!S.bulkNumInput&&S.bulkSelected.size){
+    // Remove last added
+    const arr=[...S.bulkSelected];
+    S.bulkSelected.delete(arr[arr.length-1]);
+    render();
+  }
+}
+
+function bulkAddRange(){
+  const s=parseInt(S.bulkRangeStart),e=parseInt(S.bulkRangeEnd);
+  if(isNaN(s)||isNaN(e)||s<1||e<s){showToast('Invalid range','error');return;}
+  if(e-s>500){showToast('Range too large (max 500)','error');return;}
+  let added=0;
+  for(let i=s;i<=e;i++){
+    const sn=findSNByNum(S.bulkDK,i);
+    if(sn&&!S.bulkSelected.has(sn)){S.bulkSelected.add(sn);added++;}
+  }
+  S.bulkRangeStart='';S.bulkRangeEnd='';
+  if(added){showToast(`Added ${added} units`);render();}
+  else showToast('No matching units in range','error');
+}
+
+function bulkSelectIssues(){
+  if(!S.bulkDK||!S.bulkField)return;
+  const rows=DATA[S.bulkDK]||[];const sf=getSNField(rows);
+  S.bulkSelected=new Set();
+  rows.forEach(r=>{
+    if(checkFieldComp(S.bulkDK,S.bulkField,r[S.bulkField]))S.bulkSelected.add(r[sf]);
+  });
+  S.bulkInputMode='issues';
+  render();
+}
+
 function selectAllBulk(){
   const rows=DATA[S.bulkDK]||[];const sf=getSNField(rows);
   S.bulkSelected=new Set(rows.map(r=>r[sf]).filter(Boolean));render();
 }
 
 function bulkBack(){
-  if(S.bulkStep===3){S.bulkStep=2;S.bulkField=null;S.bulkValue='';render();}
+  if(S.bulkStep===3){S.bulkStep=2;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';render();}
   else if(S.bulkStep===2){S.bulkStep=1;S.bulkDK=null;render();}
   else{S.screen='search';render();}
 }
