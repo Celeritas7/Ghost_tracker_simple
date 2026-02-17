@@ -1475,7 +1475,7 @@ function rBulkEdit(){
     if(!S.bulkField){
       // Sub-step 3a: Pick field
       const fields=getBulkFields(S.bulkDK);
-      const ecnFields=fields.filter(f=>f.isECN);
+      const ecnFields=fields.filter(f=>f.isECN&&isECNVisible(S.bulkDK,f.name));
       const regFields=fields.filter(f=>!f.isECN);
 
       // Count issues only for selected units
