@@ -408,8 +408,6 @@ function getV(s,f){
   if(/FW/i.test(f)&&/MDB/.test(f))return{type:'dropdown',options:MDB_FW};
   if(/FW/i.test(f)&&/IOB/.test(f))return{type:'dropdown',options:IOB_FW_HB};
   if(/FW/i.test(f)&&/PDB/.test(f))return{type:'dropdown',options:PDB_FW};
-  // ECN fields are checkboxes (TRUE/FALSE)
-  if(isECNField(f))return{type:'checkbox'};
   return null;
 }
 
@@ -728,31 +726,15 @@ function doChipSearch(){
 }
 function togSec(k){S.expanded.has(k)?S.expanded.delete(k):S.expanded.add(k);render();}
 function toggleDebug(){S.showDebug=!S.showDebug;render();}
-function startEdit(sec,sn,field,value){
-  S.editing={section:sec,sn,field,value};
-  // Normalize checkbox values to ✓/✗ for the toggle UI
-  const val=getV(sec,field);
-  if(val?.type==='checkbox'){
-    const isPass=/^(TRUE|true|1|OK|✓|done)$/i.test((value||'').trim());
-    S.editValue=isPass?'✓':'✗';
-    S.editing.value=isPass?'✓':'✗';
-  }else{S.editValue=value||'';}
-  S.screen='edit';render();
-}
+function startEdit(sec,sn,field,value){S.editing={section:sec,sn,field,value};S.editValue=value||'';S.screen='edit';render();}
 function setEV(v){S.editValue=v;render();}
 function setToday(){const d=new Date();S.editValue=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;render();}
 function setYest(){const d=new Date();d.setDate(d.getDate()-1);S.editValue=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;render();}
 async function saveEdit(){
   if(!S.editing||S.editValue===S.editing.value)return;
   const{section,sn,field}=S.editing;
-  let newVal=S.editValue;
+  const newVal=S.editValue;
   const label=FIELD_LABELS[field]||field;
-
-  // Convert checkbox display values to sheet values
-  const fieldType=getV(section,field);
-  if(fieldType?.type==='checkbox'){
-    newVal=newVal==='✓'?'TRUE':'FALSE';
-  }
 
   // Map section to DATA key
   const secToKey={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};
@@ -783,44 +765,20 @@ async function saveEdit(){
   // Show saving state
   showToast(`Saving ${label}...`);
 
-  async function doSave(){
+  try{
     const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(cellRef)}?valueInputOption=USER_ENTERED`;
-    return fetch(url,{
+    const resp=await fetch(url,{
       method:'PUT',
       headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},
       body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[newVal]]})
     });
-  }
-
-  function refreshToken(){
-    return new Promise((resolve,reject)=>{
-      if(!tokenClient){reject(new Error('No token client'));return;}
-      const origCb=tokenClient.callback;
-      let done=false;
-      tokenClient.callback=r=>{
-        if(done)return;done=true;
-        tokenClient.callback=origCb;
-        if(r.access_token){accessToken=r.access_token;localStorage.setItem('gat',accessToken);resolve();}
-        else reject(new Error('Re-auth failed'));
-      };
-      tokenClient.requestAccessToken({prompt:''});
-      setTimeout(()=>{if(!done){done=true;tokenClient.callback=origCb;reject(new Error('Re-auth timed out'));}},15000);
-    });
-  }
-
-  try{
-    let resp=await doSave();
-    if(resp.status===401){
-      showToast('Token expired, refreshing...');
-      await refreshToken();
-      resp=await doSave();
-    }
     if(!resp.ok){const e=await resp.text().catch(()=>'');let msg=`HTTP ${resp.status}`;try{msg=JSON.parse(e).error?.message||msg;}catch{}throw new Error(msg);}
 
     // Update local data
     row[field]=newVal;
     showToast(`✓ ${label}: ${newVal}`);
     S.screen='result';S.editing=null;
+    // Rebuild tree with updated data
     if(S.result?.ghost){S.tree=getGhostTree(S.result.ghost);}
     render();
   }catch(err){

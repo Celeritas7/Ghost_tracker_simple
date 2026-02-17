@@ -161,6 +161,65 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .comp-fname{font-size:12px;color:var(--t2);font-family:var(--fm);min-width:120px;flex-shrink:0}
 .comp-input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--inp);color:var(--t1);font-family:var(--fm);font-size:13px;outline:none}
 .comp-input:focus{border-color:var(--ac)}
+/* Bulk edit */
+.bulk-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--grn);background:rgba(52,211,153,.06);color:var(--grn);font-size:11px;cursor:pointer;font-family:var(--fb);font-weight:600;transition:all .15s}
+.bulk-btn:active{background:var(--grn);color:#fff}
+.bulk-step{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 16px;border-radius:10px;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.12)}
+.bulk-step-n{width:28px;height:28px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.bulk-step-t{font-size:13px;color:var(--t2)}
+.bulk-sec-hdr{display:flex;align-items:center;gap:8px;padding:10px 0 6px;border-top:1px solid var(--bd);margin-top:8px}
+.bulk-sec-hdr:first-child{border-top:none;margin-top:0}
+.bulk-field{display:flex;align-items:center;gap:8px;padding:10px 14px;margin:3px 0;border-radius:8px;border:1px solid var(--bd);background:var(--inp);cursor:pointer;transition:all .12s}
+.bulk-field:active{background:rgba(91,110,234,.06);border-color:var(--ac)}
+.bulk-field-type{font-size:14px}
+.bulk-field-name{flex:1;font-size:12px;color:var(--t2);font-family:var(--fm)}
+.bulk-units-hdr{font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px}
+.bulk-unit{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;margin:2px 0;border-radius:6px;border:1px solid var(--bd);background:var(--card)}
+.bulk-unit-sn{font-size:12px;font-family:var(--fm);color:var(--t2);font-weight:500}
+.bulk-new-hdr{font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:16px 0 8px}
+.bulk-val{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 12px;border-radius:12px;border:1.5px solid var(--bd);background:var(--inp);cursor:pointer;transition:all .12s}
+.bulk-val:active{transform:scale(.97)}
+.bulk-val-on{border-width:2px}
+.bulk-change{padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--inp);color:var(--t3);font-size:10px;cursor:pointer;font-family:var(--fb);margin-left:auto}
+/* UI animations */
+.sc{animation:fadeSlide .2s ease-out}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* Compliance bar */
+.comp-bar{margin:8px 16px;padding:10px 14px;border-radius:10px;background:var(--inp);border:1px solid var(--bd)}
+.comp-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.comp-bar-track{height:4px;border-radius:2px;background:var(--bd);overflow:hidden}
+.comp-bar-fill{height:100%;border-radius:2px;transition:width .5s ease-out}
+.fg{animation:fadeIn .15s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fr{transition:background .1s,border-color .1s}
+.fr:active{background:rgba(91,110,234,.06)!important}
+.sh{transition:background .12s}
+.sh:active{opacity:.85}
+.toast{animation:toastIn .25s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+/* Enhanced interactivity */
+.uchip{transition:all .15s ease;-webkit-tap-highlight-color:transparent}
+.uchip:hover{background:rgba(255,255,255,.03);border-color:var(--bd2)}
+.uchip-on{box-shadow:0 0 12px rgba(91,110,234,.15)}
+.bulk-field{transition:all .15s ease;-webkit-tap-highlight-color:transparent}
+.bulk-field:hover{border-color:var(--ac);background:rgba(91,110,234,.03)}
+.bulk-unit{transition:all .12s ease;-webkit-tap-highlight-color:transparent}
+.bulk-unit:active{transform:scale(.99)}
+.savb{transition:all .2s ease}
+.savA:active{transform:scale(.97);box-shadow:0 2px 12px rgba(91,110,234,.3)}
+.btn1{transition:all .15s}
+.btn1:active{transform:scale(.97);box-shadow:0 2px 12px rgba(91,110,234,.3)}
+.ecnbtn{transition:all .12s;-webkit-tap-highlight-color:transparent}
+.ecnbtn:hover{background:rgba(91,110,234,.08)}
+.comp-badge{animation:badgePulse 2s ease-in-out infinite}
+@keyframes badgePulse{0%,100%{opacity:1}50%{opacity:.7}}
+.ecn-sub-body{animation:slideDown .2s ease-out}
+@keyframes slideDown{from{opacity:0;max-height:0}to{opacity:1;max-height:2000px}}
+.do{transition:all .12s ease;-webkit-tap-highlight-color:transparent}
+.do:active{transform:scale(.98)}
+.bulk-val{-webkit-tap-highlight-color:transparent}
+.rbk{transition:color .12s}
+.rbk:active{color:var(--ac2)}
 </style>
 </head>
 <body>
@@ -273,7 +332,7 @@ function checkFieldComp(dataKey,field,value){
   return null;
 }
 
-// Check all fields in a section, return count of issues
+// Check all fields in a section, return count of issues (including ECN)
 function countSectionIssues(dataKey,items){
   if(!items||!items.length)return 0;
   let issues=0;
@@ -408,9 +467,26 @@ function getV(s,f){
   if(/FW/i.test(f)&&/MDB/.test(f))return{type:'dropdown',options:MDB_FW};
   if(/FW/i.test(f)&&/IOB/.test(f))return{type:'dropdown',options:IOB_FW_HB};
   if(/FW/i.test(f)&&/PDB/.test(f))return{type:'dropdown',options:PDB_FW};
-  // ECN fields are checkboxes (TRUE/FALSE)
-  if(isECNField(f))return{type:'checkbox'};
+  // ECN fields — detect type from actual data values
+  if(isECNField(f)){return guessECNType(s,f);}
   return null;
+}
+
+// Detect ECN field type by scanning actual values in data
+function guessECNType(section,field){
+  const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[section]||section;
+  const rows=DATA[lk];
+  if(!rows||!rows.length)return{type:'checkbox'};
+  let bools=0,dates=0,texts=0;
+  rows.forEach(r=>{
+    const v=(r[field]||'').trim();if(!v)return;
+    if(/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no)$/i.test(v))bools++;
+    else if(/^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v)||/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(v))dates++;
+    else texts++;
+  });
+  if(dates>bools&&dates>=texts)return{type:'date'};
+  if(texts>bools&&texts>dates)return null; // free text
+  return{type:'checkbox'};
 }
 
 // ===== DATA =====
@@ -543,7 +619,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:''};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set()};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -561,11 +637,13 @@ function doComp(id){const c=compRegistry[id];if(!c)return;
   else if(c.action==='req')togCompReq(c.dk,c.field);
   else if(c.action==='ecn')togCompECN(c.dk,c.field);
   else if(c.action==='ecnvis')togECNField(c.dk,c.field);
+  else if(c.action==='togunit')togBulkUnit(c.field);
+  else if(c.action==='bulk')pickBulkField(c.dk,c.field);
 }
 function regFW(field){const id=compRegistry.length;compRegistry.push({action:'fw',dk:'',field});return id;}
 function doFWChange(id,val){const c=compRegistry[id];if(c)setFWRule(c.field,val);}
 
-function render(){editRegistry=[];compRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;case'ecnSettings':rECNSettings();break;case'compSettings':rCompSettings();break;}}
+function render(){editRegistry=[];compRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;case'bulkEdit':rBulkEdit();break;case'ecnSettings':rECNSettings();break;case'compSettings':rCompSettings();break;}}
 
 // ===== LOGIN =====
 function rLogin(){app().innerHTML=`<div class="login-screen"><div class="login-bg"></div><div class="login-card"><div class="logo">👻</div><h1 class="login-title">Ghost Tracker</h1><p class="login-sub">Assembly tracking for Ghost robots.<br>Sign in to access production data.</p><button class="g-btn" onclick="doLogin()"><svg viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Sign in with Google</button><div class="login-err" id="loginErr"></div></div></div>${rToast()}`;}
@@ -581,7 +659,7 @@ async function valToken(){try{const r=await fetch('https://www.googleapis.com/oa
 // ===== LOADING =====
 let LP={l:0,t:11,c:''};
 function rLoad(){const p=LP.t?Math.round(LP.l/LP.t*100):0;app().innerHTML=`${rUBar()}<div class="ld-screen"><div class="ld-spin">👻</div><div style="color:var(--t3);font-size:14px">Loading assembly data...</div><div class="ld-bar-w"><div class="ld-bar" style="width:${p}%"></div></div><div style="color:var(--t5);font-size:12px;font-family:var(--fm)">${LP.c||'Connecting...'}</div></div>`;}
-function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;const adminBtns=currentUser.isAdmin?'<button class="ecnbtn" onclick="openECNSettings()">⚙️ ECN</button><button class="ecnbtn" onclick="openCompSettings()">📋 Rules</button>':'';return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><div style="display:flex;gap:6px;align-items:center">${adminBtns}<button class="logout" onclick="doLogout()">Sign out</button></div></div>`;}
+function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;const adminBtns=currentUser.isAdmin?'<button class="ecnbtn" onclick="openECNSettings()">⚙️ ECN</button><button class="ecnbtn" onclick="openCompSettings()">📋 Rules</button><button class="ecnbtn" style="border-color:var(--grn);color:var(--grn)" onclick="openBulkEdit()">⚡ Batch</button>':'';return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${adminBtns}<button class="logout" onclick="doLogout()">Sign out</button></div></div>`;}
 
 // ===== SEARCH =====
 const CHIPS=[
@@ -673,10 +751,53 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   fin.forEach((s,i)=>{if(!isGM&&matched.length&&i===matched.length)h+=`<div style="padding:6px 12px;margin:12px 0 8px;border-radius:8px;font-size:10px;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.02);border:1px solid #14152a;color:var(--t5)">▼ OTHER ASSEMBLIES</div>`;h+=rSC(s.k,s.d,isM(s.k));});
   app().innerHTML=`${rUBar()}<div style="min-height:100vh"><div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
     <div class="tbox"><div class="tbox-t">TRACE PATH</div><div class="tsteps">${R.path.map((s,i)=>`<span style="display:flex;align-items:center;gap:4px"><span class="tstep ${i===0?'tstep0':'tstepN'}">${esc(s)}</span>${i<R.path.length-1?'<span class="tarr">→</span>':''}</span>`).join('')}</div><div class="tsum"><span class="thl">${esc(S.searchInput)}</span> → ${esc(R.matchedIn)} → <span class="thl2">${esc(gSN)}</span></div></div>
+    ${rCompBar(all)}
     <div style="margin:4px 16px 4px;display:flex;gap:8px;align-items:center"><button class="dbgbtn" onclick="toggleDebug()">🔍 Debug</button></div>
     ${S.showDebug?`<div class="dbg">${debugInfo}</div>`:''}
     <div class="sw">${h}</div>
     <button class="rfb ${S.refreshing?'rfS':''}" onclick="doRefresh()" title="Refresh">↻</button></div>${rToast()}`;
+}
+
+// Compliance progress bar
+function rCompBar(allSecs){
+  const lkMap={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};
+  let totalChecked=0,totalIssues=0;
+  allSecs.forEach(({k,d})=>{
+    if(!d)return;const items=Array.isArray(d)?d:[d];if(!items.length)return;
+    const dk=lkMap[k]||k;
+    items.forEach(item=>{
+      Object.entries(item).forEach(([field,val])=>{
+        if(field==='_rowIdx')return;
+        const issue=checkFieldComp(dk,field,val);
+        if(issue!==null){totalChecked++;totalIssues++;}
+        else{
+          // Count non-null rules that passed
+          const hasRule=COMP_RULES.latestFW?.[field]||
+            (COMP_RULES.requiredChecks?.[dk]||[]).includes(field)||
+            (COMP_RULES.requiredFields?.[dk]||[]).includes(field)||
+            (COMP_RULES.requiredECN?.[dk]||[]).includes(field);
+          // Check partial FW match
+          const hasFWRule=Object.keys(COMP_RULES.latestFW||{}).some(fw=>field===fw||field.startsWith(fw));
+          if(hasRule||hasFWRule)totalChecked++;
+        }
+      });
+    });
+  });
+  if(!totalChecked)return'';
+  const passed=totalChecked-totalIssues;
+  const pct=Math.round((passed/totalChecked)*100);
+  const color=pct===100?'var(--grn)':pct>=70?'var(--yel)':'var(--red)';
+  return`<div class="comp-bar">
+    <div class="comp-bar-top">
+      <span style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--t5)">COMPLIANCE</span>
+      <span style="font-size:12px;font-weight:700;color:${color}">${pct}%</span>
+    </div>
+    <div class="comp-bar-track"><div class="comp-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px">
+      <span style="font-size:10px;color:var(--t4)">${passed}/${totalChecked} checks passed</span>
+      ${totalIssues?`<span style="font-size:10px;color:var(--red)">${totalIssues} issue${totalIssues>1?'s':''}</span>`:'<span style="font-size:10px;color:var(--grn)">All clear ✓</span>'}
+    </div>
+  </div>`;
 }
 
 function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;const sf=getSNField(DATA[lk]||items);
@@ -700,7 +821,10 @@ function rFR(sec,sn,field,value,lk){if(shouldSkipField(field))return'';const lab
   return`<div class="fr ${isH?'frH':''} ${compCls}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}${compTag}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
 
 // ===== EDIT =====
-function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_LABELS[E.field]||E.field;const c=SC[E.section];const val=getV(E.section,E.field);const isDr=val?.type==='dropdown';const isC=val?.type==='checkbox';const isD=val?.type==='date';const ch=ev!==E.value&&ev!=='';
+function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_LABELS[E.field]||E.field;const c=SC[E.section];const val=getV(E.section,E.field);
+  // Use effective type override for ECN fields with mixed values
+  const eType=E._effectiveType!==undefined?E._effectiveType:val?.type;
+  const isDr=eType==='dropdown';const isC=eType==='checkbox';const isD=eType==='date';const ch=ev!==E.value&&ev!=='';
   let iH='';
   if(isDr)iH=`<div style="width:100%;max-width:380px"><div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:8px">SELECT VALUE</div><div style="display:flex;flex-direction:column;gap:4px">${val.options.map(o=>{const s=ev===o,cu=E.value===o;return`<div class="do ${s?'doS':''}" onclick="setEV('${escA(o)}')"><div class="doi"><div class="dor ${s?'dorS':''}">${s?'<div class="dorD"></div>':''}</div><span class="dot ${s?'dotS':''}">${esc(o)}</span></div>${cu?'<span class="doCur">CURRENT</span>':''}</div>`;}).join('')}</div></div>`;
   else if(isC)iH=`<div style="width:100%;max-width:380px"><div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:12px">TOGGLE</div><div style="display:flex;gap:12px">${['✓','✗'].map(v=>{const s=ev===v,p=v==='✓',col=p?'var(--grn)':'var(--red)',bg=p?'rgba(52,211,153,.1)':'rgba(248,113,113,.1)';return`<div style="flex:1;padding:24px 16px;border-radius:14px;cursor:pointer;text-align:center;border:${s?'2px solid '+col:'1px solid var(--bd)'};background:${s?bg:'var(--inp)'}" onclick="setEV('${v}')"><div style="width:56px;height:56px;border-radius:16px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;background:${s?col+'22':'rgba(255,255,255,.03)'};border:2px solid ${s?col:'var(--bd2)'};color:${s?col:'var(--t5)'}">${v}</div><div style="font-size:14px;font-weight:600;color:${s?col:'var(--t4)'}">${p?'Pass':'Fail'}</div></div>`;}).join('')}</div></div>`;
@@ -730,9 +854,19 @@ function togSec(k){S.expanded.has(k)?S.expanded.delete(k):S.expanded.add(k);rend
 function toggleDebug(){S.showDebug=!S.showDebug;render();}
 function startEdit(sec,sn,field,value){
   S.editing={section:sec,sn,field,value};
-  // Normalize checkbox values to ✓/✗ for the toggle UI
   const val=getV(sec,field);
-  if(val?.type==='checkbox'){
+  // For ECN fields, detect type from actual value (columns can have mixed types)
+  let effectiveType=val?.type;
+  if(isECNField(field)){
+    const v=(value||'').trim();
+    if(/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no)$/i.test(v))effectiveType='checkbox';
+    else if(/^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v)||/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(v))effectiveType='date';
+    else if(!v)effectiveType=val?.type||'checkbox'; // default for empty
+    else effectiveType=null; // free text
+    S.editing._effectiveType=effectiveType;
+  }
+  // Normalize checkbox values to ✓/✗ for the toggle UI
+  if(effectiveType==='checkbox'){
     const isPass=/^(TRUE|true|1|OK|✓|done)$/i.test((value||'').trim());
     S.editValue=isPass?'✓':'✗';
     S.editing.value=isPass?'✓':'✗';
@@ -828,7 +962,7 @@ async function saveEdit(){
     showToast(`Save failed: ${err.message}`,'error');
   }
 }
-function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else if(S.screen==='ecnSettings'||S.screen==='compSettings'){S.screen='search';}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;S.selectedChip=null;S.chipNum='';}render();}
+function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else if(S.screen==='bulkEdit'){bulkBack();}else if(S.screen==='ecnSettings'||S.screen==='compSettings'){S.screen='search';}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;S.selectedChip=null;S.chipNum='';}render();}
 
 // ===== ECN SETTINGS PAGE =====
 function openECNSettings(){S.screen='ecnSettings';S.ecnExpanded=new Set();render();}
@@ -909,9 +1043,16 @@ function rECNSubSection(sk,items,lk){
   const ecnKey='ecn_'+sk;
   const isOpen=S.expanded.has(ecnKey);
   const sf=getSNField(DATA[lk]||items);
+
+  // Count ECN compliance issues
+  let ecnIssues=0;
+  items.forEach(item=>{ecnFields.forEach(f=>{if(checkFieldComp(dk,f,item[f]))ecnIssues++;});});
+  const issueBadge=ecnIssues?`<span class="comp-badge" style="margin-left:auto">${ecnIssues} ⚠</span>`:'';
+
   let h=`<div class="ecn-sub" onclick="togSec('${ecnKey}')">
     <span class="ecn-sub-icon">🔧</span>
     <span class="ecn-sub-label">ECN (${ecnFields.length})</span>
+    ${issueBadge}
     <span class="schv ${isOpen?'schvO':''}">▼</span>
   </div>`;
   if(isOpen){
@@ -920,13 +1061,24 @@ function rECNSubSection(sk,items,lk){
       ecnFields.forEach(f=>{
         const val=item[f]||'';
         const eid=regEdit(sk,item[sf]||'',f,val);
-        const isC=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
-        const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
+        const compIssue=checkFieldComp(dk,f,val);
+        const compCls=compIssue?'fr-warn':'';
+        const compTag=compIssue?`<span class="comp-tag">⚠ ${esc(compIssue)}</span>`:'';
+
+        // Detect type from actual data
+        const fType=guessECNType(sk,f);
         let vH;
-        if(isC)vH='<span class="ckd ckP">✓</span>';
-        else if(isF)vH='<span class="ckd ckF">✗</span>';
-        else vH=`<span class="fv">${esc(val||'—')}</span>`;
-        h+=`<div class="fr" onclick="doEdit(${eid})"><div class="fl"><span class="flbl ecn-flbl">${esc(f)}</span></div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;
+        if(fType?.type==='checkbox'){
+          const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
+          const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
+          vH=p?'<span class="ckd ckP">✓</span>':(isF?'<span class="ckd ckF">✗</span>':`<span class="fv">${esc(val||'—')}</span>`);
+        } else if(fType?.type==='date'){
+          vH=`<span class="fv" style="color:var(--blu)">${esc(val||'—')}</span>`;
+        } else {
+          vH=`<span class="fv">${esc(val||'—')}</span>`;
+        }
+
+        h+=`<div class="fr ${compCls}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl ecn-flbl">${esc(f)}</span>${compTag}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;
       });
     });
     h+=`</div>`;
@@ -1081,6 +1233,268 @@ function togCompECN(dk,f){
   render();
 }
 async function saveCompAndBack(){await saveCompRules();S.screen='search';render();}
+
+// ===== BULK ECN EDIT =====
+function openBulkEdit(){
+  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;render();
+}
+
+// All assembly types for batch
+const BULK_TYPES=[
+  {dk:'ghosts',sk:'ghost',label:'Ghost',icon:'👻',color:'#5b6eea'},
+  {dk:'mobileBases',sk:'mobileBase',label:'Mobile Base',icon:'🛞',color:'#34d399'},
+  {dk:'pillars',sk:'pillar',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
+  {dk:'headBodies',sk:'headBody',label:'Head & Body',icon:'🧠',color:'#f87171'},
+  {dk:'arms',sk:'arm',label:'Arm',icon:'🦾',color:'#fbbf24'},
+  {dk:'grippers',sk:'gripper',label:'Gripper',icon:'🤏',color:'#38bdf8'},
+  {dk:'deployKits',sk:'deployKit',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
+  {dk:'lMotors',sk:'lMotors',label:'L-Motors',icon:'⚙️',color:'#6ee7b7'},
+  {dk:'a12Motors',sk:'a12Motors',label:'A12 Motors',icon:'⚙️',color:'#6ee7b7'},
+  {dk:'a35Motors',sk:'a35Motors',label:'A35 Motors',icon:'⚙️',color:'#6ee7b7'},
+  {dk:'a4Motors',sk:'a4Motors',label:'A4 Motors',icon:'⚙️',color:'#6ee7b7'},
+];
+
+function getBulkFields(dk){
+  const rows=DATA[dk];if(!rows||!rows.length)return[];
+  const fields=[];
+  Object.keys(rows[0]).forEach(f=>{
+    if(f==='_rowIdx'||shouldSkipField(f))return;
+    // Get field type
+    const sk=BULK_TYPES.find(t=>t.dk===dk)?.sk||dk;
+    let type=null;
+    const v=getV(sk,f);
+    if(v?.type)type=v.type;
+    else if(isECNField(f)){const g=guessECNType(sk,f);type=g?.type||null;}
+    // Only include updatable fields: checkboxes, dates, dropdowns, ECN
+    if(type==='checkbox'||type==='date'||type==='dropdown'||isECNField(f))
+      fields.push({name:f,type:type||'text',isECN:isECNField(f)});
+  });
+  return fields;
+}
+
+function pickBulkField(dk,field){S.bulkDK=dk;S.bulkField=field;S.bulkStep=3;S.bulkValue='';
+  // Auto-select all units
+  const rows=DATA[dk]||[];const sf=getSNField(rows);
+  S.bulkSelected=new Set(rows.map(r=>r[sf]).filter(Boolean));
+  render();
+}
+
+function rBulkEdit(){
+  const step=S.bulkStep||1;
+  let h='';
+
+  // Progress steps
+  const steps=['Assembly','Field','Units & Value'];
+  h+=`<div style="display:flex;gap:4px;margin-bottom:20px">`;
+  steps.forEach((s,i)=>{
+    const n=i+1;const active=step===n;const done=step>n;
+    h+=`<div style="flex:1;text-align:center;cursor:${done?'pointer':'default'}" ${done?`onclick="S.bulkStep=${n};S.bulkField=${n<2?'null':S.bulkField?`'${S.bulkField}'`:'null'};render()"`:''}><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px"><div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${active?'background:var(--ac);color:#fff':done?'background:var(--grn);color:#fff':'background:var(--bd);color:var(--t4)'}">${done?'✓':n}</div></div><div style="font-size:10px;font-weight:600;color:${active?'var(--ac)':done?'var(--grn)':'var(--t5)'}">${s}</div><div style="height:3px;border-radius:2px;margin-top:4px;background:${done?'var(--grn)':active?'var(--ac)':'var(--bd)'};transition:background .3s"></div></div>`;
+  });
+  h+=`</div>`;
+
+  if(step===1){
+    // Step 1: Pick assembly type
+    h+=`<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Select assembly type to batch update</div>`;
+    BULK_TYPES.forEach(bt=>{
+      const rows=DATA[bt.dk]||[];if(!rows.length)return;
+      const fields=getBulkFields(bt.dk);
+      h+=`<div class="bulk-field" onclick="S.bulkDK='${bt.dk}';S.bulkStep=2;render()" style="border-left:3px solid ${bt.color}">
+        <span style="font-size:18px">${bt.icon}</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</div><div style="font-size:10px;color:var(--t4)">${rows.length} units · ${fields.length} fields</div></div>
+        <span style="color:var(--t5)">›</span>
+      </div>`;
+    });
+  }
+
+  else if(step===2){
+    // Step 2: Pick field
+    const bt=BULK_TYPES.find(t=>t.dk===S.bulkDK);
+    if(!bt){S.bulkStep=1;render();return;}
+    const fields=getBulkFields(S.bulkDK);
+    const ecnFields=fields.filter(f=>f.isECN);
+    const regFields=fields.filter(f=>!f.isECN);
+
+    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:20px">${bt.icon}</span>
+      <span style="font-size:14px;font-weight:600;color:${bt.color}">${bt.label}</span>
+      <span style="font-size:11px;color:var(--t4)">${(DATA[bt.dk]||[]).length} units</span>
+    </div>`;
+
+    if(regFields.length){
+      h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:8px 0 6px">REGULAR FIELDS</div>`;
+      regFields.forEach(f=>{
+        const typeIcon=f.type==='checkbox'?'☑️':f.type==='date'?'📅':f.type==='dropdown'?'▾':'📝';
+        const needs=(DATA[S.bulkDK]||[]).filter(item=>checkFieldComp(S.bulkDK,f.name,item[f.name])).length;
+        const cid=regComp('bulk',S.bulkDK,f.name);
+        h+=`<div class="bulk-field" onclick="doComp(${cid})">
+          <span class="bulk-field-type">${typeIcon}</span>
+          <span class="bulk-field-name">${esc(FIELD_LABELS[f.name]||f.name)}</span>
+          ${needs?`<span class="comp-tag">${needs} ⚠</span>`:''}
+        </div>`;
+      });
+    }
+
+    if(ecnFields.length){
+      h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:12px 0 6px">ECN FIELDS</div>`;
+      ecnFields.forEach(f=>{
+        const typeIcon=f.type==='checkbox'?'☐':f.type==='date'?'📅':'📝';
+        const needs=(DATA[S.bulkDK]||[]).filter(item=>checkFieldComp(S.bulkDK,f.name,item[f.name])).length;
+        const cid=regComp('bulk',S.bulkDK,f.name);
+        h+=`<div class="bulk-field" onclick="doComp(${cid})">
+          <span class="bulk-field-type">${typeIcon}</span>
+          <span class="bulk-field-name">${esc(f.name)}</span>
+          ${needs?`<span class="comp-tag">${needs} ⚠</span>`:''}
+        </div>`;
+      });
+    }
+  }
+
+  else if(step===3){
+    // Step 3: Select units + set value
+    const bt=BULK_TYPES.find(t=>t.dk===S.bulkDK);
+    if(!bt||!S.bulkField){S.bulkStep=1;render();return;}
+    const rows=DATA[S.bulkDK]||[];
+    const sf=getSNField(rows);
+    const sk=bt.sk;
+    const fType=isECNField(S.bulkField)?guessECNType(sk,S.bulkField):getV(sk,S.bulkField);
+    const isChk=fType?.type==='checkbox';
+    const isDt=fType?.type==='date';
+    const isDr=fType?.type==='dropdown';
+    const bv=S.bulkValue;
+
+    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:16px">${bt.icon}</span>
+      <span style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</span>
+      <span style="font-size:11px;color:var(--t3)">›</span>
+      <span style="font-size:12px;color:var(--t2);font-family:var(--fm)">${esc(FIELD_LABELS[S.bulkField]||S.bulkField)}</span>
+    </div>`;
+
+    // Value selector
+    h+=`<div style="font-size:10px;color:var(--ac);font-weight:600;letter-spacing:1px;margin:12px 0 8px">SET NEW VALUE</div>`;
+    if(isChk){
+      h+=`<div style="display:flex;gap:10px;margin-bottom:12px">
+        ${['TRUE','FALSE'].map(v=>{const sel=bv===v;const p=v==='TRUE';const col=p?'var(--grn)':'var(--red)';
+        return`<div class="bulk-val ${sel?'bulk-val-on':''}" style="${sel?`border-color:${col};background:${col}08`:''}" onclick="S.bulkValue='${v}';render()">
+          <span class="ckd ${p?'ckP':'ckF'}" style="width:28px;height:28px;font-size:16px">${p?'✓':'✗'}</span>
+          <span style="font-size:12px;font-weight:600;color:${sel?col:'var(--t3)'}">${p?'Done':'Not Done'}</span>
+        </div>`;}).join('')}
+      </div>`;
+    } else if(isDt){
+      const today=new Date();const todayStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+      const yest=new Date();yest.setDate(yest.getDate()-1);const yestStr=`${yest.getFullYear()}/${String(yest.getMonth()+1).padStart(2,'0')}/${String(yest.getDate()).padStart(2,'0')}`;
+      h+=`<div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="bulk-val ${bv===todayStr?'bulk-val-on':''}" onclick="S.bulkValue='${todayStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===todayStr?'var(--blu)':'var(--t3)'}">Today</span><span style="font-size:9px;color:var(--t4)">${todayStr}</span></div>
+        <div class="bulk-val ${bv===yestStr?'bulk-val-on':''}" onclick="S.bulkValue='${yestStr}';render()"><span style="font-size:16px">📅</span><span style="font-size:11px;font-weight:600;color:${bv===yestStr?'var(--blu)':'var(--t3)'}">Yesterday</span><span style="font-size:9px;color:var(--t4)">${yestStr}</span></div>
+      </div>
+      <input type="date" class="edin" id="bulkDate" value="${(bv||'').replace(/\//g,'-')}" style="margin-bottom:8px">`;
+    } else if(isDr&&fType?.options){
+      h+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:200px;overflow-y:auto">${fType.options.map(o=>{const sel=bv===o;return`<div class="do ${sel?'doS':''}" onclick="S.bulkValue='${escA(o)}';render()"><div class="doi"><div class="dor ${sel?'dorS':''}">${sel?'<div class="dorD"></div>':''}</div><span class="dot ${sel?'dotS':''}">${esc(o)}</span></div></div>`;}).join('')}</div>`;
+    } else {
+      h+=`<input type="text" class="etin" id="bulkText" value="${escA(bv)}" placeholder="Enter value..." style="margin-bottom:12px">`;
+    }
+
+    // Unit selection
+    const selCount=S.bulkSelected.size;
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px">
+      <span style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px">SELECT UNITS (${selCount}/${rows.length})</span>
+      <div style="display:flex;gap:6px">
+        <button class="bulk-change" onclick="selectAllBulk()">All</button>
+        <button class="bulk-change" onclick="S.bulkSelected=new Set();render()">None</button>
+      </div>
+    </div>`;
+    rows.forEach(item=>{
+      const sn=item[sf]||'?';
+      const val=item[S.bulkField]||'';
+      const compI=checkFieldComp(S.bulkDK,S.bulkField,val);
+      const selected=S.bulkSelected.has(sn);
+      let vH;
+      if(isChk){const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);vH=p?'<span class="ckd ckP" style="width:18px;height:18px;font-size:11px">✓</span>':'<span class="ckd ckF" style="width:18px;height:18px;font-size:11px">✗</span>';}
+      else vH=`<span style="font-size:11px;color:var(--t2);font-family:var(--fm)">${esc(val||'—')}</span>`;
+      const uid=regComp('togunit',S.bulkDK,sn);
+      h+=`<div class="bulk-unit ${compI?'fr-warn':''}" onclick="doComp(${uid})" style="cursor:pointer;${selected?'border-color:var(--ac);background:rgba(91,110,234,.04)':''}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="ecns-tog ${selected?'ecns-on':'ecns-off'}" style="width:18px;height:18px;font-size:10px">${selected?'✓':''}</div>
+          <span class="bulk-unit-sn">${esc(sn)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">${vH}${compI?'<span class="comp-tag" style="font-size:8px">⚠</span>':''}</div>
+      </div>`;
+    });
+
+    const hasChange=bv!==''&&selCount>0;
+    h+=`<button class="savb ${hasChange?'savA':'savI'}" style="width:100%;margin-top:16px" onclick="doBulkSave()">${S.bulkSaving?'Saving...':hasChange?`Apply to ${selCount} unit${selCount>1?'s':''}`:'Select value & units'}</button>`;
+  }
+
+  app().innerHTML=`${rUBar()}<div style="min-height:100vh">
+    <div class="rh"><button class="rbk" onclick="bulkBack()">← Back</button><div class="rid">⚡ Batch Update</div></div>
+    <div style="padding:16px">${h}</div>
+  </div>${rToast()}`;
+
+  // Event listeners
+  const bd=$('#bulkDate');if(bd)bd.addEventListener('change',e=>{S.bulkValue=e.target.value.replace(/-/g,'/');});
+  const bt=$('#bulkText');if(bt)bt.addEventListener('input',e=>{S.bulkValue=e.target.value;});
+}
+
+function togBulkUnit(sn){
+  if(S.bulkSelected.has(sn))S.bulkSelected.delete(sn);else S.bulkSelected.add(sn);render();
+}
+function selectAllBulk(){
+  const rows=DATA[S.bulkDK]||[];const sf=getSNField(rows);
+  S.bulkSelected=new Set(rows.map(r=>r[sf]).filter(Boolean));render();
+}
+
+function bulkBack(){
+  if(S.bulkStep===3){S.bulkStep=2;S.bulkField=null;S.bulkValue='';render();}
+  else if(S.bulkStep===2){S.bulkStep=1;S.bulkDK=null;render();}
+  else{S.screen='search';render();}
+}
+
+async function doBulkSave(){
+  if(!S.bulkDK||!S.bulkField||!S.bulkValue||S.bulkSaving||!S.bulkSelected.size)return;
+
+  const dk=S.bulkDK;
+  const field=S.bulkField;
+  const rows=DATA[dk]||[];
+  const sf=getSNField(rows);
+  const meta=SHEET_META[dk];
+  if(!meta){showToast('No sheet metadata','error');return;}
+
+  S.bulkSaving=true;render();
+  showToast(`Saving to ${S.bulkSelected.size} units...`);
+
+  function colLetter(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;}return s;}
+  const colIdx=meta.headers.indexOf(field);
+  if(colIdx===-1){showToast('Column not found','error');S.bulkSaving=false;return;}
+  const colL=colLetter(colIdx);
+
+  let ok=0,fail=0;
+  const selectedItems=rows.filter(r=>S.bulkSelected.has(r[sf]));
+
+  for(const item of selectedItems){
+    const sheetRow=meta.startRow+1+item._rowIdx;
+    const cellRef=`${meta.tabName}!${colL}${sheetRow}`;
+    try{
+      const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(cellRef)}?valueInputOption=USER_ENTERED`;
+      let resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[S.bulkValue]]})});
+      if(resp.status===401&&ok===0){
+        // Refresh token once on first 401
+        const origCb=tokenClient.callback;let done=false;
+        await new Promise((resolve,reject)=>{
+          tokenClient.callback=r=>{if(done)return;done=true;tokenClient.callback=origCb;if(r.access_token){accessToken=r.access_token;localStorage.setItem('gat',accessToken);resolve();}else reject(new Error('Auth failed'));};
+          tokenClient.requestAccessToken({prompt:''});
+          setTimeout(()=>{if(!done){done=true;tokenClient.callback=origCb;reject(new Error('Timeout'));}},15000);
+        });
+        resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[S.bulkValue]]})});
+      }
+      if(resp.ok){item[field]=S.bulkValue;ok++;}else{fail++;}
+    }catch{fail++;}
+  }
+
+  S.bulkSaving=false;
+  if(S.result?.ghost)S.tree=getGhostTree(S.result.ghost);
+  if(fail)showToast(`${ok} saved, ${fail} failed`,'error');
+  else showToast(`✓ ${ok} units updated`);
+  render();
+}
 async function doRefresh(){S.refreshing=true;render();S.loadErrors=await loadAllData((l,t,c)=>{LP={l,t,c};});S.refreshing=false;showToast('Data refreshed');render();}
 function showToast(msg,type='success'){S.toast={msg,type};render();setTimeout(()=>{S.toast=null;render();},3000);}
 
