@@ -1348,19 +1348,16 @@ function getBulkFields(dk){
   const rows=DATA[dk];if(!rows||!rows.length)return[];
   const fields=[];
   Object.keys(rows[0]).forEach(f=>{
-    if(f==='_rowIdx')return;
-    const isECN=isECNField(f);
-    // shouldSkipField skips ECN fields (they're shown separately in results), but we want them in batch
-    if(!isECN&&shouldSkipField(f))return;
+    if(f==='_rowIdx'||shouldSkipField(f))return;
     // Get field type
     const sk=BULK_TYPES.find(t=>t.dk===dk)?.sk||dk;
     let type=null;
     const v=getV(sk,f);
     if(v?.type)type=v.type;
-    else if(isECN){const g=guessECNType(sk,f);type=g?.type||null;}
+    else if(isECNField(f)){const g=guessECNType(sk,f);type=g?.type||null;}
     // Only include updatable fields: checkboxes, dates, dropdowns, ECN
-    if(type==='checkbox'||type==='date'||type==='dropdown'||isECN)
-      fields.push({name:f,type:type||'text',isECN});
+    if(type==='checkbox'||type==='date'||type==='dropdown'||isECNField(f))
+      fields.push({name:f,type:type||'text',isECN:isECNField(f)});
   });
   return fields;
 }
