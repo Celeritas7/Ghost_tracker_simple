@@ -491,21 +491,7 @@ function guessECNType(section,field){
 
 // ===== DATA =====
 let DATA={},LOADING=false;
-let SHEET_META={}; // {key: {headers:[], startRow:number, tabName:string, sheetId:number}}
-let SHEET_IDS={}; // {tabName: numericSheetId}
-
-async function loadSheetIds(){
-  try{
-    const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}?fields=sheets.properties`;
-    const r=await fetch(url,{headers:{'Authorization':`Bearer ${accessToken}`}});
-    if(!r.ok)return;
-    const j=await r.json();
-    (j.sheets||[]).forEach(s=>{
-      if(s.properties)SHEET_IDS[s.properties.title]=s.properties.sheetId;
-    });
-    console.log('[Sheets] Tab IDs:',SHEET_IDS);
-  }catch(e){console.warn('[Sheets] Failed to load sheet IDs:',e);}
-}
+let SHEET_META={}; // {key: {headers:[], startRow:number, tabName:string}}
 
 async function loadAllData(onP){LOADING=true;const E=Object.entries(CONFIG.TABS);const T=E.length;let L=0;const errs=[];
 
@@ -540,13 +526,7 @@ async function loadAllData(onP){LOADING=true;const E=Object.entries(CONFIG.TABS)
     const resp=await fetch(url,{headers:{'Authorization':`Bearer ${accessToken}`}});if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const j=await resp.json();
     (j.valueRanges||[]).forEach((vr,i)=>{const[key]=E[i];const raw=vr.values||[];DATA[key]=parseSheet(raw,key,E[i][1]);L++;onP?.(L,T,E[i][1]);});
   }catch(e){console.warn('Batch failed:',e);for(const[key,tab]of E){try{onP?.(L,T,tab);const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(tab)}`,{headers:{'Authorization':`Bearer ${accessToken}`}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const j=await r.json();const raw=j.values||[];DATA[key]=parseSheet(raw,key,tab);L++;}catch(er){errs.push({tab,error:er.message});DATA[key]=[];L++;}}}
-  LOADING=false;onP?.(T,T,'Done');
-  // Map numeric sheet IDs into SHEET_META
-  Object.values(SHEET_META).forEach(m=>{
-    const tabBase=m.tabName.replace(/!.*$/,''); // strip any range suffix
-    if(SHEET_IDS[tabBase]!==undefined)m.sheetId=SHEET_IDS[tabBase];
-  });
-  buildDebugInfo();return errs;}
+  LOADING=false;onP?.(T,T,'Done');buildDebugInfo();return errs;}
 
 // ===== FLEXIBLE COLUMN MATCHING =====
 function getSNField(rows){if(!rows||!rows.length)return'S/N';const K=Object.keys(rows[0]);const k=K.find(k=>/^S\/?N$/i.test(k.trim()));if(k)return k;for(const k2 of K){if(rows.some(r=>/^GT\d{3}-[A-Z0-9]{2,3}-\d{3,5}$/i.test(r[k2]||'')))return k2;}return K.find(k=>!shouldSkipField(k))||K[0];}
@@ -672,7 +652,7 @@ async function fetchUser(){try{const r=await fetch('https://www.googleapis.com/o
 function doLogout(){if(accessToken)try{google.accounts.oauth2.revoke(accessToken);}catch{}localStorage.removeItem('gat');localStorage.removeItem('gau');accessToken=null;currentUser={name:'',email:'',isAdmin:false,isGuest:false,team:''};S.screen='login';render();}
 async function startApp(){S.screen='loading';render();
   // Load ECN settings from Firestore in parallel with sheet data
-  const [errs]=await Promise.all([loadAllData((l,t,c)=>{LP={l,t,c};rLoad();}),loadECNSettings(),loadCompRules(),loadSheetIds()]);
+  const [errs]=await Promise.all([loadAllData((l,t,c)=>{LP={l,t,c};rLoad();}),loadECNSettings(),loadCompRules()]);
   S.loadErrors=errs;S.screen='search';render();}
 async function valToken(){try{const r=await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token='+accessToken);if(r.ok)startApp();else{localStorage.removeItem('gat');localStorage.removeItem('gau');accessToken=null;render();}}catch{localStorage.removeItem('gat');accessToken=null;render();}}
 
@@ -896,48 +876,6 @@ function startEdit(sec,sn,field,value){
 function setEV(v){S.editValue=v;render();}
 function setToday(){const d=new Date();S.editValue=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;render();}
 function setYest(){const d=new Date();d.setDate(d.getDate()-1);S.editValue=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;render();}
-// Detect if a field is a S/N (serial number) field that should get exchange notes
-function isSNField(field){
-  const f=(field||'').toLowerCase();
-  return f.includes('s/n')||f.includes('sn')||f==='serial'||/シリアル/.test(field);
-}
-
-// Add or append a note to a Google Sheet cell
-async function addCellNote(dataKey,rowIdx,colIdx,noteText){
-  const meta=SHEET_META[dataKey];if(!meta)return;
-  const tabName=meta.tabName.replace(/!.*$/,'');
-  const sheetId=meta.sheetId??SHEET_IDS[tabName];
-  if(sheetId===undefined){console.warn('[Note] No sheetId for',tabName);return;}
-  const sheetRow=meta.startRow+1+rowIdx;
-
-  // First, try to fetch existing note
-  let existingNote='';
-  try{
-    const getUrl=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}?ranges=${encodeURIComponent(tabName+'!R'+sheetRow+'C'+(colIdx+1))}&fields=sheets.data.rowData.values.note`;
-    const gr=await fetch(getUrl,{headers:{'Authorization':`Bearer ${accessToken}`}});
-    if(gr.ok){
-      const gj=await gr.json();
-      existingNote=(gj.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values?.[0]?.note)||'';
-    }
-  }catch(e){console.warn('[Note] Failed to read existing note:',e);}
-
-  // Build full note: append new line if existing
-  const fullNote=existingNote?(existingNote+'\n'+noteText):noteText;
-
-  // Write note via batchUpdate
-  try{
-    const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}:batchUpdate`;
-    const body={requests:[{updateCells:{
-      rows:[{values:[{note:fullNote}]}],
-      fields:'note',
-      range:{sheetId,startRowIndex:sheetRow-1,endRowIndex:sheetRow,startColumnIndex:colIdx,endColumnIndex:colIdx+1}
-    }}]};
-    const r=await fetch(url,{method:'POST',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(r.ok){console.log('[Note] Added:',noteText);}
-    else{console.warn('[Note] Failed:',r.status,await r.text().catch(()=>''));}
-  }catch(e){console.warn('[Note] Error:',e);}
-}
-
 async function saveEdit(){
   if(!S.editing||S.editValue===S.editing.value)return;
   const{section,sn,field}=S.editing;
@@ -1016,16 +954,6 @@ async function saveEdit(){
     // Update local data
     row[field]=newVal;
     showToast(`✓ ${label}: ${newVal}`);
-
-    // Auto-add exchange note for S/N fields
-    const oldVal=S.editing.value;
-    if(isSNField(field)&&oldVal&&oldVal!==newVal){
-      const noteText=`${oldVal} → ${newVal}　交換`;
-      addCellNote(dataKey,row._rowIdx,colIdx,noteText).then(()=>{
-        console.log('[Note] Exchange note added for',field);
-      }).catch(e=>console.warn('[Note] Failed:',e));
-    }
-
     S.screen='result';S.editing=null;
     if(S.result?.ghost){S.tree=getGhostTree(S.result.ghost);}
     render();
