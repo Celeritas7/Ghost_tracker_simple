@@ -312,10 +312,8 @@ async function saveCompRules(){
 function checkFieldComp(dataKey,field,value){
   const v=(value||'').trim();
   // Latest FW check - match field name partially
-  // Skip if value looks like a boolean (field used as checkbox in this sheet, not a FW version)
   for(const[fwField,latest]of Object.entries(COMP_RULES.latestFW||{})){
     if(field===fwField||field.startsWith(fwField)){
-      if(/^(TRUE|FALSE|true|false|1|0)$/i.test(v))break; // boolean value = not a FW field here
       if(!v)return'empty';
       if(v!==latest)return`not latest (${latest})`;
       return null;
@@ -333,10 +331,10 @@ function checkFieldComp(dataKey,field,value){
     if(!v)return'required';
     return null;
   }
-  // Required ECN — any non-empty value means applied (dates, text, TRUE all count)
+  // Required ECN
   const reqE=COMP_RULES.requiredECN?.[dataKey]||[];
   if(reqE.includes(field)){
-    if(!v)return'ECN not applied';
+    if(!/^(TRUE|true|1|OK|✓|done)$/i.test(v))return'ECN not applied';
     return null;
   }
   return null;
