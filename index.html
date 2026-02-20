@@ -76,6 +76,22 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .mbdg{padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600}
 .schv{font-size:11px;color:var(--t5);transition:transform .2s}.schvO{transform:rotate(180deg)}
 .fg{padding-top:2px;padding-bottom:2px}
+.cg-sn{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:5px}
+.cg-prod{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px}
+.cg-card{padding:4px 7px;border-radius:5px;background:var(--inp);border:1px solid var(--bd);cursor:pointer;transition:border-color .1s}
+.cg-card:hover{border-color:var(--bd2)}
+.cg-card-warn{border-color:rgba(248,113,113,.3)!important;background:rgba(248,113,113,.03)!important}
+.cg-lbl{font-size:8px;color:var(--t4);margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px}
+.cg-val{font-size:10px;font-family:var(--fm);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-val-sn{color:var(--t1);font-weight:600}
+.cg-val-empty{color:var(--t5)}
+.cg-chks{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}
+.cg-chk{padding:3px 7px;border-radius:5px;display:flex;align-items:center;gap:4px;cursor:pointer;transition:border-color .1s}
+.cg-chk:hover{filter:brightness(1.1)}
+.cg-grp{font-size:8px;font-weight:700;letter-spacing:.5px;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.cg-ecn-wrap{display:flex;gap:3px;flex-wrap:wrap}
+.cg-ecn{padding:3px 6px;border-radius:5px;display:flex;align-items:center;gap:4px;background:rgba(167,139,250,.04);border:1px solid rgba(167,139,250,.1);cursor:pointer}
+.cg-ecn:hover{border-color:rgba(167,139,250,.2)}
 .fgl{padding:2px 10px;font-size:10px;font-weight:600;opacity:.7;font-family:var(--fm)}
 .fr{display:flex;justify-content:space-between;align-items:center;padding:2px 10px;cursor:pointer;border-radius:0;border-left:2px solid transparent;margin:0}
 .fr:hover{background:rgba(255,255,255,.03)}
@@ -777,8 +793,27 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   const sm={pdb:['mobilebase'],iob:['headbody','gripper'],mdb:['mbmotors','plmotors','arma12','arma35','arma4'],brk:['pillar'],bat:['arm'],galina:['headbody'],lmotor:['mbmotors','plmotors'],a12motor:['arma12'],a35motor:['arma35'],a4motor:['arma4']};
   const isM=k=>{const kl=k.toLowerCase();if(mi.includes(kl)||kl.includes(mi))return true;for(const p of mp)if(p.includes(kl)||kl.includes(p))return true;for(const[s,ts]of Object.entries(sm))if(mi.includes(s)&&ts.some(t=>kl.includes(t)))return true;return false;};
   const isGM=mi==='ghost';const matched=all.filter(s=>isM(s.k));const rest=all.filter(s=>!isM(s.k));const seen=new Set();const sorted=isGM?all:[...matched,...rest];const fin=sorted.filter(s=>{if(seen.has(s.k))return false;seen.add(s.k);return true;});
-  let h='';if(!isGM&&matched.length)h+=`<div style="padding:4px 10px;margin:0 0 4px;border-radius:6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.1);color:var(--ac)">▲ MATCHED</div>`;
-  fin.forEach((s,i)=>{if(!isGM&&matched.length&&i===matched.length)h+=`<div style="padding:4px 10px;margin:8px 0 4px;border-radius:6px;font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.02);border:1px solid #14152a;color:var(--t5)">▼ OTHER ASSEMBLIES</div>`;h+=rSC(s.k,s.d,isM(s.k));});
+  let h='';
+  // Assembly chip nav
+  h+=`<div style="display:flex;gap:4px;padding:4px 0;flex-wrap:wrap;margin-bottom:4px">`;
+  fin.forEach(s=>{
+    if(!s.d||(Array.isArray(s.d)&&!s.d.length))return;
+    const c=SC[s.k];if(!c)return;
+    const lk2={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[s.k]||s.k;
+    const items2=Array.isArray(s.d)?s.d:[s.d];
+    const iss2=countSectionIssues(lk2,items2);
+    const isExp=S.expanded.has(s.k);
+    const isMt=isM(s.k);
+    h+=`<div style="padding:2px 6px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:3px;border:${isMt?'1.5px solid '+c.color:isExp?'1.5px solid '+c.color+'55':'1px solid var(--bd)'};background:${isExp?c.color+'0a':'var(--card)'}" onclick="togSec('${s.k}');render()">
+      <span style="font-size:10px">${c.icon}</span>
+      <span style="font-size:9px;font-weight:600;color:${isExp?c.color:isMt?c.color:'var(--t3)'}">${c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK')}</span>
+      ${iss2?`<span style="width:5px;height:5px;border-radius:50%;background:var(--red)"></span>`:''}
+    </div>`;
+  });
+  h+=`</div>`;
+
+  if(!isGM&&matched.length)h+=`<div style="padding:3px 8px;margin:0 0 3px;border-radius:5px;display:flex;align-items:center;gap:6px;font-size:8px;font-weight:700;letter-spacing:1px;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.1);color:var(--ac)">▲ MATCHED</div>`;
+  fin.forEach((s,i)=>{if(!isGM&&matched.length&&i===matched.length)h+=`<div style="padding:3px 8px;margin:6px 0 3px;border-radius:5px;font-size:8px;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.02);border:1px solid #14152a;color:var(--t5)">▼ OTHER</div>`;h+=rSC(s.k,s.d,isM(s.k));});
   app().innerHTML=`${rUBar()}<div style="min-height:100vh"><div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
     <div class="tbox"><div class="tbox-t">TRACE PATH</div><div class="tsteps">${R.path.map((s,i)=>`<span style="display:flex;align-items:center;gap:4px"><span class="tstep ${i===0?'tstep0':'tstepN'}">${esc(s)}</span>${i<R.path.length-1?'<span class="tarr">→</span>':''}</span>`).join('')}</div><div class="tsum"><span class="thl">${esc(S.searchInput)}</span> → ${esc(R.matchedIn)} → <span class="thl2">${esc(gSN)}</span></div></div>
     ${rCompBar(all)}
@@ -833,12 +868,133 @@ function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'
   const issueBadge=issues?`<span class="comp-badge">${issues} ⚠</span>`:'';
   let innerH='';
   if(isO){
-    const ecnH=rECNSubSection(sk,items,lk);
-    const hasECN=ecnH.length>0;
-    innerH=items.map((item,idx)=>`<div class="fg" style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:${idx===items.length-1&&!hasECN?'0 0 12px 12px':'0'}">${items.length>1?`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`:''}${Object.entries(item).map(([k,v])=>rFR(sk,item[sf]||'',k,v,lk)).join('')}</div>`).join('');
-    if(hasECN)innerH+=`<div style="background:var(--card);border:1px solid ${c.color}15;border-top:none;border-radius:0 0 12px 12px">${ecnH}</div>`;
+    items.forEach((item,idx)=>{
+      if(items.length>1)innerH+=`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`;
+      // Classify fields
+      const snFs=[],chkFs=[],prodFs=[],emptyFs=[];
+      Object.entries(item).forEach(([k,v])=>{
+        if(shouldSkipField(k))return;
+        if(isECNField(k))return; // ECN handled separately
+        const val=getV(sk,k);
+        const isChk=val?.type==='checkbox';
+        const isSN=isSNField(k)||k===sf;
+        const comp=checkFieldComp(lk,k,v);
+        const eid=regEdit(sk,item[sf]||'',k,v||'');
+        const fObj={k,v:v||'',label:FIELD_LABELS[k]||k,isChk,isSN,comp,eid,isDr:val?.type==='dropdown',isD:val?.type==='date'};
+        if(isSN)snFs.push(fObj);
+        else if(isChk)chkFs.push(fObj);
+        else if(v)prodFs.push(fObj);
+        else emptyFs.push(fObj);
+      });
+
+      innerH+=`<div style="padding:5px 8px;background:var(--card);border:1px solid ${c.color}12;border-top:none">`;
+
+      // S/N group
+      if(snFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--ac)">SERIAL NUMBERS</div>`;
+        innerH+=`<div class="cg-sn">`;
+        snFs.forEach(f=>{
+          innerH+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+            <div class="cg-lbl">${esc(f.label)}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+            <div class="cg-val cg-val-sn">${esc(f.v||'—')}</div>
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Production group (text fields with values)
+      if(prodFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--grn)">DATA</div>`;
+        innerH+=`<div class="cg-prod">`;
+        prodFs.forEach(f=>{
+          innerH+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+            <div class="cg-lbl">${esc(f.label)}${f.isDr?'<span style="color:var(--ac);font-size:7px">▾</span>':''}${f.isD?'<span style="font-size:7px">📅</span>':''}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+            <div class="cg-val">${esc(f.v)}</div>
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Checkbox group
+      if(chkFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--yel)">CHECKS</div>`;
+        innerH+=`<div class="cg-chks">`;
+        chkFs.forEach(f=>{
+          const p=f.v==='✓'||/^(TRUE|true|1|OK)$/.test(f.v);
+          const col=p?'var(--grn)':'var(--red)';
+          const bg=p?'rgba(52,211,153,.06)':'rgba(248,113,113,.06)';
+          const bd=p?'rgba(52,211,153,.15)':'rgba(248,113,113,.15)';
+          innerH+=`<div class="cg-chk" style="background:${bg};border:1px solid ${bd}" onclick="doEdit(${f.eid})">
+            <span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>
+            <span style="font-size:9px;color:${col}">${esc(f.label)}</span>
+            ${f.comp?`<span style="font-size:7px;color:var(--red)">⚠</span>`:''}
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Empty fields (compact, dimmed)
+      if(emptyFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--t5)">EMPTY (${emptyFs.length})</div>`;
+        innerH+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">`;
+        emptyFs.forEach(f=>{
+          innerH+=`<div style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--bd);cursor:pointer;font-size:8px;color:var(--t5);display:flex;align-items:center;gap:3px" onclick="doEdit(${f.eid})">${esc(f.label)}${f.comp?'<span style="color:var(--red)">⚠</span>':''}</div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      innerH+=`</div>`;
+    });
+
+    // ECN subsection
+    const ecnH=rECNSubSectionGrid(sk,items,lk,c);
+    if(ecnH)innerH+=`<div style="background:var(--card);border:1px solid ${c.color}12;border-top:none;border-radius:0 0 8px 8px;padding:0 8px 5px">${ecnH}</div>`;
   }
-  return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'12px 12px 0 0':'12px'};border:1px solid ${c.color}${isMS?'55':'22'};border-left:${isMS?'4px solid '+c.color:'1px solid '+c.color+'22'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${issueBadge}${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${innerH}</div>`;}
+  return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'8px 8px 0 0':'8px'};border:1px solid ${c.color}${isMS?'55':'18'};border-left:${isMS?'3px solid '+c.color:'1px solid '+c.color+'18'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${issueBadge}${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${isO?`<div style="border-radius:0 0 8px 8px;overflow:hidden">${innerH}</div>`:''}</div>`;}
+
+// Card grid ECN subsection
+function rECNSubSectionGrid(sk,items,lk,c){
+  const dk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
+  const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
+  if(!ecnFields.length)return'';
+  const ecnKey='ecn_'+sk;
+  const isOpen=S.expanded.has(ecnKey);
+  const sf=getSNField(DATA[lk]||items);
+
+  let ecnIssues=0;
+  items.forEach(item=>{ecnFields.forEach(f=>{if(checkFieldComp(dk,f,item[f]))ecnIssues++;});});
+  const issuePill=ecnIssues?`<span style="font-size:7px;padding:0 4px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:700">${ecnIssues}⚠</span>`:'';
+
+  let h=`<div style="display:flex;align-items:center;gap:4px;padding:3px 0;cursor:pointer;border-top:1px dashed rgba(167,139,250,.15)" onclick="togSec('${ecnKey}')">
+    <span class="cg-grp" style="color:var(--pur);margin-bottom:0">🔧 ECN (${ecnFields.length})</span>${issuePill}
+    <span class="schv ${isOpen?'schvO':''}" style="margin-left:auto">▼</span>
+  </div>`;
+  if(isOpen){
+    h+=`<div class="cg-ecn-wrap">`;
+    items.forEach(item=>{
+      ecnFields.forEach(f=>{
+        const val=item[f]||'';
+        const eid=regEdit(sk,item[sf]||'',f,val);
+        const comp=checkFieldComp(dk,f,val);
+        const fType=guessECNType(sk,f);
+        let vDisp;
+        if(fType?.type==='checkbox'){
+          const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
+          const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
+          vDisp=p?'<span class="ckd ckP" style="width:10px;height:10px;font-size:7px">✓</span>':(isF?'<span class="ckd ckF" style="width:10px;height:10px;font-size:7px">✗</span>':`<span style="font-size:8px;color:var(--t3)">${esc(val||'—')}</span>`);
+        } else {
+          vDisp=`<span style="font-size:8px;font-family:var(--fm);color:${comp?'var(--red)':'var(--pur)'}">${esc(val||'—')}</span>`;
+        }
+        h+=`<div class="cg-ecn ${comp?'cg-card-warn':''}" onclick="doEdit(${eid})">
+          <span style="font-size:7px;font-family:var(--fm);color:var(--t3)">${esc(f)}</span>
+          ${vDisp}
+        </div>`;
+      });
+    });
+    h+=`</div>`;
+  }
+  return h;
+}
 
 function rFR(sec,sn,field,value,lk){if(shouldSkipField(field))return'';const label=FIELD_LABELS[field]||field;const val=getV(sec,field);const isSN=field===getSNField(DATA[lk]||[])||/S\/N$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=S.result?.matchedSN===value||(S.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
   const compIssue=checkFieldComp(lk,field,value);
