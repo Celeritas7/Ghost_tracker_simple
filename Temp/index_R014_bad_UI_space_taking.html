@@ -649,7 +649,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:'',bulkPerUnit:{},bulkIsPerUnit:false,settingsTab:'ecn',settingsSel:null};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:'',bulkPerUnit:{},bulkIsPerUnit:false};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -673,7 +673,7 @@ function doComp(id){const c=compRegistry[id];if(!c)return;
 function regFW(field){const id=compRegistry.length;compRegistry.push({action:'fw',dk:'',field});return id;}
 function doFWChange(id,val){const c=compRegistry[id];if(c)setFWRule(c.field,val);}
 
-function render(){editRegistry=[];compRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;case'bulkEdit':rBulkEdit();break;case'settings':rSettings();break;case'ecnSettings':rSettings();break;case'compSettings':rSettings();break;}}
+function render(){editRegistry=[];compRegistry=[];switch(S.screen){case'login':rLogin();break;case'loading':rLoad();break;case'search':rSearch();break;case'result':rResult();break;case'edit':rEdit();break;case'bulkEdit':rBulkEdit();break;case'ecnSettings':rECNSettings();break;case'compSettings':rCompSettings();break;}}
 
 // ===== LOGIN =====
 function rLogin(){app().innerHTML=`<div class="login-screen"><div class="login-bg"></div><div class="login-card"><div class="logo">👻</div><h1 class="login-title">Ghost Tracker</h1><p class="login-sub">Assembly tracking for Ghost robots.<br>Sign in to access production data.</p><button class="g-btn" onclick="doLogin()"><svg viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Sign in with Google</button><div class="login-err" id="loginErr"></div></div></div>${rToast()}`;}
@@ -689,7 +689,7 @@ async function valToken(){try{const r=await fetch('https://www.googleapis.com/oa
 // ===== LOADING =====
 let LP={l:0,t:11,c:''};
 function rLoad(){const p=LP.t?Math.round(LP.l/LP.t*100):0;app().innerHTML=`${rUBar()}<div class="ld-screen"><div class="ld-spin">👻</div><div style="color:var(--t3);font-size:14px">Loading assembly data...</div><div class="ld-bar-w"><div class="ld-bar" style="width:${p}%"></div></div><div style="color:var(--t5);font-size:12px;font-family:var(--fm)">${LP.c||'Connecting...'}</div></div>`;}
-function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;const adminBtns=currentUser.isAdmin?'<button class="ecnbtn" onclick="openSettings()">⚙️ Settings</button><button class="ecnbtn" style="border-color:var(--grn);color:var(--grn)" onclick="openBulkEdit()">⚡ Batch</button>':'';return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${adminBtns}<button class="logout" onclick="doLogout()">Sign out</button></div></div>`;}
+function rUBar(){if(!currentUser.name)return'';const b=currentUser.isAdmin?'<span class="ubadge ubadge-a">ADMIN</span>':`<span class="ubadge ubadge-t">${esc((currentUser.team||'team').toUpperCase())}</span>`;const adminBtns=currentUser.isAdmin?'<button class="ecnbtn" onclick="openECNSettings()">⚙️ ECN</button><button class="ecnbtn" onclick="openCompSettings()">📋 Rules</button><button class="ecnbtn" style="border-color:var(--grn);color:var(--grn)" onclick="openBulkEdit()">⚡ Batch</button>':'';return`<div class="ubar"><span class="uname">${esc(currentUser.name)}${b}</span><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${adminBtns}<button class="logout" onclick="doLogout()">Sign out</button></div></div>`;}
 
 // ===== SEARCH =====
 const CHIPS=[
@@ -1044,203 +1044,65 @@ async function saveEdit(){
     showToast(`Save failed: ${err.message}`,'error');
   }
 }
-function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else if(S.screen==='bulkEdit'){bulkBack();}else if(S.screen==='settings'||S.screen==='ecnSettings'||S.screen==='compSettings'){S.screen='search';}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;S.selectedChip=null;S.chipNum='';}render();}
+function goBack(){if(S.screen==='edit'){S.screen='result';S.editing=null;}else if(S.screen==='bulkEdit'){bulkBack();}else if(S.screen==='ecnSettings'||S.screen==='compSettings'){S.screen='search';}else{S.screen='search';S.searchInput='';S.result=null;S.tree=null;S.parsedPreview=null;S.showDebug=false;S.selectedChip=null;S.chipNum='';}render();}
 
-// ===== UNIFIED SETTINGS PAGE =====
-function openSettings(tab){S.screen='settings';S.settingsTab=tab||'ecn';S.settingsSel=null;render();}
-function openECNSettings(){openSettings('ecn');}
-function openCompSettings(){openSettings('rules');}
+// ===== ECN SETTINGS PAGE =====
+function openECNSettings(){S.screen='ecnSettings';S.ecnExpanded=new Set();render();}
 
-const SETTINGS_TYPES=[
-  {dk:'ghosts',label:'Ghost',short:'Ghost',icon:'👻',color:'#5b6eea'},
-  {dk:'mobileBases',label:'Mobile Base',short:'MB',icon:'🛞',color:'#34d399'},
-  {dk:'pillars',label:'Pillar',short:'Pillar',icon:'🏛️',color:'#a78bfa'},
-  {dk:'headBodies',label:'Head & Body',short:'H&B',icon:'🧠',color:'#f87171'},
-  {dk:'arms',label:'Arm',short:'Arm',icon:'🦾',color:'#fbbf24'},
-  {dk:'grippers',label:'Gripper',short:'Grip.',icon:'🤏',color:'#38bdf8'},
-  {dk:'deployKits',label:'Deploy Kit',short:'DK',icon:'📦',color:'#fb923c'},
-  {dk:'lMotors',label:'L-Motors',short:'L-Mot',icon:'⚙️',color:'#6ee7b7'},
-  {dk:'a12Motors',label:'A12 Motors',short:'A12',icon:'⚙️',color:'#6ee7b7'},
-  {dk:'a35Motors',label:'A35 Motors',short:'A35',icon:'⚙️',color:'#6ee7b7'},
-  {dk:'a4Motors',label:'A4 Motors',short:'A4',icon:'⚙️',color:'#6ee7b7'},
-];
-
-function rSettings(){
-  const tab=S.settingsTab||'ecn';
-  const sel=S.settingsSel;
-  const selType=SETTINGS_TYPES.find(t=>t.dk===sel);
-
-  const fwFieldsAll=detectFWFields();
-  const chkFieldsAll=detectCheckboxFields();
-  const allFieldsAll=detectFieldsByKey();
-
-  function fwForDK(dk){return fwFieldsAll.filter(f=>{const rows=DATA[dk];if(!rows||!rows.length)return false;return Object.keys(rows[0]).includes(f);});}
-  function chkForDK(dk){return(chkFieldsAll[dk]||[]).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));}
-  function reqForDK(dk){return allFieldsAll[dk]||[];}
-  function ecnForDK(dk){return getECNFields(dk);}
-
-  // Count helpers
-  function ecnCount(dk){return ecnForDK(dk).filter(f=>isECNVisible(dk,f)).length;}
-  function ecnTotal(dk){return ecnForDK(dk).length;}
-  function ruleCount(dk){
-    const fw=fwForDK(dk).filter(f=>(COMP_RULES.latestFW||{})[f]).length;
-    const chk=(COMP_RULES.requiredChecks?.[dk]||[]).length;
-    const req=(COMP_RULES.requiredFields?.[dk]||[]).length;
-    const ecn=(COMP_RULES.requiredECN?.[dk]||[]).length;
-    return fw+chk+req+ecn;
-  }
-  function ruleTotal(dk){return fwForDK(dk).length+chkForDK(dk).length+reqForDK(dk).length+ecnForDK(dk).length;}
-
+function rECNSettings(){
+  // Map section keys to data keys
+  const sections=[
+    {sk:'ghost',dk:'ghosts',label:'Ghost',icon:'👻',color:'#5b6eea'},
+    {sk:'mobileBase',dk:'mobileBases',label:'Mobile Base',icon:'🛞',color:'#34d399'},
+    {sk:'pillar',dk:'pillars',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
+    {sk:'headBody',dk:'headBodies',label:'Head & Body',icon:'🧠',color:'#f87171'},
+    {sk:'arm',dk:'arms',label:'Arm',icon:'🦾',color:'#fbbf24'},
+    {sk:'gripper',dk:'grippers',label:'Gripper',icon:'🤏',color:'#38bdf8'},
+    {sk:'deployKit',dk:'deployKits',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
+    {sk:'lMotors',dk:'lMotors',label:'L-Motors',icon:'⚙️',color:'#6ee7b7'},
+    {sk:'a12Motors',dk:'a12Motors',label:'A12 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {sk:'a35Motors',dk:'a35Motors',label:'A35 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {sk:'a4Motors',dk:'a4Motors',label:'A4 Motors',icon:'⚙️',color:'#6ee7b7'},
+  ];
   let h='';
-
-  // Tab toggle
-  h+=`<div style="display:flex;gap:2px;margin-bottom:12px">`;
-  [{id:'ecn',label:'⚙️ ECN Visibility'},{id:'rules',label:'📋 Compliance Rules'}].forEach(t=>{
-    const isAct=tab===t.id;
-    h+=`<div style="flex:1;padding:10px;text-align:center;cursor:pointer;border-radius:8px 8px 0 0;background:${isAct?'var(--inp)':'transparent'};border-bottom:2px solid ${isAct?'var(--ac)':'transparent'};transition:all .15s" onclick="S.settingsTab='${t.id}';S.settingsSel=null;render()">
-      <span style="font-size:12px;font-weight:600;color:${isAct?'var(--ac)':'var(--t5)'}">${t.label}</span>
-    </div>`;
-  });
-  h+=`</div>`;
-
-  // Assembly chip grid (4 cols)
-  h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">`;
-  SETTINGS_TYPES.forEach(t=>{
-    const rows=DATA[t.dk];if(!rows||!rows.length)return;
-    const isAct=sel===t.dk;
-    const cnt=tab==='ecn'?ecnCount(t.dk):ruleCount(t.dk);
-    const tot=tab==='ecn'?ecnTotal(t.dk):ruleTotal(t.dk);
-    const hasItems=cnt>0;
-    h+=`<div style="padding:8px 4px;border-radius:10px;cursor:pointer;text-align:center;position:relative;border:${isAct?`2px solid ${t.color}`:`1.5px solid #1a1c2e`};background:${isAct?t.color+'0a':'#0d0e18'};transition:all .15s" onclick="S.settingsSel=${isAct?'null':`'${t.dk}'`};render()">
-      <div style="font-size:18px;margin-bottom:2px">${t.icon}</div>
-      <div style="font-size:10px;font-weight:700;color:${isAct?t.color:hasItems?'var(--t1)':'var(--t5)'};margin-bottom:3px">${t.short}</div>
-      <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${hasItems?t.color+'18':'transparent'};color:${hasItems?t.color:'var(--t5)'}">${cnt}/${tot}</span>
-      ${hasItems&&!isAct?`<div style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:${t.color};border:2px solid var(--bg)"></div>`:''}
-    </div>`;
-  });
-  h+=`</div>`;
-
-  // Expanded content for selected assembly
-  if(selType){
-    const dk=selType.dk;
-    h+=`<div style="border-radius:12px;overflow:hidden;border:1px solid ${selType.color}22;background:#0d0e18;animation:slideDown .15s ease-out">`;
-    // Header
-    h+=`<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;background:${selType.color}08;border-bottom:1px solid ${selType.color}12">
-      <span style="font-size:16px">${selType.icon}</span>
-      <span style="font-size:13px;font-weight:700;color:${selType.color}">${selType.label}</span>
-      <span style="font-size:10px;color:var(--t5);margin-left:auto">${tab==='ecn'?`${ecnCount(dk)}/${ecnTotal(dk)} visible`:`${ruleCount(dk)}/${ruleTotal(dk)} set`}</span>
-    </div>`;
-
-    if(tab==='ecn'){
-      // ECN toggles
-      const ecnFs=ecnForDK(dk);
-      if(ecnFs.length){
-        h+=`<div style="padding:6px 0">`;
-        ecnFs.forEach(f=>{
-          const vis=isECNVisible(dk,f);
-          const cid=regComp('ecnvis',dk,f);
-          h+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer" onclick="doComp(${cid})">
-            <div style="width:32px;height:18px;border-radius:9px;background:${vis?'var(--grn)':'#1e2130'};border:1.5px solid ${vis?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
-              <div style="width:12px;height:12px;border-radius:50%;background:${vis?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${vis?'16px':'2px'};transition:left .15s"></div>
-            </div>
-            <span style="flex:1;font-size:11px;color:${vis?'var(--t1)':'var(--t5)'};font-family:var(--fm)">${esc(f)}</span>
-          </div>`;
-        });
-        h+=`</div>`;
-      } else {
-        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No ECN fields</div>`;
-      }
-    } else {
-      // Rules content
-      h+=`<div style="padding:6px 0">`;
-      const fw=fwForDK(dk);
-      const chk=chkForDK(dk);
-      const req=reqForDK(dk);
-      const ecn=ecnForDK(dk);
-
-      if(fw.length){
-        h+=`<div style="padding:6px 14px 2px;font-size:9px;color:var(--blu);font-weight:700;letter-spacing:.5px">FW VERSIONS</div>`;
-        fw.forEach(f=>{
-          const cur=COMP_RULES.latestFW?.[f]||'';
-          const fid=regFW(f);
-          h+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 14px">
-            <span style="flex:1;font-size:11px;color:var(--t3)">${esc(FIELD_LABELS[f]||f)}</span>
-            <input class="comp-input" style="width:100px;padding:4px 8px;border-radius:6px;text-align:right;font-size:11px" data-fwid="${fid}" value="${escA(cur)}" placeholder="not set" onchange="doFWChange(${fid},this.value)">
-          </div>`;
-        });
-      }
-
-      if(chk.length){
-        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--grn);font-weight:700;letter-spacing:.5px">REQUIRED CHECKS</div>`;
-        chk.forEach(f=>{
-          const on=(COMP_RULES.requiredChecks?.[dk]||[]).includes(f);
-          const cid=regComp('check',dk,f);
-          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
-            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
-              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
-            </div>
-            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'}">${esc(FIELD_LABELS[f]||f)}</span>
-          </div>`;
-        });
-      }
-
-      if(req.length){
-        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--yel);font-weight:700;letter-spacing:.5px">REQUIRED FIELDS</div>`;
-        req.forEach(f=>{
-          const on=(COMP_RULES.requiredFields?.[dk]||[]).includes(f);
-          const cid=regComp('req',dk,f);
-          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
-            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
-              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
-            </div>
-            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'}">${esc(FIELD_LABELS[f]||f)}</span>
-          </div>`;
-        });
-      }
-
-      if(ecn.length){
-        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--pur);font-weight:700;letter-spacing:.5px">REQUIRED ECN</div>`;
-        ecn.forEach(f=>{
-          const on=(COMP_RULES.requiredECN?.[dk]||[]).includes(f);
-          const cid=regComp('ecn',dk,f);
-          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
-            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
-              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
-            </div>
-            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'};font-family:var(--fm)">${esc(f)}</span>
-          </div>`;
-        });
-      }
-
-      if(!fw.length&&!chk.length&&!req.length&&!ecn.length){
-        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No configurable rules</div>`;
-      }
+  sections.forEach(sec=>{
+    const ecnFields=getECNFields(sec.dk);
+    if(!ecnFields.length)return;
+    const isOpen=S.ecnExpanded.has(sec.dk);
+    const visCount=ecnFields.filter(f=>isECNVisible(sec.dk,f)).length;
+    h+=`<div class="ecns-sec">
+      <div class="ecns-hdr" onclick="togECNSec('${sec.dk}')" style="border-left:3px solid ${sec.color}">
+        <span>${sec.icon}</span>
+        <span style="color:${sec.color};font-weight:600;font-size:13px">${sec.label}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--t4)">${visCount}/${ecnFields.length}</span>
+        <span class="schv ${isOpen?'schvO':''}">▼</span>
+      </div>`;
+    if(isOpen){
+      h+=`<div class="ecns-body">`;
+      ecnFields.forEach(f=>{
+        const vis=isECNVisible(sec.dk,f);
+        const cid=regComp('ecnvis',sec.dk,f);
+        h+=`<div class="ecns-row" onclick="doComp(${cid})">
+          <div class="ecns-tog ${vis?'ecns-on':'ecns-off'}">${vis?'✓':''}</div>
+          <span class="ecns-fname">${esc(f)}</span>
+        </div>`;
+      });
       h+=`</div>`;
     }
     h+=`</div>`;
-  }
+  });
 
-  // Summary when nothing selected
-  if(!selType){
-    const totalEcnVis=Object.values(ECN_SETTINGS).reduce((s,set)=>s+set.size,0);
-    const totalRules=Object.keys(COMP_RULES.latestFW||{}).length+Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0);
-    h+=`<div style="padding:14px;border-radius:10px;background:#0d0e18;border:1px solid #1a1c2e;text-align:center">
-      <div style="font-size:11px;color:var(--t5);margin-bottom:8px">${tab==='ecn'?'Tap an assembly to toggle ECN visibility':'Tap an assembly to configure rules'}</div>
-      <div style="display:flex;justify-content:center;gap:16px">${tab==='ecn'?
-        `<div><span style="font-size:18px;font-weight:700;color:var(--ac)">${totalEcnVis}</span><div style="font-size:9px;color:var(--t5)">visible</div></div>`:
-        `<div><span style="font-size:18px;font-weight:700;color:var(--ac)">${totalRules}</span><div style="font-size:9px;color:var(--t5)">rules set</div></div>
-         <div><span style="font-size:18px;font-weight:700;color:var(--grn)">${Object.keys(COMP_RULES.latestFW||{}).length}</span><div style="font-size:9px;color:var(--grn)">FW tracked</div></div>`
-      }</div>
-    </div>`;
-  }
-
-  // Save button
-  const saveLabel=tab==='ecn'?'saveECNAndBack':'saveCompAndBack';
-  h+=`<button class="btn btn1" style="width:100%;margin-top:16px" onclick="${saveLabel}()">Save & Back</button>`;
-
+  const totalVis=Object.values(ECN_SETTINGS).reduce((s,set)=>s+set.size,0);
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
-    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">⚙️ Settings</div></div>
-    <div style="padding:16px">${h}</div>
+    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">⚙️ ECN Settings</div></div>
+    <div style="padding:16px">
+      <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:var(--inp);border:1px solid var(--bd)">
+        <div style="font-size:12px;color:var(--t3);line-height:1.6">Toggle which ECN columns are visible in result cards. Visible ECNs appear in a collapsible sub-section under each assembly.</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--ac);font-weight:600">${totalVis} ECN field${totalVis!==1?'s':''} visible</div>
+      </div>
+      ${h}
+      <button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveECNAndBack()">Save & Back</button>
+    </div>
   </div>${rToast()}`;
 }
 
@@ -1306,6 +1168,131 @@ function rECNSubSection(sk,items,lk){
   return h;
 }
 
+// ===== COMPLIANCE SETTINGS PAGE =====
+function openCompSettings(){S.screen='compSettings';S.ecnExpanded=new Set();render();}
+
+function rCompSettings(){
+  const fwFields=detectFWFields();
+  const chkFields=detectCheckboxFields();
+  const allFields=detectFieldsByKey();
+
+  // Group all rules by assembly type
+  const COMP_TYPES=[
+    {dk:'ghosts',label:'Ghost',icon:'👻',color:'#5b6eea'},
+    {dk:'mobileBases',label:'Mobile Base',icon:'🛞',color:'#34d399'},
+    {dk:'pillars',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
+    {dk:'headBodies',label:'Head & Body',icon:'🧠',color:'#f87171'},
+    {dk:'arms',label:'Arm',icon:'🦾',color:'#fbbf24'},
+    {dk:'grippers',label:'Gripper',icon:'🤏',color:'#38bdf8'},
+    {dk:'deployKits',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
+    {dk:'lMotors',label:'L-Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a12Motors',label:'A12 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a35Motors',label:'A35 Motors',icon:'⚙️',color:'#6ee7b7'},
+    {dk:'a4Motors',label:'A4 Motors',icon:'⚙️',color:'#6ee7b7'},
+  ];
+
+  // Get FW fields per dk
+  function fwForDK(dk){return fwFields.filter(f=>{const rows=DATA[dk];if(!rows||!rows.length)return false;return Object.keys(rows[0]).includes(f);});}
+  function chkForDK(dk){return chkFields[dk]||[];}
+  function reqForDK(dk){return allFields[dk]||[];}
+  function ecnForDK(dk){return getECNFields(dk);}
+
+  let h='';
+  COMP_TYPES.forEach(ct=>{
+    const rows=DATA[ct.dk];if(!rows||!rows.length)return;
+    const fw=fwForDK(ct.dk);
+    const chk=chkForDK(ct.dk).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));
+    const req=reqForDK(ct.dk);
+    const ecn=ecnForDK(ct.dk);
+    if(!fw.length&&!chk.length&&!req.length&&!ecn.length)return;
+
+    // Count rules set
+    const fwSet=fw.filter(f=>(COMP_RULES.latestFW||{})[f]).length;
+    const chkSet=(COMP_RULES.requiredChecks?.[ct.dk]||[]).length;
+    const reqSet=(COMP_RULES.requiredFields?.[ct.dk]||[]).length;
+    const ecnSet=(COMP_RULES.requiredECN?.[ct.dk]||[]).length;
+    const totalSet=fwSet+chkSet+reqSet+ecnSet;
+    const totalAvail=fw.length+chk.length+req.length+ecn.length;
+
+    const isOpen=S.ecnExpanded.has('comp_'+ct.dk);
+    h+=`<div class="comp-sec" style="border-left:3px solid ${ct.color}"><div class="comp-sec-hdr" onclick="togECNSec('comp_${ct.dk}')">
+      <span style="font-size:18px">${ct.icon}</span>
+      <span style="color:${ct.color};font-weight:600;font-size:13px">${ct.label}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--t4)">${totalSet}/${totalAvail}</span>
+      <span class="schv ${isOpen?'schvO':''}">▼</span>
+    </div>`;
+
+    if(isOpen){
+      h+=`<div class="comp-sec-body" style="padding:8px 0">`;
+
+      // FW rules for this assembly
+      if(fw.length){
+        h+=`<div style="padding:4px 14px 2px;font-size:10px;color:var(--blu);font-weight:600;letter-spacing:1px">🔧 FW VERSIONS</div>`;
+        fw.forEach(f=>{
+          const cur=COMP_RULES.latestFW?.[f]||'';
+          const fid=regFW(f);
+          h+=`<div class="comp-row">
+            <span class="comp-fname">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" data-fwid="${fid}" value="${escA(cur)}" placeholder="not set" onchange="doFWChange(${fid},this.value)">
+          </div>`;
+        });
+      }
+
+      // Checkbox rules
+      if(chk.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--grn);font-weight:600;letter-spacing:1px">☑️ REQUIRED CHECKS</div>`;
+        chk.forEach(f=>{
+          const on=(COMP_RULES.requiredChecks?.[ct.dk]||[]).includes(f);
+          const cid=regComp('check',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
+
+      // Required fields
+      if(req.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--yel);font-weight:600;letter-spacing:1px">📝 REQUIRED FIELDS</div>`;
+        req.forEach(f=>{
+          const on=(COMP_RULES.requiredFields?.[ct.dk]||[]).includes(f);
+          const cid=regComp('req',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
+
+      // Required ECN
+      if(ecn.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:10px;color:var(--pur);font-weight:600;letter-spacing:1px">🔧 REQUIRED ECN</div>`;
+        ecn.forEach(f=>{
+          const on=(COMP_RULES.requiredECN?.[ct.dk]||[]).includes(f);
+          const cid=regComp('ecn',ct.dk,f);
+          h+=`<div class="ecns-row" onclick="doComp(${cid})">
+            <div class="ecns-tog ${on?'ecns-on':'ecns-off'}">${on?'✓':''}</div>
+            <span class="ecns-fname">${esc(f)}</span>
+          </div>`;
+        });
+      }
+
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+
+  app().innerHTML=`${rUBar()}<div style="min-height:100vh">
+    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">📋 Compliance Rules</div></div>
+    <div style="padding:16px">
+      <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:var(--inp);border:1px solid var(--bd)">
+        <div style="font-size:12px;color:var(--t3);line-height:1.6">Set rules for what "up to date" means. Non-compliant fields show <span style="color:var(--red)">⚠</span> warnings in result cards.</div>
+      </div>
+      ${h}
+      <button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveCompAndBack()">Save & Back</button>
+    </div>
+  </div>${rToast()}`;
+}
 
 // Compliance settings actions
 function setFWRule(field,val){
