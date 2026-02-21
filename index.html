@@ -665,7 +665,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:'',bulkPerUnit:{},bulkIsPerUnit:false,settingsTab:'ecn',settingsSel:null};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',bulkStep:1,bulkDK:null,bulkField:null,bulkValue:'',bulkSaving:false,bulkSelected:new Set(),bulkInputMode:'individual',bulkNumInput:'',bulkRangeStart:'',bulkRangeEnd:'',bulkPerUnit:{},bulkIsPerUnit:false,settingsTab:'ecn',settingsSel:null,resultTab:null};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -794,26 +794,55 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   const isM=k=>{const kl=k.toLowerCase();if(mi.includes(kl)||kl.includes(mi))return true;for(const p of mp)if(p.includes(kl)||kl.includes(p))return true;for(const[s,ts]of Object.entries(sm))if(mi.includes(s)&&ts.some(t=>kl.includes(t)))return true;return false;};
   const isGM=mi==='ghost';const matched=all.filter(s=>isM(s.k));const rest=all.filter(s=>!isM(s.k));const seen=new Set();const sorted=isGM?all:[...matched,...rest];const fin=sorted.filter(s=>{if(seen.has(s.k))return false;seen.add(s.k);return true;});
   let h='';
-  // Assembly chip nav
-  h+=`<div style="display:flex;gap:4px;padding:4px 0;flex-wrap:wrap;margin-bottom:4px">`;
-  fin.forEach(s=>{
-    if(!s.d||(Array.isArray(s.d)&&!s.d.length))return;
-    const c=SC[s.k];if(!c)return;
+  // Assembly tab strip - bigger chips, exclusive selection
+  const availSecs=fin.filter(s=>s.d&&(!Array.isArray(s.d)||s.d.length>0)&&SC[s.k]);
+  // Auto-select first matched section if no tab selected
+  if(!S.resultTab||!availSecs.find(s=>s.k===S.resultTab)){
+    const firstMatch=availSecs.find(s=>isM(s.k));
+    S.resultTab=firstMatch?firstMatch.k:(availSecs[0]?.k||null);
+  }
+  h+=`<div style="display:flex;gap:3px;padding:6px 0;flex-wrap:wrap;margin-bottom:2px">`;
+  availSecs.forEach(s=>{
+    const c=SC[s.k];
     const lk2={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[s.k]||s.k;
     const items2=Array.isArray(s.d)?s.d:[s.d];
     const iss2=countSectionIssues(lk2,items2);
-    const isExp=S.expanded.has(s.k);
+    const isSel=S.resultTab===s.k;
     const isMt=isM(s.k);
-    h+=`<div style="padding:2px 6px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:3px;border:${isMt?'1.5px solid '+c.color:isExp?'1.5px solid '+c.color+'55':'1px solid var(--bd)'};background:${isExp?c.color+'0a':'var(--card)'}" onclick="togSec('${s.k}');render()">
-      <span style="font-size:10px">${c.icon}</span>
-      <span style="font-size:9px;font-weight:600;color:${isExp?c.color:isMt?c.color:'var(--t3)'}">${c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK')}</span>
-      ${iss2?`<span style="width:5px;height:5px;border-radius:50%;background:var(--red)"></span>`:''}
+    const shortL=c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK');
+    h+=`<div style="padding:4px 8px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:4px;border:${isSel?'2px solid '+c.color:isMt?'1.5px solid '+c.color+'66':'1px solid var(--bd)'};background:${isSel?c.color+'12':'var(--card)'};transition:all .12s" onclick="selectResultTab('${s.k}')">
+      <span style="font-size:15px">${c.icon}</span>
+      <span style="font-size:10px;font-weight:700;color:${isSel?c.color:isMt?c.color:'var(--t3)'}">${shortL}</span>
+      ${iss2?`<span style="width:6px;height:6px;border-radius:50%;background:var(--red)"></span>`:''}
+      ${isMt&&!isSel?`<span style="font-size:7px;padding:0 3px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">M</span>`:''}
     </div>`;
   });
   h+=`</div>`;
 
-  if(!isGM&&matched.length)h+=`<div style="padding:3px 8px;margin:0 0 3px;border-radius:5px;display:flex;align-items:center;gap:6px;font-size:8px;font-weight:700;letter-spacing:1px;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.1);color:var(--ac)">▲ MATCHED</div>`;
-  fin.forEach((s,i)=>{if(!isGM&&matched.length&&i===matched.length)h+=`<div style="padding:3px 8px;margin:6px 0 3px;border-radius:5px;font-size:8px;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.02);border:1px solid #14152a;color:var(--t5)">▼ OTHER</div>`;h+=rSC(s.k,s.d,isM(s.k));});
+  // Show only selected assembly content (card grid body, no accordion header)
+  const selSec=availSecs.find(s=>s.k===S.resultTab);
+  if(selSec){
+    const c=SC[selSec.k];
+    const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[selSec.k]||selSec.k;
+    const items=Array.isArray(selSec.d)?selSec.d:[selSec.d];
+    const sf=getSNField(DATA[lk]||items);
+    const issues=countSectionIssues(lk,items);
+    const isMt=isM(selSec.k);
+
+    // Mini header with S/N and issue count
+    h+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 4px 6px;border-bottom:1px solid ${c.color}18;margin-bottom:4px">
+      <span style="font-size:12px;font-weight:700;color:${c.color}">${c.label}</span>
+      <span style="font-size:9px;font-family:var(--fm);color:var(--t3)">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</span>
+      ${isMt?`<span style="font-size:7px;padding:1px 5px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
+      <span style="flex:1"></span>
+      ${issues?`<span class="comp-badge">${issues} ⚠</span>`:''}
+    </div>`;
+
+    // Force expanded for card grid rendering
+    S.expanded.add(selSec.k);
+    // Render card grid body directly (reuse rSC internals)
+    h+=rSCBody(selSec.k,selSec.d);
+  }
   app().innerHTML=`${rUBar()}<div style="min-height:100vh"><div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
     <div class="tbox"><div class="tbox-t">TRACE PATH</div><div class="tsteps">${R.path.map((s,i)=>`<span style="display:flex;align-items:center;gap:4px"><span class="tstep ${i===0?'tstep0':'tstepN'}">${esc(s)}</span>${i<R.path.length-1?'<span class="tarr">→</span>':''}</span>`).join('')}</div><div class="tsum"><span class="thl">${esc(S.searchInput)}</span> → ${esc(R.matchedIn)} → <span class="thl2">${esc(gSN)}</span></div></div>
     ${rCompBar(all)}
@@ -861,6 +890,88 @@ function rCompBar(allSecs){
       ${totalIssues?`<span style="font-size:9px;color:var(--red)">${totalIssues}⚠</span>`:''}
     </div>
   </div>`;
+}
+
+// Render card grid body only (no section header) - used by tab view
+function rSCBody(sk,data){
+  if(!data||(Array.isArray(data)&&!data.length))return'';
+  const c=SC[sk];if(!c)return'';
+  const items=Array.isArray(data)?data:[data];if(!items.length)return'';
+  const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
+  const sf=getSNField(DATA[lk]||items);
+  let h='';
+  items.forEach((item,idx)=>{
+    if(items.length>1)h+=`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`;
+    const snFs=[],chkFs=[],prodFs=[],emptyFs=[];
+    Object.entries(item).forEach(([k,v])=>{
+      if(shouldSkipField(k))return;
+      if(isECNField(k))return;
+      const val=getV(sk,k);
+      const isChk=val?.type==='checkbox';
+      const isSN=isSNField(k)||k===sf;
+      const comp=checkFieldComp(lk,k,v);
+      const eid=regEdit(sk,item[sf]||'',k,v||'');
+      const fObj={k,v:v||'',label:FIELD_LABELS[k]||k,isChk,isSN,comp,eid,isDr:val?.type==='dropdown',isD:val?.type==='date'};
+      if(isSN)snFs.push(fObj);
+      else if(isChk)chkFs.push(fObj);
+      else if(v)prodFs.push(fObj);
+      else emptyFs.push(fObj);
+    });
+
+    h+=`<div style="padding:5px 4px">`;
+    if(snFs.length){
+      h+=`<div class="cg-grp" style="color:var(--ac)">SERIAL NUMBERS</div>`;
+      h+=`<div class="cg-sn">`;
+      snFs.forEach(f=>{
+        h+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+          <div class="cg-lbl">${esc(f.label)}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+          <div class="cg-val cg-val-sn">${esc(f.v||'—')}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(prodFs.length){
+      h+=`<div class="cg-grp" style="color:var(--grn)">DATA</div>`;
+      h+=`<div class="cg-prod">`;
+      prodFs.forEach(f=>{
+        h+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+          <div class="cg-lbl">${esc(f.label)}${f.isDr?'<span style="color:var(--ac);font-size:7px">▾</span>':''}${f.isD?'<span style="font-size:7px">📅</span>':''}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+          <div class="cg-val">${esc(f.v)}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(chkFs.length){
+      h+=`<div class="cg-grp" style="color:var(--yel)">CHECKS</div>`;
+      h+=`<div class="cg-chks">`;
+      chkFs.forEach(f=>{
+        const p=f.v==='✓'||/^(TRUE|true|1|OK)$/.test(f.v);
+        const col=p?'var(--grn)':'var(--red)';
+        const bg=p?'rgba(52,211,153,.06)':'rgba(248,113,113,.06)';
+        const bd=p?'rgba(52,211,153,.15)':'rgba(248,113,113,.15)';
+        h+=`<div class="cg-chk" style="background:${bg};border:1px solid ${bd}" onclick="doEdit(${f.eid})">
+          <span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>
+          <span style="font-size:9px;color:${col}">${esc(f.label)}</span>
+          ${f.comp?`<span style="font-size:7px;color:var(--red)">⚠</span>`:''}
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(emptyFs.length){
+      h+=`<div class="cg-grp" style="color:var(--t5)">EMPTY (${emptyFs.length})</div>`;
+      h+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">`;
+      emptyFs.forEach(f=>{
+        h+=`<div style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--bd);cursor:pointer;font-size:8px;color:var(--t5);display:flex;align-items:center;gap:3px" onclick="doEdit(${f.eid})">${esc(f.label)}${f.comp?'<span style="color:var(--red)">⚠</span>':''}</div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+
+  // ECN
+  const ecnH=rECNSubSectionGrid(sk,items,lk,c);
+  if(ecnH)h+=`<div style="padding:0 4px 5px">${ecnH}</div>`;
+  return h;
 }
 
 function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;const sf=getSNField(DATA[lk]||items);
@@ -1021,7 +1132,7 @@ function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_
 function rToast(){if(!S.toast)return'';return`<div class="toast toast-${S.toast.type}">${esc(S.toast.msg)}</div>`;}
 
 // ===== ACTIONS =====
-function doSearch(){if(!S.searchInput.trim())return;const r=traceToGhost(S.searchInput);if(r){S.result=r;S.tree=getGhostTree(r.ghost);const ek=new Set(['ghost']);const mt=r.parsed?.type||'';const ts={ghost:['ghost'],mobileBase:['mobileBase'],pillar:['pillar'],headBody:['headBody'],arm:['arm'],gripper:['gripper'],deployKit:['deployKit'],lMotor:['mbMotors','plMotors'],a12Motor:['armA12'],a35Motor:['armA35'],a4Motor:['armA4'],pdb:['mobileBase'],iob:['headBody','gripper'],mdb:['mbMotors','plMotors','armA12','armA35','armA4'],brk:['pillar'],bat:['arm'],galina:['headBody']};(ts[mt]||[]).forEach(s=>ek.add(s));S.expanded=ek;S.screen='result';}else{showToast(`No match for "${S.searchInput}"`,'error');}render();}
+function doSearch(){if(!S.searchInput.trim())return;const r=traceToGhost(S.searchInput);if(r){S.result=r;S.tree=getGhostTree(r.ghost);const ek=new Set(['ghost']);const mt=r.parsed?.type||'';const ts={ghost:['ghost'],mobileBase:['mobileBase'],pillar:['pillar'],headBody:['headBody'],arm:['arm'],gripper:['gripper'],deployKit:['deployKit'],lMotor:['mbMotors','plMotors'],a12Motor:['armA12'],a35Motor:['armA35'],a4Motor:['armA4'],pdb:['mobileBase'],iob:['headBody','gripper'],mdb:['mbMotors','plMotors','armA12','armA35','armA4'],brk:['pillar'],bat:['arm'],galina:['headBody']};(ts[mt]||[]).forEach(s=>ek.add(s));S.expanded=ek;S.resultTab=null;S.screen='result';}else{showToast(`No match for "${S.searchInput}"`,'error');}render();}
 function demoScan(){S.scanning=true;render();let d='GT418-GST-00001';if(DATA.ghosts?.length){const f=getSNField(DATA.ghosts);d=DATA.ghosts[0][f]||d;}setTimeout(()=>{S.searchInput=d;S.scanning=false;setTimeout(()=>doSearch(),300);},1800);}
 function setSI(v){S.searchInput=v;S.selectedChip=null;S.chipNum='';S.parsedPreview=parseInput(v);render();}
 function pickChip(id){S.selectedChip=S.selectedChip===id?null:id;S.chipNum='';render();}
@@ -1035,6 +1146,7 @@ function doChipSearch(){
   doSearch();
 }
 function togSec(k){S.expanded.has(k)?S.expanded.delete(k):S.expanded.add(k);render();}
+function selectResultTab(k){S.resultTab=S.resultTab===k?null:k;render();}
 function toggleDebug(){S.showDebug=!S.showDebug;render();}
 function startEdit(sec,sn,field,value){
   S.editing={section:sec,sn,field,value};
