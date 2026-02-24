@@ -1789,14 +1789,10 @@ function rBulkEdit(){
         regFields.forEach(f=>{
           const typeIcon=f.type==='checkbox'?'☑️':f.type==='date'?'📅':f.type==='dropdown'?'▾':'📝';
           const needs=issuesFor(f.name);
-          // Count empty across selected units
-          const empty=selRows.filter(item=>{const v=(item[f.name]||'').trim();return !v||v==='FALSE'||v==='false'||v==='0';}).length;
-          const allDone=empty===0;
           const cid=regComp('bulk',S.bulkDK,f.name);
           h+=`<div class="bulk-field" onclick="doComp(${cid})">
             <span class="bulk-field-type">${typeIcon}</span>
             <span class="bulk-field-name">${esc(FIELD_LABELS[f.name]||f.name)}</span>
-            ${allDone&&!needs?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(52,211,153,.1);color:var(--grn);font-weight:600">${selCount}/${selCount} ✓</span>`:''}
             ${needs?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
           </div>`;
         });
@@ -1807,17 +1803,11 @@ function rBulkEdit(){
         ecnFields.forEach(f=>{
           const typeIcon=f.type==='checkbox'?'☐':f.type==='date'?'📅':'📝';
           const needs=issuesFor(f.name);
-          // Count applied vs empty across selected units
-          const applied=selRows.filter(item=>{const v=(item[f.name]||'').trim();return v&&v!=='FALSE'&&v!=='false'&&v!=='0';}).length;
-          const empty=selCount-applied;
           const cid=regComp('bulk',S.bulkDK,f.name);
-          const allDone=applied===selCount;
-          h+=`<div class="bulk-field" onclick="doComp(${cid})" style="${allDone?'opacity:.5':''}">
+          h+=`<div class="bulk-field" onclick="doComp(${cid})">
             <span class="bulk-field-type">${typeIcon}</span>
             <span class="bulk-field-name">${esc(f.name)}</span>
-            ${allDone?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(52,211,153,.1);color:var(--grn);font-weight:600">${applied}/${selCount} ✓</span>`
-              :empty?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(251,191,36,.1);color:var(--yel);font-weight:600">${empty}/${selCount} empty</span>`:''}
-            ${needs&&!allDone?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
+            ${needs?`<span class="comp-tag">${needs}/${selCount} ⚠</span>`:''}
           </div>`;
         });
       }
