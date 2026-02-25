@@ -1958,7 +1958,7 @@ function rBulkEdit(){
       h+=`</div>`;
 
       // Per-unit table
-      h+=`<div style="font-size:8px;color:var(--t5);font-weight:700;letter-spacing:.5px;margin-bottom:4px">PER UNIT <span style="font-weight:400;color:var(--t5)">— edit & save individually or all at once</span></div>`;
+      h+=`<div style="font-size:8px;color:var(--t5);font-weight:700;letter-spacing:.5px;margin-bottom:4px">PER UNIT</div>`;
       const sortedSNs=[...S.bulkSelected].sort();
       sortedSNs.forEach((sn,idx)=>{
         const curVal=S.bulkPerUnit[sn]||'';
@@ -1996,13 +1996,7 @@ function rBulkEdit(){
           h+=`<input type="text" class="etin bulk-pu-input" data-sn="${escA(sn)}" value="${escA(curVal)}" placeholder="..." style="flex:1;padding:3px 6px;font-size:11px">`;
         }
 
-        // Per-row save button (only when changed)
-        if(changed){
-          h+=`<button style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--ac);background:var(--ac);color:#fff;white-space:nowrap;transition:opacity .1s" onclick="bulkSaveSingle('${escA(sn)}')">Save</button>`;
-        } else {
-          // Show saved checkmark if value exists and matches original
-          if(origVal)h+=`<span style="font-size:9px;color:var(--grn)">✓</span>`;
-        }
+        if(changed)h+=`<span style="font-size:8px;color:var(--ac);font-weight:700">✎</span>`;
         if(compI)h+=`<span style="font-size:8px;color:var(--red)">⚠</span>`;
         h+=`</div>`;
       });
@@ -2013,9 +2007,7 @@ function rBulkEdit(){
         return(S.bulkPerUnit[sn]||'')!==orig;
       }).length;
 
-      if(changed>1){
-        h+=`<button class="savb savA" style="width:100%;margin-top:12px" onclick="doBulkSavePerUnit()">${S.bulkSaving?'Saving...':'Save all '+changed+' changes'}</button>`;
-      }
+      h+=`<button class="savb ${changed?'savA':'savI'}" style="width:100%;margin-top:12px" onclick="doBulkSavePerUnit()">${S.bulkSaving?'Saving...':changed?'Save '+changed+' change'+(changed>1?'s':''):'No changes yet'}</button>`;
     }
   }
 
@@ -2214,59 +2206,6 @@ async function doBulkSave(){
   else showToast(`✓ ${ok} units updated`);
   render();
 }
-// Save a single unit's value in batch mode
-async function bulkSaveSingle(sn){
-  if(!S.bulkDK||!S.bulkField||S.bulkSaving)return;
-  const dk=S.bulkDK;
-  const field=S.bulkField;
-  const rows=DATA[dk]||[];
-  const sf=getSNField(rows);
-  const meta=SHEET_META[dk];
-  if(!meta){showToast('No sheet metadata','error');return;}
-
-  const row=rows.find(r=>r[sf]===sn);if(!row)return;
-  const oldVal=row[field]||'';
-  const newVal=S.bulkPerUnit[sn]||'';
-  if(newVal===oldVal){showToast('No change');return;}
-
-  function colLetter(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;}return s;}
-  const colIdx=meta.headers.indexOf(field);
-  if(colIdx===-1){showToast('Column not found','error');return;}
-  const colL=colLetter(colIdx);
-  const sheetRow=meta.startRow+1+row._rowIdx;
-  const cellRef=`${meta.tabName}!${colL}${sheetRow}`;
-
-  S.bulkSaving=true;render();
-  showToast(`Saving ${sn.match(/(\d+)$/)?.[1]||sn}...`);
-
-  try{
-    const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(cellRef)}?valueInputOption=USER_ENTERED`;
-    let resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[newVal]]})});
-    if(resp.status===401){
-      const origCb=tokenClient.callback;let done=false;
-      await new Promise((resolve,reject)=>{
-        tokenClient.callback=r=>{if(done)return;done=true;tokenClient.callback=origCb;if(r.access_token){accessToken=r.access_token;localStorage.setItem('gat',accessToken);resolve();}else reject(new Error('Auth failed'));};
-        tokenClient.requestAccessToken({prompt:''});
-        setTimeout(()=>{if(!done){done=true;tokenClient.callback=origCb;reject(new Error('Timeout'));}},15000);
-      });
-      resp=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({range:cellRef,majorDimension:'ROWS',values:[[newVal]]})});
-    }
-    if(resp.ok){
-      row[field]=newVal;
-      if(isSNField(field)&&oldVal&&oldVal!==newVal){
-        const noteText=`${oldVal} → ${newVal}　交換`;
-        addCellNote(dk,row._rowIdx,colIdx,noteText).catch(e=>console.warn('[Note]',e));
-      }
-      showToast(`✓ Saved ${sn.match(/(\d+)$/)?.[1]||sn}`,'success');
-    } else {
-      showToast(`Failed: ${resp.status}`,'error');
-    }
-  }catch(e){
-    showToast(`Error: ${e.message}`,'error');
-  }
-  S.bulkSaving=false;render();
-}
-
 async function doBulkSavePerUnit(){
   if(!S.bulkDK||!S.bulkField||S.bulkSaving)return;
 
