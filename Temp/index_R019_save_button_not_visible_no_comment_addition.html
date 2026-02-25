@@ -2042,30 +2042,9 @@ function rBulkEdit(){
   }
   const brs=$('#bulkRangeS');if(brs)brs.addEventListener('input',e=>{S.bulkRangeStart=e.target.value;});
   const bre=$('#bulkRangeE');if(bre)bre.addEventListener('input',e=>{S.bulkRangeEnd=e.target.value;});
-  // Per-unit text inputs — update state and re-render to show Save button
+  // Per-unit text inputs (dates and dropdowns use inline onchange)
   document.querySelectorAll('input.bulk-pu-input[type="text"]').forEach(inp=>{
-    inp.addEventListener('input',e=>{
-      S.bulkPerUnit[e.target.dataset.sn]=e.target.value;
-      // Debounced render to show/hide Save button
-      clearTimeout(inp._rt);
-      inp._rt=setTimeout(()=>{
-        const sn=e.target.dataset.sn;
-        const sel=e.target.selectionStart;
-        render();
-        // Restore focus
-        const ni=document.querySelector(`.bulk-pu-input[data-sn="${sn}"]`);
-        if(ni){ni.focus();ni.selectionStart=ni.selectionEnd=sel;}
-      },300);
-    });
-    // Enter key saves immediately
-    inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){
-        e.preventDefault();
-        clearTimeout(inp._rt);
-        S.bulkPerUnit[e.target.dataset.sn]=e.target.value;
-        bulkSaveSingle(e.target.dataset.sn);
-      }
-    });
+    inp.addEventListener('input',e=>{S.bulkPerUnit[e.target.dataset.sn]=e.target.value;});
   });
 }
 
