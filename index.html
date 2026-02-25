@@ -1272,40 +1272,26 @@ async function addCellNote(dataKey,rowIdx,colIdx,noteText){
 
   // Convert colIdx to column letter
   function colLetter(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;}return s;}
-  const cellRef=colLetter(colIdx)+sheetRow;
+  const cellRef=tabName+'!'+colLetter(colIdx)+sheetRow;
 
-  // Use Drive Comments API (creates editable comment tied to user)
+  // Use Drive Comments API (creates editable comment tied to user's Google account)
   try{
-    const anchor=JSON.stringify({type:'workbook-range',uid:sheetId,range:cellRef+':'+cellRef});
     const url=`https://www.googleapis.com/drive/v3/files/${CONFIG.SHEET_ID}/comments?fields=id,content,author`;
-    const body={content:noteText,anchor};
+    const body={content:noteText,anchor:cellRef};
+    console.log('[Comment] Posting to',url,'anchor:',cellRef,'content:',noteText);
     const r=await fetch(url,{method:'POST',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(r.ok){const j=await r.json();console.log('[Comment] Added:',noteText,'by',j.author?.displayName||'?');}
+    if(r.ok){const j=await r.json();console.log('[Comment] ✓ Added by',j.author?.displayName||'?','id:',j.id);}
     else{
       const errTxt=await r.text().catch(()=>'');
-      console.warn('[Comment] Failed:',r.status,errTxt);
-      // Fallback to cell note if comment fails
-      await addCellNoteFallback(sheetId,sheetRow,colIdx,noteText);
+      console.warn('[Comment] ✗ Failed:',r.status,errTxt);
+      // If 403/401, likely missing drive scope - show toast
+      if(r.status===403||r.status===401){
+        showToast('Re-sign in for comment permissions','error');
+      }
     }
   }catch(e){
     console.warn('[Comment] Error:',e);
-    await addCellNoteFallback(sheetId,sheetRow,colIdx,noteText);
   }
-}
-
-// Fallback: add as cell note if Drive Comments API fails
-async function addCellNoteFallback(sheetId,sheetRow,colIdx,noteText){
-  try{
-    const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}:batchUpdate`;
-    const body={requests:[{updateCells:{
-      rows:[{values:[{note:noteText}]}],
-      fields:'note',
-      range:{sheetId,startRowIndex:sheetRow-1,endRowIndex:sheetRow,startColumnIndex:colIdx,endColumnIndex:colIdx+1}
-    }}]};
-    const r=await fetch(url,{method:'POST',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(r.ok)console.log('[Note fallback] Added:',noteText);
-    else console.warn('[Note fallback] Failed:',r.status);
-  }catch(e){console.warn('[Note fallback] Error:',e);}
 }
 
 async function saveEdit(){
