@@ -1984,7 +1984,7 @@ function rBulkEdit(){
         const snShort=sn.replace(/^.*?-(\d+)$/,'$1');
         const snNum=(sn.match(/(\d+)$/)||[])[1]||sn;
 
-        h+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;padding:3px 6px;border-radius:5px;border-left:3px solid ${changed?'var(--ac)':compI?'var(--red)':'transparent'};background:${idx%2?'rgba(255,255,255,.01)':'transparent'}">
+        h+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:6px 8px;border-radius:6px;border-left:3px solid ${changed?'var(--ac)':compI?'var(--red)':'transparent'};background:${idx%2?'rgba(255,255,255,.02)':'transparent'}">
           <span style="font-size:10px;color:var(--t3);font-family:var(--fm);min-width:32px;font-weight:600">${esc(snNum)}</span>`;
 
         if(isChk){
@@ -2011,17 +2011,17 @@ function rBulkEdit(){
           // Motor S/N input: number input → lookup full S/N from motor sheet
           const rawNum=S.bulkMotorNum[sn]!==undefined?S.bulkMotorNum[sn]:(curVal?(curVal.match(/(\d+)$/)||[])[1]||'':'');
           const notFound=rawNum&&!curVal;
-          h+=`<div style="display:flex;align-items:center;flex:1;gap:4px">
-            <input type="text" class="bulk-pu-input bulk-motor-input" data-sn="${escA(sn)}" data-motordk="${escA(motorDK)}" value="${escA(rawNum)}" placeholder="#" style="width:70px;padding:3px 6px;font-size:11px;font-family:var(--fm);text-align:center;border:1px solid ${notFound?'#f87171':'var(--bd)'};border-radius:6px;background:var(--inp);color:var(--t1)" inputmode="numeric">
-            <span style="font-size:9px;font-family:var(--fm);color:${notFound?'#f87171':changed?'var(--ac)':'var(--t3)'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notFound?'not found':curVal?esc(curVal):'<span style="color:var(--t5)">type # to lookup</span>'}</span>
+          h+=`<div style="display:flex;align-items:center;flex:1;gap:6px">
+            <input type="text" class="bulk-pu-input bulk-motor-input" data-sn="${escA(sn)}" data-motordk="${escA(motorDK)}" value="${escA(rawNum)}" placeholder="#" style="width:60px;min-width:60px;padding:6px 8px;font-size:12px;font-family:var(--fm);text-align:center;border:1px solid ${notFound?'#f87171':'var(--bd)'};border-radius:6px;background:var(--inp);color:var(--t1);min-height:32px" inputmode="numeric">
+            <span style="font-size:9px;font-family:var(--fm);color:${notFound?'#f87171':changed?'var(--ac)':'var(--t3)'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notFound?'not found':curVal?esc(curVal):'<span style="color:var(--t5)">type #</span>'}</span>
           </div>`;
         } else {
-          h+=`<input type="text" class="etin bulk-pu-input" data-sn="${escA(sn)}" value="${escA(curVal)}" placeholder="..." style="flex:1;padding:3px 6px;font-size:11px">`;
+          h+=`<input type="text" class="etin bulk-pu-input" data-sn="${escA(sn)}" value="${escA(curVal)}" placeholder="..." style="flex:1;padding:6px 8px;font-size:12px;min-height:32px">`;
         }
 
         // Per-row save button (only when changed)
         if(changed){
-          h+=`<button style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--ac);background:var(--ac);color:#fff;white-space:nowrap;transition:opacity .1s" onclick="bulkSaveSingle('${escA(sn)}')">Save</button>`;
+          h+=`<button style="padding:6px 12px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--ac);background:var(--ac);color:#fff;white-space:nowrap;min-height:32px;min-width:44px;touch-action:manipulation" onclick="bulkSaveSingle('${escA(sn)}')">Save</button>`;
         } else {
           // Show saved checkmark if value exists and matches original
           if(origVal)h+=`<span style="font-size:9px;color:var(--grn)">✓</span>`;
@@ -2037,7 +2037,7 @@ function rBulkEdit(){
       }).length;
 
       if(changed>1){
-        h+=`<button class="savb savA" style="width:100%;margin-top:12px" onclick="doBulkSavePerUnit()">${S.bulkSaving?'Saving...':'Save all '+changed+' changes'}</button>`;
+        h+=`<button class="savb savA" style="width:100%;margin-top:12px;min-height:44px;font-size:14px;touch-action:manipulation" onclick="doBulkSavePerUnit()">${S.bulkSaving?'Saving...':'Save all '+changed+' changes'}</button>`;
       }
     }
   }
@@ -2478,7 +2478,7 @@ window.onload=function(){render();
       if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
       else doLogout();}
   }initGA();};
-
+-e 
 </script>
 </body>
 </html>
