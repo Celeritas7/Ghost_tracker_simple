@@ -161,7 +161,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .savI{background:var(--bd);color:var(--t4);cursor:default}
 
 /* ===== 13. TOAST & ANIMATIONS ===== */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;word-break:break-all;font-family:var(--fm)}
 .toast-s{background:#121e16;border:1px solid rgba(52,211,153,.2);color:var(--grn)}
 .toast-e{background:#1e1214;border:1px solid rgba(248,113,113,.2);color:var(--red)}
 .rfb{position:fixed;bottom:20px;right:20px;z-index:100;width:48px;height:48px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--t3);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}
@@ -1213,7 +1213,8 @@ function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_
   const ti=$('#eti');if(ti){ti.addEventListener('input',e=>{S.editValue=e.target.value;});ti.addEventListener('keydown',e=>{if(e.key==='Enter')saveEdit();});setTimeout(()=>ti.focus(),50);}
   const di=$('#edi');if(di)di.addEventListener('change',e=>{S.editValue=e.target.value.replace(/-/g,'/');});}
 
-function rToast(){if(!S.toast)return'';return`<div class="toast toast-${S.toast.type}">${esc(S.toast.msg)}</div>`;}
+function rToast(){if(!S.toast)return'';const hasExch=S.toast.msg.includes('→');return`<div class="toast toast-${S.toast.type}" ${hasExch?'onclick="copyToast()" style="cursor:pointer"':''}>${esc(S.toast.msg)}${hasExch?'<span style="font-size:10px;opacity:.6;margin-left:8px">tap to copy</span>':''}</div>`;}
+function copyToast(){if(!S.toast)return;const t=S.toast.msg.replace(/^✓\s*/,'');navigator.clipboard.writeText(t).then(()=>{S.toast={msg:'📋 Copied!',type:'success'};render();setTimeout(()=>{S.toast=null;render();},1500);});}
 
 // ===== ACTIONS =====
 function doSearch(){if(!S.searchInput.trim())return;const r=traceToGhost(S.searchInput);if(r){S.result=r;S.tree=getGhostTree(r.ghost);const ek=new Set(['ghost']);const mt=r.parsed?.type||'';const ts={ghost:['ghost'],mobileBase:['mobileBase'],pillar:['pillar'],headBody:['headBody'],arm:['arm'],gripper:['gripper'],deployKit:['deployKit'],lMotor:['mbMotors','plMotors'],a12Motor:['armA12'],a35Motor:['armA35'],a4Motor:['armA4'],pdb:['mobileBase'],iob:['headBody','gripper'],mdb:['mbMotors','plMotors','armA12','armA35','armA4'],brk:['pillar'],bat:['arm'],galina:['headBody']};(ts[mt]||[]).forEach(s=>ek.add(s));S.expanded=ek;S.resultTab=null;S.screen='result';}else{showToast(`No match for "${S.searchInput}"`,'error');}render();}
@@ -1270,27 +1271,30 @@ async function addCellNote(dataKey,rowIdx,colIdx,noteText){
   if(sheetId===undefined){console.warn('[Comment] No sheetId for',tabName);return;}
   const sheetRow=meta.startRow+1+rowIdx;
 
-  // Convert colIdx to column letter
   function colLetter(n){let s='';while(n>=0){s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26)-1;}return s;}
-  const cellRef=tabName+'!'+colLetter(colIdx)+sheetRow;
+  const col=colLetter(colIdx);
+  const cellA1=col+sheetRow;
 
-  // Use Drive Comments API (creates editable comment tied to user's Google account)
+  // Google Drive Comments API v3 — anchor to specific cell
   try{
-    const url=`https://www.googleapis.com/drive/v3/files/${CONFIG.SHEET_ID}/comments?fields=id,content,author`;
-    const body={content:noteText,anchor:cellRef};
-    console.log('[Comment] Posting to',url,'anchor:',cellRef,'content:',noteText);
+    const url=`https://www.googleapis.com/drive/v3/files/${CONFIG.SHEET_ID}/comments?fields=id,content,author,anchor`;
+    // Anchor format for Google Sheets cells
+    const anchor=JSON.stringify({type:'workbook-range',uid:sheetId,range:tabName+'!'+cellA1+':'+cellA1});
+    const body={content:noteText,anchor};
+    console.log('[Comment] POST',url);
+    console.log('[Comment] body:',JSON.stringify(body));
     const r=await fetch(url,{method:'POST',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(r.ok){const j=await r.json();console.log('[Comment] ✓ Added by',j.author?.displayName||'?','id:',j.id);}
-    else{
-      const errTxt=await r.text().catch(()=>'');
-      console.warn('[Comment] ✗ Failed:',r.status,errTxt);
-      // If 403/401, likely missing drive scope - show toast
-      if(r.status===403||r.status===401){
-        showToast('Re-sign in for comment permissions','error');
-      }
+    const txt=await r.text();
+    console.log('[Comment] Response:',r.status,txt);
+    if(r.ok){
+      showToast('💬 Comment added','success');
+    } else {
+      console.warn('[Comment] Failed:',r.status,txt);
+      showToast('Comment failed: '+r.status,'error');
     }
   }catch(e){
     console.warn('[Comment] Error:',e);
+    showToast('Comment error: '+e.message,'error');
   }
 }
 
@@ -1371,15 +1375,19 @@ async function saveEdit(){
 
     // Update local data
     row[field]=newVal;
-    showToast(`✓ ${label}: ${newVal}`);
 
     // Auto-add exchange note for S/N fields
     const oldVal=S.editing.value;
     if(isSNField(field)&&oldVal&&oldVal!==newVal){
       const noteText=`${oldVal} → ${newVal}　交換`;
+      showToast(`✓ ${noteText}`);
       addCellNote(dataKey,row._rowIdx,colIdx,noteText).then(()=>{
-        console.log('[Note] Exchange note added for',field);
-      }).catch(e=>console.warn('[Note] Failed:',e));
+        console.log('[Comment] Exchange note added for',field);
+      }).catch(e=>console.warn('[Comment] Failed:',e));
+    } else if(oldVal&&oldVal!==newVal){
+      showToast(`✓ ${label}: ${oldVal} → ${newVal}`);
+    } else {
+      showToast(`✓ ${label}: ${newVal}`);
     }
 
     S.screen='result';S.editing=null;
@@ -1687,7 +1695,7 @@ async function saveCompAndBack(){await saveCompRules();S.screen='search';render(
 
 // ===== BULK ECN EDIT =====
 function openBulkEdit(){
-  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';S.bulkPerUnit={};S.bulkIsPerUnit=false;render();
+  S.screen='bulkEdit';S.bulkStep=1;S.bulkDK=null;S.bulkField=null;S.bulkValue='';S.bulkSelected=new Set();S.bulkSaving=false;S.bulkInputMode='individual';S.bulkNumInput='';S.bulkRangeStart='';S.bulkRangeEnd='';S.bulkPerUnit={};S.bulkMotorNum={};S.bulkIsPerUnit=false;render();
 }
 
 // All assembly types for batch
@@ -1734,7 +1742,7 @@ function pickBulkField(dk,field){
   const fInfo=fields.find(f=>f.name===field);
   S.bulkField=field;S.bulkValue='';
   // Always pre-fill per-unit values from current data
-  S.bulkPerUnit={};
+  S.bulkPerUnit={};S.bulkMotorNum={};
   const rows=DATA[S.bulkDK]||[];const sf=getSNField(rows);
   rows.forEach(r=>{
     const sn=r[sf];
@@ -1923,11 +1931,16 @@ function rBulkEdit(){
       const isDt=fType?.type==='date';
       const isDr=fType?.type==='dropdown';
 
+      // Detect motor S/N lookup field
+      const motorDK=getMotorLookupDK(S.bulkField);
+      const isMotorSN=!!motorDK;
+
       h+=`<div style="display:flex;align-items:center;gap:6px;margin:8px 0 10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2);font-family:var(--fm)">${esc(FIELD_LABELS[S.bulkField]||S.bulkField)}</span>
-        <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(91,110,234,.1);color:var(--ac);font-weight:600">${isChk?'CHECKBOX':isDt?'DATE':isDr?'DROPDOWN':'TEXT'}</span>
+        <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(91,110,234,.1);color:var(--ac);font-weight:600">${isChk?'CHECKBOX':isDt?'DATE':isDr?'DROPDOWN':isMotorSN?'MOTOR S/N':'TEXT'}</span>
+        ${isMotorSN?`<span style="font-size:9px;font-family:var(--fm);color:var(--pur)">lookup from ${esc(CONFIG.TABS[motorDK]||motorDK)}</span>`:''}
         <span style="flex:1"></span>
-        <button class="bulk-change" onclick="S.bulkField=null;S.bulkValue='';S.bulkPerUnit={};render()">Change field</button>
+        <button class="bulk-change" onclick="S.bulkField=null;S.bulkValue='';S.bulkPerUnit={};S.bulkMotorNum={};render()">Change field</button>
       </div>`;
 
       // Quick fill shortcuts
@@ -1946,6 +1959,12 @@ function rBulkEdit(){
         fType.options.slice(0,6).forEach(o=>{
           h+=`<div style="padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;color:var(--t2);font-weight:600;background:rgba(255,255,255,.02);border:1px solid var(--bd)" onclick="bulkFillAll('${escA(o)}')">${esc(o)}</div>`;
         });
+      } else if(isMotorSN){
+        // Motor S/N field: type number → lookup from motor sheet
+        h+=`<span style="padding:3px 8px;border-radius:4px;background:var(--pur);color:#fff;font-size:10px;font-weight:700;font-family:var(--fm)">Motor #</span>`;
+        h+=`<input type="text" class="etin" id="bulkFillInput" placeholder="e.g. 372" style="flex:0;width:80px;padding:5px 8px;font-size:11px;font-family:var(--fm)" inputmode="numeric">`;
+        h+=`<div style="padding:4px 10px;border-radius:5px;cursor:pointer;font-size:10px;color:var(--ac);font-weight:600;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.15)" onclick="const v=document.getElementById('bulkFillInput')?.value||'';if(v)bulkFillAllMotor('${escA(motorDK)}',v)">Fill →</div>`;
+        h+=`<div style="padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;color:var(--t4);background:rgba(255,255,255,.02);border:1px solid var(--bd)" onclick="bulkFillAll('')">Clear</div>`;
       } else {
         h+=`<input type="text" class="etin" id="bulkFillInput" placeholder="Type value + press Fill →" style="flex:1;padding:5px 8px;font-size:11px;min-width:120px">`;
         h+=`<div style="padding:4px 10px;border-radius:5px;cursor:pointer;font-size:10px;color:var(--ac);font-weight:600;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.15)" onclick="const v=document.getElementById('bulkFillInput')?.value||'';if(v)bulkFillAll(v)">Fill →</div>`;
@@ -1988,6 +2007,14 @@ function rBulkEdit(){
             <option value="">—</option>
             ${fType.options.map(o=>`<option value="${escA(o)}" ${curVal===o?'selected':''}>${esc(o)}</option>`).join('')}
           </select>`;
+        } else if(isMotorSN){
+          // Motor S/N input: number input → lookup full S/N from motor sheet
+          const rawNum=S.bulkMotorNum[sn]!==undefined?S.bulkMotorNum[sn]:(curVal?(curVal.match(/(\d+)$/)||[])[1]||'':'');
+          const notFound=rawNum&&!curVal;
+          h+=`<div style="display:flex;align-items:center;flex:1;gap:4px">
+            <input type="text" class="bulk-pu-input bulk-motor-input" data-sn="${escA(sn)}" data-motordk="${escA(motorDK)}" value="${escA(rawNum)}" placeholder="#" style="width:70px;padding:3px 6px;font-size:11px;font-family:var(--fm);text-align:center;border:1px solid ${notFound?'#f87171':'var(--bd)'};border-radius:6px;background:var(--inp);color:var(--t1)" inputmode="numeric">
+            <span style="font-size:9px;font-family:var(--fm);color:${notFound?'#f87171':changed?'var(--ac)':'var(--t3)'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notFound?'not found':curVal?esc(curVal):'<span style="color:var(--t5)">type # to lookup</span>'}</span>
+          </div>`;
         } else {
           h+=`<input type="text" class="etin bulk-pu-input" data-sn="${escA(sn)}" value="${escA(curVal)}" placeholder="..." style="flex:1;padding:3px 6px;font-size:11px">`;
         }
@@ -2039,27 +2066,60 @@ function rBulkEdit(){
   const brs=$('#bulkRangeS');if(brs)brs.addEventListener('input',e=>{S.bulkRangeStart=e.target.value;});
   const bre=$('#bulkRangeE');if(bre)bre.addEventListener('input',e=>{S.bulkRangeEnd=e.target.value;});
   // Per-unit text inputs — update state and re-render to show Save button
-  document.querySelectorAll('input.bulk-pu-input[type="text"]').forEach(inp=>{
+  document.querySelectorAll('input.bulk-pu-input[type="text"]:not(.bulk-sn-input)').forEach(inp=>{
     inp.addEventListener('input',e=>{
       S.bulkPerUnit[e.target.dataset.sn]=e.target.value;
-      // Debounced render to show/hide Save button
       clearTimeout(inp._rt);
       inp._rt=setTimeout(()=>{
         const sn=e.target.dataset.sn;
         const sel=e.target.selectionStart;
         render();
-        // Restore focus
         const ni=document.querySelector(`.bulk-pu-input[data-sn="${sn}"]`);
         if(ni){ni.focus();ni.selectionStart=ni.selectionEnd=sel;}
       },300);
     });
-    // Enter key saves immediately
     inp.addEventListener('keydown',e=>{
       if(e.key==='Enter'){
         e.preventDefault();
         clearTimeout(inp._rt);
         S.bulkPerUnit[e.target.dataset.sn]=e.target.value;
         bulkSaveSingle(e.target.dataset.sn);
+      }
+    });
+  });
+  // Motor S/N lookup inputs — type number, lookup full S/N from motor sheet
+  document.querySelectorAll('.bulk-motor-input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const motordk=e.target.dataset.motordk||'';
+      const sn=e.target.dataset.sn;
+      const num=e.target.value.replace(/\D/g,'');
+      S.bulkMotorNum[sn]=num;
+      if(num){
+        const fullSN=lookupMotorSN(motordk,num);
+        S.bulkPerUnit[sn]=fullSN||'';
+      } else {
+        S.bulkPerUnit[sn]='';
+      }
+      clearTimeout(inp._rt);
+      inp._rt=setTimeout(()=>{
+        const sel=e.target.selectionStart;
+        render();
+        const ni=document.querySelector(`.bulk-motor-input[data-sn="${sn}"]`);
+        if(ni){ni.focus();ni.selectionStart=ni.selectionEnd=sel;}
+      },400);
+    });
+    inp.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        clearTimeout(inp._rt);
+        const motordk=e.target.dataset.motordk||'';
+        const sn=e.target.dataset.sn;
+        const num=e.target.value.replace(/\D/g,'');
+        S.bulkMotorNum[sn]=num;
+        const fullSN=num?lookupMotorSN(motordk,num):'';
+        S.bulkPerUnit[sn]=fullSN||'';
+        if(fullSN)bulkSaveSingle(sn);
+        else if(num)showToast(`No motor found with #${num}`,'error');
       }
     });
   });
@@ -2144,6 +2204,53 @@ function bulkNumKeydown(e){
 function bulkFillAll(val){
   [...S.bulkSelected].forEach(sn=>{S.bulkPerUnit[sn]=val;});
   render();
+}
+
+// Fill all S/N fields with same value
+function bulkFillAllSN(prefix,numStr,padLen){
+  // Unused — kept for compat
+}
+
+// Motor S/N lookup: field name → data key to search
+function getMotorLookupDK(field){
+  const f=(field||'').toLowerCase();
+  if(/^l\d+\s*motor/i.test(field))return 'lMotors';
+  if(/^a[12]\s*motor/i.test(field))return 'a12Motors';
+  if(/^a[35]\s*motor/i.test(field))return 'a35Motors';
+  if(/^a4\s*motor/i.test(field))return 'a4Motors';
+  return null;
+}
+
+// Lookup motor S/N by trailing number in the appropriate sheet
+function lookupMotorSN(lookupDK,num){
+  const rows=DATA[lookupDK]||[];
+  if(!rows.length)return null;
+  const sf=getSNField(rows);
+  const n=parseInt(num);
+  if(isNaN(n)||n<1)return null;
+  const match=rows.find(r=>{
+    const m=(r[sf]||'').match(/(\d+)$/);
+    return m&&parseInt(m[1])===n;
+  });
+  return match?match[sf]:null;
+}
+
+// Fill all units via motor lookup
+function bulkFillAllMotor(lookupDK,numStr){
+  const num=numStr.replace(/\D/g,'');
+  if(!num){showToast('Enter a number','error');return;}
+  const fullSN=lookupMotorSN(lookupDK,num);
+  if(!fullSN){showToast(`No motor found with #${num}`,'error');return;}
+  [...S.bulkSelected].forEach(sn=>{S.bulkPerUnit[sn]=fullSN;S.bulkMotorNum[sn]=num;});
+  render();
+}
+
+// Build full S/N from prefix + number input (unused, kept for compat)
+function buildSN(prefix,numStr,padLen){
+  const num=numStr.replace(/\D/g,'');
+  if(!num)return'';
+  const padded=padLen?num.padStart(padLen,'0'):num;
+  return prefix+padded;
 }
 
 function bulkAddRange(){
@@ -2273,8 +2380,12 @@ async function bulkSaveSingle(sn){
       if(isSNField(field)&&oldVal&&oldVal!==newVal){
         const noteText=`${oldVal} → ${newVal}　交換`;
         addCellNote(dk,row._rowIdx,colIdx,noteText).catch(e=>console.warn('[Note]',e));
+        showToast(`✓ ${sn.match(/(\d+)$/)?.[1]||sn}: ${noteText}`,'success');
+      } else if(oldVal&&oldVal!==newVal){
+        showToast(`✓ ${sn.match(/(\d+)$/)?.[1]||sn}: ${oldVal} → ${newVal}`,'success');
+      } else {
+        showToast(`✓ Saved ${sn.match(/(\d+)$/)?.[1]||sn}`,'success');
       }
-      showToast(`✓ Saved ${sn.match(/(\d+)$/)?.[1]||sn}`,'success');
     } else {
       showToast(`Failed: ${resp.status}`,'error');
     }
@@ -2331,10 +2442,12 @@ async function doBulkSavePerUnit(){
       }
       if(resp.ok){
         c.row[field]=c.newVal;ok++;
-        // Auto-add exchange note for S/N fields
+        // Collect exchange text for toast
+        if(c.oldVal&&c.oldVal!==c.newVal)c._txt=`${c.oldVal} → ${c.newVal}`;
+        // Auto-add exchange comment for S/N fields
         if(isSNField(field)&&c.oldVal&&c.oldVal!==c.newVal){
           const noteText=`${c.oldVal} → ${c.newVal}　交換`;
-          addCellNote(dk,c.row._rowIdx,colIdx,noteText).catch(e=>console.warn('[Note]',e));
+          addCellNote(dk,c.row._rowIdx,colIdx,noteText).catch(e=>console.warn('[Comment]',e));
         }
       }else{fail++;}
     }catch{fail++;}
@@ -2342,14 +2455,17 @@ async function doBulkSavePerUnit(){
 
   S.bulkSaving=false;
   if(S.result?.ghost)S.tree=getGhostTree(S.result.ghost);
+  // Show detailed toast with exchange texts
+  const exchTxts=changes.filter(c=>c._txt).map(c=>{const n=(c.sn.match(/(\d+)$/)||[])[1]||c.sn;return n+': '+c._txt;});
   if(fail)showToast(`${ok} saved, ${fail} failed`,'error');
+  else if(exchTxts.length<=3)showToast(`✓ ${exchTxts.join(' · ')}`);
   else showToast(`✓ ${ok} changes saved`);
   // Update per-unit values from saved data
   rows.forEach(r=>{if(S.bulkSelected.has(r[sf]))S.bulkPerUnit[r[sf]]=r[field]||'';});
   render();
 }
 async function doRefresh(){S.refreshing=true;render();S.loadErrors=await loadAllData((l,t,c)=>{LP={l,t,c};});S.refreshing=false;showToast('Data refreshed');render();}
-function showToast(msg,type='success'){S.toast={msg,type};render();setTimeout(()=>{S.toast=null;render();},3000);}
+function showToast(msg,type='success'){S.toast={msg,type};render();const dur=msg.includes('→')?5000:3000;clearTimeout(S._toastT);S._toastT=setTimeout(()=>{S.toast=null;render();},dur);}
 
 // ===== INIT =====
 window.onload=function(){render();
