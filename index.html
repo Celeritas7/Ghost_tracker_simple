@@ -8,9 +8,33 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
+/**
+ * Ghost Assembly Tracker — Styles
+ * ================================
+ * 
+ * SECTIONS:
+ *  1. Variables & Reset
+ *  2. Login
+ *  3. User Bar & Nav
+ *  4. Search Screen
+ *  5. Result Header & Trace Path
+ *  6. Compliance Bar
+ *  7. Sections & Field Rows
+ *  8. Card Grid (Layout B)
+ *  9. Edit Screen
+ * 10. Settings (ECN/Compliance)
+ * 11. ECN Sub-sections
+ * 12. Bulk Edit
+ * 13. Toast & Animations
+ * 14. Debug
+ */
+
+/* ===== 1. VARIABLES & RESET ===== */
 :root{--bg:#0a0b12;--card:#0d0e18;--inp:#12131e;--bd:#1e2130;--bd2:#2a2d3e;--t1:#e2e4ed;--t2:#8b8fa7;--t3:#6b7094;--t4:#4d5070;--t5:#3d4060;--t6:#2d3050;--ac:#5b6eea;--ac2:#7c5cf6;--grn:#34d399;--red:#f87171;--yel:#fbbf24;--blu:#38bdf8;--org:#fb923c;--pur:#a78bfa;--fm:'Courier New',monospace;--fb:'Segoe UI',system-ui,sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}html,body{height:100%}
 body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ===== 2. LOGIN ===== */
 .login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .login-bg{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%,rgba(91,110,234,.1) 0%,transparent 70%)}
 .login-card{position:relative;z-index:1;width:100%;max-width:380px;text-align:center}
@@ -22,6 +46,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .g-btn svg{width:20px;height:20px}
 .divider{display:flex;align-items:center;margin:20px 0;color:var(--t5);font-size:12px}.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--bd);margin:0 12px}
 .login-err{margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red);font-size:13px;line-height:1.5;display:none;white-space:pre-line}
+
+/* ===== 3. USER BAR & NAV ===== */
 .ubar{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--card);border-bottom:1px solid #14152a}
 .uname{color:var(--t2);font-size:13px}
 .ubadge{font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600}
@@ -56,6 +82,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .demo-s{margin-top:20px;text-align:center}.demo-l{font-size:11px;color:var(--t6);margin-bottom:8px}
 .demo-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}
 .demo-c{padding:5px 10px;border-radius:6px;border:1px solid #14152a;background:var(--card);color:var(--t3);font-size:11px;font-family:var(--fm);cursor:pointer}.demo-c:hover{border-color:var(--ac);color:var(--ac)}
+
+/* ===== 5. RESULT HEADER & TRACE PATH ===== */
 .rh{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #14152a;background:var(--card);position:sticky;top:0;z-index:100}
 .rbk{background:none;border:none;color:var(--ac);font-size:11px;cursor:pointer;padding:4px 6px;font-family:var(--fb)}
 .rid{flex:1;text-align:center;font-size:12px;font-weight:700;font-family:var(--fm)}
@@ -68,6 +96,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .tstepN{background:rgba(255,255,255,.03);color:var(--t3)}
 .tarr{color:var(--t6);font-size:9px}
 .tsum{font-size:9px;color:var(--t4);margin-top:2px}.thl{color:var(--ac);font-family:var(--fm)}.thl2{color:var(--t2);font-family:var(--fm)}
+
+/* ===== 7. SECTIONS & FIELD ROWS ===== */
 .sw{padding:2px 10px 80px}
 .sc{margin-bottom:4px}
 .sh{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer}
@@ -76,6 +106,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .mbdg{padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600}
 .schv{font-size:11px;color:var(--t5);transition:transform .2s}.schvO{transform:rotate(180deg)}
 .fg{padding-top:2px;padding-bottom:2px}
+
+/* ===== 8. CARD GRID (LAYOUT B) ===== */
 .cg-sn{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:5px}
 .cg-prod{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px}
 .cg-card{padding:4px 7px;border-radius:5px;background:var(--inp);border:1px solid var(--bd);cursor:pointer;transition:border-color .1s}
@@ -107,6 +139,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .ckd{width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px}
 .ckP{background:rgba(52,211,153,.15);border:1.5px solid var(--grn);color:var(--grn)}
 .ckF{background:rgba(248,113,113,.1);border:1.5px solid rgba(248,113,113,.35);color:var(--red)}
+
+/* ===== 9. EDIT SCREEN ===== */
 .escreen{min-height:100vh;display:flex;flex-direction:column}
 .eh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #14152a;background:var(--card)}
 .ecn{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:6px 10px;font-family:var(--fb)}
@@ -125,6 +159,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .savb{margin-top:28px;padding:14px 40px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--fb)}
 .savA{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;box-shadow:0 4px 20px rgba(91,110,234,.2)}
 .savI{background:var(--bd);color:var(--t4);cursor:default}
+
+/* ===== 13. TOAST & ANIMATIONS ===== */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4)}
 .toast-s{background:#121e16;border:1px solid rgba(52,211,153,.2);color:var(--grn)}
 .toast-e{background:#1e1214;border:1px solid rgba(248,113,113,.2);color:var(--red)}
@@ -133,13 +169,19 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .rfS{animation:spin 1s linear infinite}@keyframes spin{100%{transform:rotate(360deg)}}
 .dbg{margin:12px 16px;padding:14px;border-radius:10px;background:var(--inp);border:1px solid var(--bd);font-size:11px;line-height:1.7;max-height:400px;overflow-y:auto;font-family:var(--fm);color:var(--t3)}
 .dbg b{color:var(--yel)}.dbg code{color:var(--ac);background:rgba(91,110,234,.08);padding:1px 4px;border-radius:3px}
+
+/* ===== 14. DEBUG ===== */
 .dbgbtn{padding:6px 14px;border-radius:8px;border:1px solid var(--yel);background:transparent;color:var(--yel);font-size:11px;cursor:pointer;font-family:var(--fb);margin-left:8px}
 .err-b{margin:16px;padding:16px;border-radius:12px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);color:var(--red);font-size:13px;line-height:1.5}
 .err-b code{display:block;margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(248,113,113,.05);font-family:var(--fm);font-size:11px;word-break:break-all;color:var(--t2)}
 /* ECN Settings button */
+
+/* ===== 10. SETTINGS BUTTONS ===== */
 .ecnbtn{padding:5px 12px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--fb);font-weight:600;transition:all .15s}
 .ecnbtn:active{background:var(--ac);color:#fff}
 /* ECN Settings page */
+
+/* ===== 10b. SETTINGS PAGE ===== */
 .ecns-sec{margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--bd)}
 .ecns-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--inp);cursor:pointer}
 .ecns-body{background:var(--card);padding:4px 0}
@@ -150,6 +192,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .ecns-off{background:transparent;border:2px solid var(--bd2);color:transparent}
 .ecns-fname{font-size:12px;color:var(--t2);font-family:var(--fm);word-break:break-all;line-height:1.4}
 /* ECN sub-section in result cards */
+
+/* ===== 11. ECN SUB-SECTIONS ===== */
 .ecn-sub{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;border-top:1px dashed rgba(91,110,234,.15)}
 .ecn-sub-icon{font-size:11px}
 .ecn-sub-label{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--ac)}
@@ -180,6 +224,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 /* Bulk edit */
 .bulk-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--grn);background:rgba(52,211,153,.06);color:var(--grn);font-size:11px;cursor:pointer;font-family:var(--fb);font-weight:600;transition:all .15s}
 .bulk-btn:active{background:var(--grn);color:#fff}
+
+/* ===== 12. BULK EDIT ===== */
 .bulk-step{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 16px;border-radius:10px;background:rgba(91,110,234,.06);border:1px solid rgba(91,110,234,.12)}
 .bulk-step-n{width:28px;height:28px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
 .bulk-step-t{font-size:13px;color:var(--t2)}
@@ -201,6 +247,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 .sc{animation:fadeSlide .2s ease-out}
 @keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 /* Compliance bar */
+
+/* ===== 6. COMPLIANCE BAR ===== */
 .comp-bar{margin:2px 12px;padding:5px 10px;border-radius:6px;background:var(--inp);border:1px solid var(--bd)}
 .comp-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .comp-bar-track{height:3px;border-radius:2px;background:var(--bd);overflow:hidden}
@@ -244,11 +292,43 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);-webkit-font-smo
 @keyframes chipIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 .rbk{transition:color .12s}
 .rbk:active{color:var(--ac2)}
+
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
+/**
+ * Ghost Assembly Tracker — Main Application
+ * ==========================================
+ * 
+ * TABLE OF CONTENTS
+ * -----------------
+ *  1. CONFIG .................. App config, sheet IDs, approved users
+ *  2. SK_TO_DK ................ Section key → data key shared mapping
+ *  3. FIREBASE ................ Firestore for ECN/compliance persistence
+ *  4. COMPLIANCE RULES ........ Rule engine, field checks, FW detection
+ *  5. AUTH .................... Google OAuth, token management
+ *  6. PARSING ................. S/N parsing, type detection
+ *  7. SECTION CONFIG .......... Assembly section colors/icons/labels
+ *  8. VALIDATION .............. Google Sheets data validation rules
+ *  9. DATA .................... Sheet loading, column matching
+ * 10. TRACE ................... S/N → Ghost tracing logic
+ * 11. GHOST TREE .............. Build full assembly tree from ghost
+ * 12. DEBUG ................... Debug info panel
+ * 13. STATE ................... App state, render loop, helpers
+ * 14. LOGIN ................... Login screen renderer
+ * 15. LOADING ................. Loading screen renderer
+ * 16. SEARCH .................. Search screen, chip nav, QR scan
+ * 17. RESULT .................. Result page, card grid, tab strip
+ * 18. EDIT .................... Single field edit screen
+ * 19. ACTIONS ................. Save, refresh, toast, edit handlers
+ * 20. SETTINGS ................ Unified ECN + compliance settings
+ * 21. ECN SUB-SECTION ......... ECN display in result cards
+ * 22. BULK EDIT ............... Batch update wizard
+ * 23. INIT .................... Google Identity Services bootstrap
+ */
+
 // ===== CONFIG =====
 const CONFIG={
   CLIENT_ID:'1088099187141-ut0dn0scqt3h99htf3rg8gsrg2oo1ad8.apps.googleusercontent.com',
@@ -261,6 +341,10 @@ const CONFIG={
   },
   TABS:{ghosts:'00_GHOST',lMotors:'01_L-motor',a12Motors:'02_A12-motor',a35Motors:'03_A35-motor',a4Motors:'04_A4-motor',mobileBases:'05_Mobile Base',pillars:'06_Pillar',headBodies:'07_Head & Body',grippers:'08_Gripper',arms:'09_Arm',deployKits:'10_Deploy Kit'},
 };
+
+
+// Section key → data key mapping (shared constant)
+const SK_TO_DK={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};
 
 // ===== FIREBASE =====
 let db=null;
@@ -500,7 +584,7 @@ function getV(s,f){
 
 // Detect ECN field type by scanning actual values in data
 function guessECNType(section,field){
-  const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[section]||section;
+  const lk=SK_TO_DK[section]||section;
   const rows=DATA[lk];
   if(!rows||!rows.length)return{type:'checkbox'};
   let bools=0,dates=0,texts=0;
@@ -804,7 +888,7 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   h+=`<div style="display:flex;gap:3px;padding:6px 0;flex-wrap:wrap;margin-bottom:2px">`;
   availSecs.forEach(s=>{
     const c=SC[s.k];
-    const lk2={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[s.k]||s.k;
+    const lk2=SK_TO_DK[s.k]||s.k;
     const items2=Array.isArray(s.d)?s.d:[s.d];
     const iss2=countSectionIssues(lk2,items2);
     const isSel=S.resultTab===s.k;
@@ -823,7 +907,7 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   const selSec=availSecs.find(s=>s.k===S.resultTab);
   if(selSec){
     const c=SC[selSec.k];
-    const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[selSec.k]||selSec.k;
+    const lk=SK_TO_DK[selSec.k]||selSec.k;
     const items=Array.isArray(selSec.d)?selSec.d:[selSec.d];
     const sf=getSNField(DATA[lk]||items);
     const issues=countSectionIssues(lk,items);
@@ -854,7 +938,7 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
 
 // Compliance progress bar
 function rCompBar(allSecs){
-  const lkMap={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};
+  const lkMap=SK_TO_DK;
   let totalChecked=0,totalIssues=0;
   allSecs.forEach(({k,d})=>{
     if(!d)return;const items=Array.isArray(d)?d:[d];if(!items.length)return;
@@ -897,7 +981,7 @@ function rSCBody(sk,data){
   if(!data||(Array.isArray(data)&&!data.length))return'';
   const c=SC[sk];if(!c)return'';
   const items=Array.isArray(data)?data:[data];if(!items.length)return'';
-  const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
+  const lk=SK_TO_DK[sk]||sk;
   const sf=getSNField(DATA[lk]||items);
   let h='';
   items.forEach((item,idx)=>{
@@ -974,7 +1058,7 @@ function rSCBody(sk,data){
   return h;
 }
 
-function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;const sf=getSNField(DATA[lk]||items);
+function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk=SK_TO_DK[sk]||sk;const sf=getSNField(DATA[lk]||items);
   const issues=countSectionIssues(lk,items);
   const issueBadge=issues?`<span class="comp-badge">${issues} ⚠</span>`:'';
   let innerH='';
@@ -1065,7 +1149,7 @@ function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'
 
 // Card grid ECN subsection
 function rECNSubSectionGrid(sk,items,lk,c){
-  const dk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
+  const dk=SK_TO_DK[sk]||sk;
   const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
   if(!ecnFields.length)return'';
   const ecnKey='ecn_'+sk;
@@ -1227,7 +1311,7 @@ async function saveEdit(){
   }
 
   // Map section to DATA key
-  const secToKey={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'};
+  const secToKey=SK_TO_DK;
   const dataKey=secToKey[section];
   if(!dataKey||!SHEET_META[dataKey]){showToast('Cannot find sheet metadata','error');return;}
 
@@ -1523,7 +1607,7 @@ async function saveECNAndBack(){await saveECNSettings();S.screen='search';render
 
 // ===== ECN SUB-SECTION IN RESULT CARDS =====
 function rECNSubSection(sk,items,lk){
-  const dk={ghost:'ghosts',mobileBase:'mobileBases',pillar:'pillars',headBody:'headBodies',arm:'arms',gripper:'grippers',deployKit:'deployKits',mbMotors:'lMotors',plMotors:'lMotors',armA12:'a12Motors',armA35:'a35Motors',armA4:'a4Motors'}[sk]||sk;
+  const dk=SK_TO_DK[sk]||sk;
   const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
   if(!ecnFields.length)return'';
   const ecnKey='ecn_'+sk;
@@ -1693,9 +1777,13 @@ function rBulkEdit(){
     BULK_TYPES.forEach(bt=>{
       const rows=DATA[bt.dk]||[];if(!rows.length)return;
       const fields=getBulkFields(bt.dk);
-      h+=`<div class="bulk-field" onclick="S.bulkDK='${bt.dk}';S.bulkStep=2;S.bulkSelected=new Set();S.bulkInputMode='individual';S.bulkNumInput='';render()" style="border-left:3px solid ${bt.color}">
+      // Check for stored selection
+      let storedCount=0;
+      try{const s=localStorage.getItem('gt_bulk_'+bt.dk);if(s){storedCount=JSON.parse(s).length;}}catch(e){}
+      h+=`<div class="bulk-field" onclick="selectBulkAssembly('${bt.dk}')" style="border-left:3px solid ${bt.color}">
         <span style="font-size:18px">${bt.icon}</span>
         <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${bt.color}">${bt.label}</div><div style="font-size:10px;color:var(--t4)">${rows.length} units · ${fields.length} fields</div></div>
+        ${storedCount?`<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(91,110,234,.12);color:var(--ac);font-weight:700">${storedCount} saved</span>`:''}
         <span style="color:var(--t5)">›</span>
       </div>`;
     });
@@ -1731,8 +1819,8 @@ function rBulkEdit(){
         const uid=regComp('togunit',S.bulkDK,sn);
         h+=`<div class="bulk-chip" style="background:${bt.color}15;border-color:${bt.color}33;color:${bt.color}">${n!==null?n:esc(sn)}<span class="bulk-chip-x" onclick="event.stopPropagation();doComp(${uid})">×</span></div>`;
       });
-      h+=`<input type="text" inputmode="numeric" id="bulkNumIn" class="bulk-num-input" value="${escA(S.bulkNumInput)}" placeholder="${selCount?'Add more...':'Type numbers: 1, 2, 3...'}" autocomplete="off"></div>`;
-      h+=`<div style="font-size:10px;color:var(--t5);margin-top:4px">Comma/Enter to add · Backspace to remove last</div>`;
+      h+=`<input type="text" inputmode="numeric" id="bulkNumIn" class="bulk-num-input" value="${escA(S.bulkNumInput)}" placeholder="${selCount?'Add more...':'Paste or type: 61,21,42,36,59'}" autocomplete="off"></div>`;
+      h+=`<div style="font-size:10px;color:var(--t5);margin-top:4px">Paste comma-separated · Enter to add · Backspace to remove last</div>`;
     } else {
       h+=`<div style="display:flex;gap:8px;align-items:flex-end">
         <div style="flex:1"><div style="font-size:10px;color:var(--t5);margin-bottom:4px">From</div>
@@ -1750,7 +1838,7 @@ function rBulkEdit(){
     if(selCount>0){
       h+=`<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(91,110,234,.04);border:1px solid rgba(91,110,234,.1);display:flex;justify-content:space-between;align-items:center">
         <div><span style="font-size:14px;font-weight:700;color:var(--ac)">${selCount}</span><span style="font-size:12px;color:var(--t3);margin-left:6px">unit${selCount!==1?'s':''} selected</span></div>
-        <button class="bulk-change" onclick="S.bulkSelected=new Set();render()">Clear all</button>
+        <button class="bulk-change" onclick="S.bulkSelected=new Set();saveBulkSelection();render()">Clear all</button>
       </div>`;
       h+=`<button class="savb savA" style="width:100%;margin-top:16px" onclick="S.bulkStep=3;S.bulkField=null;S.bulkValue='';render()">Next: Pick field →</button>`;
     } else {
@@ -1916,7 +2004,17 @@ function rBulkEdit(){
   const bd=$('#bulkDate');if(bd)bd.addEventListener('change',e=>{S.bulkValue=e.target.value.replace(/-/g,'/');});
   const btt=$('#bulkText');if(btt)btt.addEventListener('input',e=>{S.bulkValue=e.target.value;});
   const bni=$('#bulkNumIn');if(bni){
-    bni.addEventListener('input',e=>{S.bulkNumInput=e.target.value.replace(/[^0-9,\s]/g,'');});
+    bni.addEventListener('input',e=>{
+      let v=e.target.value.replace(/[^0-9,\s]/g,'');
+      // Auto-parse if contains comma or space (handles paste of "61,21,42,36,59")
+      if(v.includes(',')||/\s/.test(v)){
+        S.bulkNumInput=v;
+        bulkAddNums(v);
+        e.target.value='';
+        return;
+      }
+      S.bulkNumInput=v;
+    });
     bni.addEventListener('keydown',bulkNumKeydown);
     setTimeout(()=>bni.focus(),50);
   }
@@ -1929,7 +2027,44 @@ function rBulkEdit(){
 }
 
 function togBulkUnit(sn){
-  if(S.bulkSelected.has(sn))S.bulkSelected.delete(sn);else S.bulkSelected.add(sn);render();
+  if(S.bulkSelected.has(sn))S.bulkSelected.delete(sn);else S.bulkSelected.add(sn);
+  saveBulkSelection();render();
+}
+
+// Persist bulk selection per assembly to localStorage
+function saveBulkSelection(){
+  if(!S.bulkDK)return;
+  try{
+    const key='gt_bulk_'+S.bulkDK;
+    if(S.bulkSelected.size)localStorage.setItem(key,JSON.stringify([...S.bulkSelected]));
+    else localStorage.removeItem(key);
+  }catch(e){}
+}
+function loadBulkSelection(dk){
+  try{
+    const key='gt_bulk_'+dk;
+    const stored=localStorage.getItem(key);
+    if(stored){
+      const arr=JSON.parse(stored);
+      if(Array.isArray(arr)&&arr.length){
+        // Validate S/Ns still exist in data
+        const rows=DATA[dk]||[];
+        const sf=getSNField(rows);
+        const valid=new Set(rows.map(r=>r[sf]));
+        return new Set(arr.filter(sn=>valid.has(sn)));
+      }
+    }
+  }catch(e){}
+  return new Set();
+}
+
+function selectBulkAssembly(dk){
+  S.bulkDK=dk;
+  S.bulkStep=2;
+  S.bulkSelected=loadBulkSelection(dk);
+  S.bulkInputMode='individual';
+  S.bulkNumInput='';
+  render();
 }
 
 // Find row S/N by numeric suffix
@@ -1949,7 +2084,7 @@ function bulkAddNums(numsStr){
     if(sn&&!S.bulkSelected.has(sn)){S.bulkSelected.add(sn);added++;}
   });
   S.bulkNumInput='';
-  if(added)render();
+  if(added){saveBulkSelection();render();}
   else if(nums.length)showToast('No matching units found','error');
 }
 
@@ -1961,6 +2096,7 @@ function bulkNumKeydown(e){
     // Remove last added
     const arr=[...S.bulkSelected];
     S.bulkSelected.delete(arr[arr.length-1]);
+    saveBulkSelection();
     render();
   }
 }
@@ -1974,6 +2110,7 @@ function bulkAddRange(){
     const sn=findSNByNum(S.bulkDK,i);
     if(sn&&!S.bulkSelected.has(sn)){S.bulkSelected.add(sn);added++;}
   }
+  saveBulkSelection();
   S.bulkRangeStart='';S.bulkRangeEnd='';
   if(added){showToast(`Added ${added} units`);render();}
   else showToast('No matching units in range','error');
@@ -2127,6 +2264,7 @@ window.onload=function(){render();
       if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
       else doLogout();}
   }initGA();};
+
 </script>
 </body>
 </html>
