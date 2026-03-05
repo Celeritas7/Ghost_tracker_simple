@@ -1719,8 +1719,12 @@ const BATCH_TABS=[
 ];
 
 function openBatch(){
-  const raw=JSON.parse(localStorage.getItem('batchUnits')||'[]');
-  S.batchUnits=raw.filter(u=>u&&typeof u.ghostSN==='string'&&u.ghostSN);
+  // Clear legacy bulk edit data
+  localStorage.removeItem('bulkSel');localStorage.removeItem('bulkDK');
+  let raw=[];
+  try{raw=JSON.parse(localStorage.getItem('batchUnits')||'[]');}catch(e){raw=[];}
+  S.batchUnits=Array.isArray(raw)?raw.filter(u=>u&&typeof u==='object'&&typeof u.ghostSN==='string'&&u.ghostSN):[];
+  if(raw.length!==S.batchUnits.length)saveBatchUnits(); // clean up bad data
   S.batchTrees={};S.batchTab=null;
   S.batchStep=S.batchUnits.length?2:1;
   S.batchType='pillars';S.batchNumInput='';
@@ -1731,11 +1735,13 @@ function openBatch(){
 function rebuildBatchTrees(){
   S.batchTrees={};
   for(const u of S.batchUnits){
-    if(!u.ghostSN||typeof u.ghostSN!=='string')continue;
-    if(!S.batchTrees[u.ghostSN]){
-      const ghostRow=findRowBySN(DATA.ghosts,u.ghostSN);
-      if(ghostRow)S.batchTrees[u.ghostSN]=getGhostTree(ghostRow);
-    }
+    try{
+      if(!u.ghostSN||typeof u.ghostSN!=='string')continue;
+      if(!S.batchTrees[u.ghostSN]){
+        const ghostRow=findRowBySN(DATA.ghosts,u.ghostSN);
+        if(ghostRow)S.batchTrees[u.ghostSN]=getGhostTree(ghostRow);
+      }
+    }catch(e){console.warn('[Batch] Error building tree for',u.ghostSN,e);}
   }
 }
 
