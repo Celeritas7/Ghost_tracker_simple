@@ -669,7 +669,7 @@ function getCol(row,...keywords){if(!row)return'';const K=Object.keys(row);
   for(const kw of keywords){const kwL=kw.toLowerCase();for(const k of K){if(k.toLowerCase().includes(kwL)&&row[k]!=='')return row[k];}}
   return'';}
 
-function findRowBySN(list,snVal){if(!list||!snVal)return null;const up=String(snVal).toUpperCase().trim();if(!up)return null;const sf=getSNField(list);let r=list.find(r=>(r[sf]||'').toUpperCase().trim()===up);if(r)return r;
+function findRowBySN(list,snVal){if(!list||!snVal)return null;const up=snVal.toUpperCase().trim();if(!up)return null;const sf=getSNField(list);let r=list.find(r=>(r[sf]||'').toUpperCase().trim()===up);if(r)return r;
   const K=Object.keys(list[0]||{});const snK=K.filter(k=>/s[\s\/]?n/i.test(k));for(const k of snK){r=list.find(r=>(r[k]||'').toUpperCase().trim()===up);if(r)return r;}return null;}
 
 function findRowByCol(list,colKWs,val){if(!list||!val)return null;const up=val.toUpperCase().trim();for(const row of list){const v=getCol(row,...colKWs);if(v&&v.toUpperCase().trim()===up)return row;}return null;}
@@ -1719,8 +1719,7 @@ const BATCH_TABS=[
 ];
 
 function openBatch(){
-  const raw=JSON.parse(localStorage.getItem('batchUnits')||'[]');
-  S.batchUnits=raw.filter(u=>u&&typeof u.ghostSN==='string'&&u.ghostSN);
+  S.batchUnits=JSON.parse(localStorage.getItem('batchUnits')||'[]');
   S.batchTrees={};S.batchTab=null;
   S.batchStep=S.batchUnits.length?2:1;
   S.batchType='pillars';S.batchNumInput='';
@@ -1731,7 +1730,6 @@ function openBatch(){
 function rebuildBatchTrees(){
   S.batchTrees={};
   for(const u of S.batchUnits){
-    if(!u.ghostSN||typeof u.ghostSN!=='string')continue;
     if(!S.batchTrees[u.ghostSN]){
       const ghostRow=findRowBySN(DATA.ghosts,u.ghostSN);
       if(ghostRow)S.batchTrees[u.ghostSN]=getGhostTree(ghostRow);
