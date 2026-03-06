@@ -1972,12 +1972,14 @@ function rBatchDashboard(){
 
       h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
       const fields=Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));
-      fields.forEach(f=>{
+      const ecnFields=Object.keys(item).filter(f=>f!=='_rowIdx'&&isECNField(f));
+      const allFields=[...fields,...ecnFields];
+      allFields.forEach(f=>{
         const val=item[f]||'';
         const label=FIELD_LABELS[f]||f;
-        const vRule=getV(sk,f);
-        const editable=!!vRule;
         const isECN=isECNField(f);
+        const vRule=getV(sk,f);
+        const editable=!!vRule||isECN;
         const isSN=f===sf||/S\/N$/i.test(f);
         const compIssue=checkFieldComp(dk,f,val);
         const eid=editable?regEdit(sk,itemSN,f,val):null;
@@ -1990,7 +1992,8 @@ function rBatchDashboard(){
         if(isSN)valColor=selTab.color;
 
         let displayVal=val;
-        if(vRule?.type==='checkbox'){
+        const effType=vRule?.type||(isECN?guessECNType(sk,f)?.type:null);
+        if(effType==='checkbox'||(!effType&&isECN&&/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no|)$/i.test(val))){
           const pass=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
           const fail=/^(FALSE|false|0|✗|no)$/i.test(val);
           if(pass)displayVal='✓';
