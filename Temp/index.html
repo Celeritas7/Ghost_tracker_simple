@@ -1537,30 +1537,156 @@ function rSettings(){
         h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No ECN fields</div>`;
       }
     } else {
-      // Rules content — unified per-field approach
+      // Rules content
       h+=`<div style="padding:6px 0">`;
+      const fw=fwForDK(dk);
+      const chk=chkForDK(dk);
+      const req=reqForDK(dk);
+      const ecn=ecnForDK(dk);
 
-      // Gather ALL fields: regular + ECN
-      const allFields=[...reqForDK(dk),...ecnForDK(dk)];
-      // Dedupe
-      const seen=new Set();
-      const uFields=allFields.filter(f=>{if(seen.has(f))return false;seen.add(f);return true;});
-
-      // Show fields with rules first, then the rest
-      const withRule=uFields.filter(f=>getFieldRuleType(dk,f).type!=='none');
-      const withoutRule=uFields.filter(f=>getFieldRuleType(dk,f).type==='none');
-
-      if(withRule.length){
-        h+=`<div style="padding:6px 14px 4px;font-size:9px;color:var(--grn);font-weight:700;letter-spacing:.5px">ACTIVE RULES (${withRule.length})</div>`;
-        withRule.forEach(f=>{ h+=rRuleRow(dk,f,true); });
+      if(fw.length){
+        h+=`<div style="padding:6px 14px 2px;font-size:9px;color:var(--blu);font-weight:700;letter-spacing:.5px">FW VERSIONS</div>`;
+        fw.forEach(f=>{
+          const cur=COMP_RULES.latestFW?.[f]||'';
+          const fid=regFW(f);
+          h+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 14px">
+            <span style="flex:1;font-size:11px;color:var(--t3)">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" style="width:100px;padding:4px 8px;border-radius:6px;text-align:right;font-size:11px" data-fwid="${fid}" value="${escA(cur)}" placeholder="not set" onchange="doFWChange(${fid},this.value)">
+          </div>`;
+        });
       }
 
-      h+=`<div style="padding:${withRule.length?'10':'6'}px 14px 4px;font-size:9px;color:var(--t5);font-weight:700;letter-spacing:.5px">ALL FIELDS (${withoutRule.length})</div>`;
-      h+=`<div style="padding:2px 14px 6px;font-size:9px;color:var(--t6)">Select a rule type to activate compliance check</div>`;
-      withoutRule.forEach(f=>{ h+=rRuleRow(dk,f,false); });
+      if(chk.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--grn);font-weight:700;letter-spacing:.5px">REQUIRED CHECKS</div>`;
+        chk.forEach(f=>{
+          const on=(COMP_RULES.requiredChecks?.[dk]||[]).includes(f);
+          const cid=regComp('check',dk,f);
+          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
+            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
+              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
+            </div>
+            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'}">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
 
-      if(!uFields.length){
-        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No configurable fields</div>`;
+      if(req.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--yel);font-weight:700;letter-spacing:.5px">REQUIRED FIELDS</div>`;
+        req.forEach(f=>{
+          const on=(COMP_RULES.requiredFields?.[dk]||[]).includes(f);
+          const cid=regComp('req',dk,f);
+          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
+            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
+              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
+            </div>
+            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'}">${esc(FIELD_LABELS[f]||f)}</span>
+          </div>`;
+        });
+      }
+
+      if(ecn.length){
+        h+=`<div style="padding:8px 14px 2px;font-size:9px;color:var(--pur);font-weight:700;letter-spacing:.5px">REQUIRED ECN</div>`;
+        ecn.forEach(f=>{
+          const on=(COMP_RULES.requiredECN?.[dk]||[]).includes(f);
+          const cid=regComp('ecn',dk,f);
+          h+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer" onclick="doComp(${cid})">
+            <div style="width:32px;height:18px;border-radius:9px;background:${on?'var(--grn)':'#1e2130'};border:1.5px solid ${on?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
+              <div style="width:12px;height:12px;border-radius:50%;background:${on?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${on?'16px':'2px'};transition:left .15s"></div>
+            </div>
+            <span style="font-size:11px;color:${on?'var(--t1)':'var(--t5)'};font-family:var(--fm)">${esc(f)}</span>
+          </div>`;
+        });
+      }
+
+      // --- NEW: Exact Match rules ---
+      const allF=req; // all fields for this assembly
+      if(allF.length){
+        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#f472b6;font-weight:700;letter-spacing:.5px">EXACT VALUE MATCH <span style="font-weight:400;color:var(--t5)">— flag if value ≠ expected</span></div>`;
+        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Type the required value. Leave empty = no rule.</div>`;
+        const emRules=COMP_RULES.exactMatch?.[dk]||{};
+        // Show fields that have rules first, then allow adding
+        const emSet=Object.keys(emRules);
+        const emFields=[...emSet,...allF.filter(f=>!emSet.includes(f))];
+        const emShow=emFields.slice(0,emSet.length?emFields.length:8); // show all if rules exist, else first 8
+        emShow.forEach(f=>{
+          const cur=emRules[f]||'';
+          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" style="width:120px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="not set" onchange="setExactMatch('${escA(dk)}','${escA(f)}',this.value)">
+          </div>`;
+        });
+        if(emShow.length<emFields.length){
+          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${emFields.length-emShow.length} more fields...</div><div style="display:none">`;
+          emFields.slice(emShow.length).forEach(f=>{
+            const cur=emRules[f]||'';
+            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
+              <input class="comp-input" style="width:120px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="not set" onchange="setExactMatch('${escA(dk)}','${escA(f)}',this.value)">
+            </div>`;
+          });
+          h+=`</div>`;
+        }
+      }
+
+      // --- NEW: Multi Match rules ---
+      if(allF.length){
+        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#60a5fa;font-weight:700;letter-spacing:.5px">MULTIPLE VALUES <span style="font-weight:400;color:var(--t5)">— flag if value ≠ any of these</span></div>`;
+        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Separate with comma: val1, val2, val3</div>`;
+        const mmRules=COMP_RULES.multiMatch?.[dk]||{};
+        const mmSet=Object.keys(mmRules);
+        const mmFields=[...mmSet,...allF.filter(f=>!mmSet.includes(f))];
+        const mmShow=mmFields.slice(0,mmSet.length?mmFields.length:8);
+        mmShow.forEach(f=>{
+          const cur=(mmRules[f]||[]).join(', ');
+          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" style="width:140px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="val1, val2" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
+          </div>`;
+        });
+        if(mmShow.length<mmFields.length){
+          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${mmFields.length-mmShow.length} more fields...</div><div style="display:none">`;
+          mmFields.slice(mmShow.length).forEach(f=>{
+            const cur=(mmRules[f]||[]).join(', ');
+            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
+              <input class="comp-input" style="width:140px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="val1, val2" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
+            </div>`;
+          });
+          h+=`</div>`;
+        }
+      }
+
+      // --- NEW: Date Freshness rules ---
+      if(allF.length){
+        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#fbbf24;font-weight:700;letter-spacing:.5px">DATE FRESHNESS <span style="font-weight:400;color:var(--t5)">— flag if date older than N days</span></div>`;
+        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Enter max days. E.g. 60 = flag dates older than 60 days.</div>`;
+        const dfRules=COMP_RULES.dateFresh?.[dk]||{};
+        const dfSet=Object.keys(dfRules);
+        const dfFields=[...dfSet,...allF.filter(f=>!dfSet.includes(f))];
+        const dfShow=dfFields.slice(0,dfSet.length?dfFields.length:8);
+        dfShow.forEach(f=>{
+          const cur=dfRules[f]||'';
+          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
+            <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${cur}" placeholder="days" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
+            ${cur?`<span style="font-size:9px;color:var(--t5)">${cur}d</span>`:''}
+          </div>`;
+        });
+        if(dfShow.length<dfFields.length){
+          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${dfFields.length-dfShow.length} more fields...</div><div style="display:none">`;
+          dfFields.slice(dfShow.length).forEach(f=>{
+            const cur=dfRules[f]||'';
+            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
+              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
+              <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${cur}" placeholder="days" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
+            </div>`;
+          });
+          h+=`</div>`;
+        }
+      }
+
+      if(!fw.length&&!chk.length&&!req.length&&!ecn.length&&!allF.length){
+        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No configurable rules</div>`;
       }
       h+=`</div>`;
     }
@@ -1704,115 +1830,6 @@ function setDateFresh(dk,f,val){
   if(days>0)COMP_RULES.dateFresh[dk][f]=days;
   else delete COMP_RULES.dateFresh[dk][f];
 }
-// Get current rule type for a field: returns {type, value}
-function getFieldRuleType(dk,f){
-  if((COMP_RULES.latestFW||{})[f])return{type:'fw',value:COMP_RULES.latestFW[f]};
-  if((COMP_RULES.exactMatch?.[dk]||{})[f]!==undefined)return{type:'exact',value:COMP_RULES.exactMatch[dk][f]};
-  if((COMP_RULES.multiMatch?.[dk]||{})[f])return{type:'multi',value:(COMP_RULES.multiMatch[dk][f]||[]).join(', ')};
-  if((COMP_RULES.dateFresh?.[dk]||{})[f])return{type:'date_fresh',value:String(COMP_RULES.dateFresh[dk][f])};
-  if((COMP_RULES.requiredChecks?.[dk]||[]).includes(f))return{type:'checkbox',value:''};
-  if((COMP_RULES.requiredFields?.[dk]||[]).includes(f))return{type:'required',value:''};
-  if((COMP_RULES.requiredECN?.[dk]||[]).includes(f))return{type:'ecn_required',value:''};
-  return{type:'none',value:''};
-}
-
-// Clear all rules for a field
-function clearFieldRule(dk,f){
-  if(COMP_RULES.latestFW?.[f])delete COMP_RULES.latestFW[f];
-  if(COMP_RULES.exactMatch?.[dk]?.[f]!==undefined)delete COMP_RULES.exactMatch[dk][f];
-  if(COMP_RULES.multiMatch?.[dk]?.[f])delete COMP_RULES.multiMatch[dk][f];
-  if(COMP_RULES.dateFresh?.[dk]?.[f])delete COMP_RULES.dateFresh[dk][f];
-  ['requiredChecks','requiredFields','requiredECN'].forEach(k=>{
-    if(COMP_RULES[k]?.[dk]){
-      const i=COMP_RULES[k][dk].indexOf(f);
-      if(i>=0)COMP_RULES[k][dk].splice(i,1);
-    }
-  });
-}
-
-// Set a rule type for a field (clears old one first)
-function setFieldRuleType(dk,f,type){
-  clearFieldRule(dk,f);
-  switch(type){
-    case'checkbox':
-      if(!COMP_RULES.requiredChecks)COMP_RULES.requiredChecks={};
-      if(!COMP_RULES.requiredChecks[dk])COMP_RULES.requiredChecks[dk]=[];
-      COMP_RULES.requiredChecks[dk].push(f);break;
-    case'required':
-      if(!COMP_RULES.requiredFields)COMP_RULES.requiredFields={};
-      if(!COMP_RULES.requiredFields[dk])COMP_RULES.requiredFields[dk]=[];
-      COMP_RULES.requiredFields[dk].push(f);break;
-    case'ecn_required':
-      if(!COMP_RULES.requiredECN)COMP_RULES.requiredECN={};
-      if(!COMP_RULES.requiredECN[dk])COMP_RULES.requiredECN[dk]=[];
-      COMP_RULES.requiredECN[dk].push(f);break;
-    case'exact':
-      if(!COMP_RULES.exactMatch)COMP_RULES.exactMatch={};
-      if(!COMP_RULES.exactMatch[dk])COMP_RULES.exactMatch[dk]={};
-      COMP_RULES.exactMatch[dk][f]='';break;
-    case'multi':
-      if(!COMP_RULES.multiMatch)COMP_RULES.multiMatch={};
-      if(!COMP_RULES.multiMatch[dk])COMP_RULES.multiMatch[dk]={};
-      COMP_RULES.multiMatch[dk][f]=[];break;
-    case'date_fresh':
-      if(!COMP_RULES.dateFresh)COMP_RULES.dateFresh={};
-      if(!COMP_RULES.dateFresh[dk])COMP_RULES.dateFresh[dk]={};
-      COMP_RULES.dateFresh[dk][f]=60;break;
-    case'fw':
-      if(!COMP_RULES.latestFW)COMP_RULES.latestFW={};
-      COMP_RULES.latestFW[f]='';break;
-  }
-  render();
-}
-
-// Render a single rule row
-function rRuleRow(dk,f,active){
-  const rule=getFieldRuleType(dk,f);
-  const label=FIELD_LABELS[f]||f;
-  const isECN=isECNField(f);
-  const colors={none:'var(--t6)',checkbox:'var(--grn)',required:'var(--yel)',ecn_required:'var(--pur)',exact:'#f472b6',multi:'#60a5fa',date_fresh:'#fbbf24',fw:'var(--blu)'};
-  const col=colors[rule.type]||'var(--t5)';
-  const typeLabels={none:'No rule',checkbox:'☑ Must be TRUE',required:'⚠ Required',ecn_required:'🔧 ECN Required',exact:'🎯 Exact value',multi:'📋 One of values',date_fresh:'📅 Date within',fw:'🔄 FW version'};
-
-  let h=`<div style="padding:6px 14px;margin-bottom:2px;border-radius:6px;background:${active?col+'08':'transparent'};${active?'border-left:3px solid '+col:''}">`;
-  // Row 1: field name + type dropdown
-  h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:${active?'4':'0'}px">
-    <span style="flex:1;font-size:11px;color:${active?'var(--t1)':'var(--t4)'};font-weight:${active?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}${isECN?' <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle">ECN</span>':''}</span>
-    <select style="padding:3px 6px;border-radius:5px;font-size:9px;font-weight:600;background:var(--inp);color:${col};border:1px solid ${active?col+'44':'var(--bd)'};cursor:pointer;min-width:120px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
-      <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
-      <option value="checkbox" ${rule.type==='checkbox'?'selected':''}>☑ Must be TRUE</option>
-      <option value="required" ${rule.type==='required'?'selected':''}>⚠ Not empty</option>
-      <option value="exact" ${rule.type==='exact'?'selected':''}>🎯 Exact value</option>
-      <option value="multi" ${rule.type==='multi'?'selected':''}>📋 One of values</option>
-      <option value="date_fresh" ${rule.type==='date_fresh'?'selected':''}>📅 Date within</option>
-      ${isECN?`<option value="ecn_required" ${rule.type==='ecn_required'?'selected':''}>🔧 ECN applied</option>`:''}
-      <option value="fw" ${rule.type==='fw'?'selected':''}>🔄 FW version</option>
-    </select>
-  </div>`;
-
-  // Row 2: value input (only for types that need it)
-  if(rule.type==='exact'||rule.type==='fw'){
-    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
-      <span style="font-size:9px;color:var(--t5)">Value:</span>
-      <input class="comp-input" style="flex:1;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}">
-    </div>`;
-  } else if(rule.type==='multi'){
-    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
-      <span style="font-size:9px;color:var(--t5)">Values:</span>
-      <input class="comp-input" style="flex:1;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
-    </div>`;
-  } else if(rule.type==='date_fresh'){
-    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
-      <span style="font-size:9px;color:var(--t5)">Max days:</span>
-      <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
-      <span style="font-size:9px;color:var(--t5)">days old</span>
-    </div>`;
-  }
-
-  h+=`</div>`;
-  return h;
-}
-
 async function saveCompAndBack(){await saveCompRules();S.screen='search';render();}
 
 // ===== BATCH ECN REVIEW =====
