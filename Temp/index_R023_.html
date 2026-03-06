@@ -397,12 +397,12 @@ function getECNFields(dataKey){const rows=DATA[dataKey];if(!rows||!rows.length)r
 function isECNVisible(dataKey,field){return ECN_SETTINGS[dataKey]&&ECN_SETTINGS[dataKey].has(field);}
 
 // ===== COMPLIANCE RULES =====
-let COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{},exactMatch:{},multiMatch:{},dateFresh:{}};
+let COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{}};
 
 async function loadCompRules(){
   if(!db)return;
   try{const doc=await db.collection('ghost-tracker').doc('compliance-rules').get();
-    if(doc.exists){COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{},exactMatch:{},multiMatch:{},dateFresh:{},...doc.data()};console.log('[COMP] Loaded:',COMP_RULES);}
+    if(doc.exists){COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{},...doc.data()};console.log('[COMP] Loaded:',COMP_RULES);}
   }catch(e){console.warn('[COMP] Load failed:',e);}}
 
 async function saveCompRules(){
@@ -422,31 +422,6 @@ function checkFieldComp(dataKey,field,value){
       if(v!==latest)return`not latest (${latest})`;
       return null;
     }
-  }
-  // Exact match — field must equal a specific value
-  const em=COMP_RULES.exactMatch?.[dataKey]||{};
-  if(em[field]!==undefined){
-    if(!v)return'empty';
-    if(v!==em[field])return`expected: ${em[field]}`;
-    return null;
-  }
-  // Multi match — field must be one of several acceptable values
-  const mm=COMP_RULES.multiMatch?.[dataKey]||{};
-  if(mm[field]&&Array.isArray(mm[field])&&mm[field].length){
-    if(!v)return'empty';
-    if(!mm[field].includes(v))return`not in: ${mm[field].join(' / ')}`;
-    return null;
-  }
-  // Date freshness — date must be within N days of today
-  const df=COMP_RULES.dateFresh?.[dataKey]||{};
-  if(df[field]){
-    if(!v)return'no date';
-    const d=new Date(v.replace(/\//g,'-'));
-    if(isNaN(d.getTime()))return'invalid date';
-    const now=new Date();
-    const diffDays=Math.floor((now-d)/(1000*60*60*24));
-    if(diffDays>df[field])return`older than ${df[field]}d (${diffDays}d ago)`;
-    return null;
   }
   // Required checkbox
   const reqC=COMP_RULES.requiredChecks?.[dataKey]||[];
@@ -978,10 +953,7 @@ function rCompBar(allSecs){
           const hasRule=COMP_RULES.latestFW?.[field]||
             (COMP_RULES.requiredChecks?.[dk]||[]).includes(field)||
             (COMP_RULES.requiredFields?.[dk]||[]).includes(field)||
-            (COMP_RULES.requiredECN?.[dk]||[]).includes(field)||
-            (COMP_RULES.exactMatch?.[dk]||{})[field]!==undefined||
-            (COMP_RULES.multiMatch?.[dk]||{})[field]!==undefined||
-            (COMP_RULES.dateFresh?.[dk]||{})[field]!==undefined;
+            (COMP_RULES.requiredECN?.[dk]||[]).includes(field);
           // Check partial FW match
           const hasFWRule=Object.keys(COMP_RULES.latestFW||{}).some(fw=>field===fw||field.startsWith(fw));
           if(hasRule||hasFWRule)totalChecked++;
@@ -1470,12 +1442,9 @@ function rSettings(){
     const chk=(COMP_RULES.requiredChecks?.[dk]||[]).length;
     const req=(COMP_RULES.requiredFields?.[dk]||[]).length;
     const ecn=(COMP_RULES.requiredECN?.[dk]||[]).length;
-    const em=Object.keys(COMP_RULES.exactMatch?.[dk]||{}).length;
-    const mm=Object.keys(COMP_RULES.multiMatch?.[dk]||{}).length;
-    const df=Object.keys(COMP_RULES.dateFresh?.[dk]||{}).length;
-    return fw+chk+req+ecn+em+mm+df;
+    return fw+chk+req+ecn;
   }
-  function ruleTotal(dk){return fwForDK(dk).length+chkForDK(dk).length+reqForDK(dk).length+ecnForDK(dk).length+reqForDK(dk).length;}
+  function ruleTotal(dk){return fwForDK(dk).length+chkForDK(dk).length+reqForDK(dk).length+ecnForDK(dk).length;}
 
   let h='';
 
@@ -1598,94 +1567,7 @@ function rSettings(){
         });
       }
 
-      // --- NEW: Exact Match rules ---
-      const allF=req; // all fields for this assembly
-      if(allF.length){
-        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#f472b6;font-weight:700;letter-spacing:.5px">EXACT VALUE MATCH <span style="font-weight:400;color:var(--t5)">— flag if value ≠ expected</span></div>`;
-        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Type the required value. Leave empty = no rule.</div>`;
-        const emRules=COMP_RULES.exactMatch?.[dk]||{};
-        // Show fields that have rules first, then allow adding
-        const emSet=Object.keys(emRules);
-        const emFields=[...emSet,...allF.filter(f=>!emSet.includes(f))];
-        const emShow=emFields.slice(0,emSet.length?emFields.length:8); // show all if rules exist, else first 8
-        emShow.forEach(f=>{
-          const cur=emRules[f]||'';
-          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
-            <input class="comp-input" style="width:120px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="not set" onchange="setExactMatch('${escA(dk)}','${escA(f)}',this.value)">
-          </div>`;
-        });
-        if(emShow.length<emFields.length){
-          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${emFields.length-emShow.length} more fields...</div><div style="display:none">`;
-          emFields.slice(emShow.length).forEach(f=>{
-            const cur=emRules[f]||'';
-            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
-              <input class="comp-input" style="width:120px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="not set" onchange="setExactMatch('${escA(dk)}','${escA(f)}',this.value)">
-            </div>`;
-          });
-          h+=`</div>`;
-        }
-      }
-
-      // --- NEW: Multi Match rules ---
-      if(allF.length){
-        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#60a5fa;font-weight:700;letter-spacing:.5px">MULTIPLE VALUES <span style="font-weight:400;color:var(--t5)">— flag if value ≠ any of these</span></div>`;
-        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Separate with comma: val1, val2, val3</div>`;
-        const mmRules=COMP_RULES.multiMatch?.[dk]||{};
-        const mmSet=Object.keys(mmRules);
-        const mmFields=[...mmSet,...allF.filter(f=>!mmSet.includes(f))];
-        const mmShow=mmFields.slice(0,mmSet.length?mmFields.length:8);
-        mmShow.forEach(f=>{
-          const cur=(mmRules[f]||[]).join(', ');
-          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
-            <input class="comp-input" style="width:140px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="val1, val2" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
-          </div>`;
-        });
-        if(mmShow.length<mmFields.length){
-          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${mmFields.length-mmShow.length} more fields...</div><div style="display:none">`;
-          mmFields.slice(mmShow.length).forEach(f=>{
-            const cur=(mmRules[f]||[]).join(', ');
-            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
-              <input class="comp-input" style="width:140px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${escA(cur)}" placeholder="val1, val2" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
-            </div>`;
-          });
-          h+=`</div>`;
-        }
-      }
-
-      // --- NEW: Date Freshness rules ---
-      if(allF.length){
-        h+=`<div style="padding:10px 14px 2px;font-size:9px;color:#fbbf24;font-weight:700;letter-spacing:.5px">DATE FRESHNESS <span style="font-weight:400;color:var(--t5)">— flag if date older than N days</span></div>`;
-        h+=`<div style="padding:2px 14px 4px;font-size:9px;color:var(--t6)">Enter max days. E.g. 60 = flag dates older than 60 days.</div>`;
-        const dfRules=COMP_RULES.dateFresh?.[dk]||{};
-        const dfSet=Object.keys(dfRules);
-        const dfFields=[...dfSet,...allF.filter(f=>!dfSet.includes(f))];
-        const dfShow=dfFields.slice(0,dfSet.length?dfFields.length:8);
-        dfShow.forEach(f=>{
-          const cur=dfRules[f]||'';
-          h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-            <span style="flex:1;font-size:10px;color:${cur?'var(--t1)':'var(--t5)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(FIELD_LABELS[f]||f)}</span>
-            <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${cur}" placeholder="days" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
-            ${cur?`<span style="font-size:9px;color:var(--t5)">${cur}d</span>`:''}
-          </div>`;
-        });
-        if(dfShow.length<dfFields.length){
-          h+=`<div style="padding:4px 14px;font-size:9px;color:var(--t6);cursor:pointer" onclick="this.style.display='none';this.nextElementSibling.style.display='block'">+ ${dfFields.length-dfShow.length} more fields...</div><div style="display:none">`;
-          dfFields.slice(dfShow.length).forEach(f=>{
-            const cur=dfRules[f]||'';
-            h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px">
-              <span style="flex:1;font-size:10px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(FIELD_LABELS[f]||f)}</span>
-              <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:6px;text-align:right;font-size:10px;font-family:var(--fm)" value="${cur}" placeholder="days" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
-            </div>`;
-          });
-          h+=`</div>`;
-        }
-      }
-
-      if(!fw.length&&!chk.length&&!req.length&&!ecn.length&&!allF.length){
+      if(!fw.length&&!chk.length&&!req.length&&!ecn.length){
         h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No configurable rules</div>`;
       }
       h+=`</div>`;
@@ -1696,7 +1578,7 @@ function rSettings(){
   // Summary when nothing selected
   if(!selType){
     const totalEcnVis=Object.values(ECN_SETTINGS).reduce((s,set)=>s+set.size,0);
-    const totalRules=Object.keys(COMP_RULES.latestFW||{}).length+Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.exactMatch||{}).reduce((s,o)=>s+Object.keys(o).length,0)+Object.values(COMP_RULES.multiMatch||{}).reduce((s,o)=>s+Object.keys(o).length,0)+Object.values(COMP_RULES.dateFresh||{}).reduce((s,o)=>s+Object.keys(o).length,0);
+    const totalRules=Object.keys(COMP_RULES.latestFW||{}).length+Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0);
     h+=`<div style="padding:14px;border-radius:10px;background:#0d0e18;border:1px solid #1a1c2e;text-align:center">
       <div style="font-size:11px;color:var(--t5);margin-bottom:8px">${tab==='ecn'?'Tap an assembly to toggle ECN visibility':'Tap an assembly to configure rules'}</div>
       <div style="display:flex;justify-content:center;gap:16px">${tab==='ecn'?
@@ -1809,26 +1691,6 @@ function togCompECN(dk,f){
   if(idx>=0)COMP_RULES.requiredECN[dk].splice(idx,1);
   else COMP_RULES.requiredECN[dk].push(f);
   render();
-}
-function setExactMatch(dk,f,val){
-  if(!COMP_RULES.exactMatch)COMP_RULES.exactMatch={};
-  if(!COMP_RULES.exactMatch[dk])COMP_RULES.exactMatch[dk]={};
-  if(val.trim())COMP_RULES.exactMatch[dk][f]=val.trim();
-  else delete COMP_RULES.exactMatch[dk][f];
-}
-function setMultiMatch(dk,f,val){
-  if(!COMP_RULES.multiMatch)COMP_RULES.multiMatch={};
-  if(!COMP_RULES.multiMatch[dk])COMP_RULES.multiMatch[dk]={};
-  const vals=val.split(/[,|]/).map(s=>s.trim()).filter(s=>s);
-  if(vals.length)COMP_RULES.multiMatch[dk][f]=vals;
-  else delete COMP_RULES.multiMatch[dk][f];
-}
-function setDateFresh(dk,f,val){
-  if(!COMP_RULES.dateFresh)COMP_RULES.dateFresh={};
-  if(!COMP_RULES.dateFresh[dk])COMP_RULES.dateFresh[dk]={};
-  const days=parseInt(val);
-  if(days>0)COMP_RULES.dateFresh[dk][f]=days;
-  else delete COMP_RULES.dateFresh[dk][f];
 }
 async function saveCompAndBack(){await saveCompRules();S.screen='search';render();}
 
@@ -2201,7 +2063,6 @@ window.onload=function(){render();
       if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
       else doLogout();}
   }initGA();};
-
 
 </script>
 </body>
