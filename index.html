@@ -1714,7 +1714,7 @@ function openBatch(){
   localStorage.removeItem('bulkSel');localStorage.removeItem('bulkDK');
   let raw=[];
   try{raw=JSON.parse(localStorage.getItem('batchUnits')||'[]');}catch(e){raw=[];}
-  S.batchUnits=Array.isArray(raw)?raw.filter(u=>u&&typeof u==='object'&&typeof u.ghostSN==='string'&&u.ghostSN):[];
+  S.batchUnits=Array.isArray(raw)?raw.filter(u=>u&&typeof u==='object'&&typeof u.ghostSN==='string'&&u.ghostSN&&!u.ghostSN.includes('[object')):[];
   if(raw.length!==S.batchUnits.length)saveBatchUnits();
   S.batchTrees={};S.batchTab=null;
   S.batchStep=S.batchUnits.length?2:1;
@@ -1757,7 +1757,8 @@ function batchAddUnit(){
 
     const result=traceToGhost(searchStr);
     if(!result){notFound++;showToast(`No match for "${searchStr}"`,'error');continue;}
-    const ghostSN=result.ghost;
+    const ghostSN=getRowSN(result.ghost,DATA.ghosts);
+    if(!ghostSN){notFound++;showToast(`Can't find ghost S/N for "${searchStr}"`,'error');continue;}
     if(S.batchUnits.some(u=>u.ghostSN===ghostSN)){dupes++;continue;}
     S.batchUnits.push({chipId:S.batchType||'',inputSN:searchStr,sn:result.matchedSN||searchStr,ghostSN});
     added++;
