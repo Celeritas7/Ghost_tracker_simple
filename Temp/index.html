@@ -669,7 +669,7 @@ function getCol(row,...keywords){if(!row)return'';const K=Object.keys(row);
   for(const kw of keywords){const kwL=kw.toLowerCase();for(const k of K){if(k.toLowerCase().includes(kwL)&&row[k]!=='')return row[k];}}
   return'';}
 
-function findRowBySN(list,snVal){if(!list||!snVal)return null;const up=snVal.toUpperCase().trim();if(!up)return null;const sf=getSNField(list);let r=list.find(r=>(r[sf]||'').toUpperCase().trim()===up);if(r)return r;
+function findRowBySN(list,snVal){if(!list||!snVal)return null;const up=String(snVal).toUpperCase().trim();if(!up)return null;const sf=getSNField(list);let r=list.find(r=>(r[sf]||'').toUpperCase().trim()===up);if(r)return r;
   const K=Object.keys(list[0]||{});const snK=K.filter(k=>/s[\s\/]?n/i.test(k));for(const k of snK){r=list.find(r=>(r[k]||'').toUpperCase().trim()===up);if(r)return r;}return null;}
 
 function findRowByCol(list,colKWs,val){if(!list||!val)return null;const up=val.toUpperCase().trim();for(const row of list){const v=getCol(row,...colKWs);if(v&&v.toUpperCase().trim()===up)return row;}return null;}
@@ -749,7 +749,7 @@ function buildDebugInfo(){const L=[];
   debugInfo=L.join('<br>');}
 
 // ===== STATE =====
-const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',batchUnits:[],batchTrees:{},batchTab:null,batchStep:1,batchType:'pillars',batchNumInput:'',settingsTab:'ecn',settingsSel:null,resultTab:null};
+const S={screen:'login',searchInput:'',parsedPreview:null,result:null,tree:null,expanded:new Set(),editing:null,editValue:'',toast:null,scanning:false,loadErrors:[],refreshing:false,showDebug:false,ecnExpanded:new Set(),selectedChip:null,chipNum:'',batchUnits:[],batchTrees:{},batchTab:null,batchStep:1,batchType:null,batchNumInput:'',settingsTab:'ecn',settingsSel:null,resultTab:null};
 const $=s=>document.querySelector(s);const app=()=>document.getElementById('app');
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1694,15 +1694,6 @@ async function saveCompAndBack(){await saveCompRules();S.screen='search';render(
 
 // ===== BATCH ECN REVIEW =====
 
-const BATCH_ASSEMBLY_TYPES=[
-  {dk:'mobileBases',sk:'mobileBase',label:'Mobile Base',icon:'🛞',color:'#34d399'},
-  {dk:'pillars',sk:'pillar',label:'Pillar',icon:'🏛️',color:'#a78bfa'},
-  {dk:'headBodies',sk:'headBody',label:'Head & Body',icon:'🧠',color:'#f87171'},
-  {dk:'arms',sk:'arm',label:'Arm',icon:'🦾',color:'#fbbf24'},
-  {dk:'grippers',sk:'gripper',label:'Gripper',icon:'🤏',color:'#38bdf8'},
-  {dk:'deployKits',sk:'deployKit',label:'Deploy Kit',icon:'📦',color:'#fb923c'},
-];
-
 const BATCH_TABS=[
   {k:'ghost',tk:'ghost',dk:'ghosts',label:'Ghost',icon:'👻',color:'#5b6eea'},
   {k:'mobileBase',tk:'mb',dk:'mobileBases',label:'MB',icon:'🛞',color:'#34d399'},
@@ -1719,10 +1710,15 @@ const BATCH_TABS=[
 ];
 
 function openBatch(){
-  S.batchUnits=JSON.parse(localStorage.getItem('batchUnits')||'[]');
+  // Clear legacy bulk edit data
+  localStorage.removeItem('bulkSel');localStorage.removeItem('bulkDK');
+  let raw=[];
+  try{raw=JSON.parse(localStorage.getItem('batchUnits')||'[]');}catch(e){raw=[];}
+  S.batchUnits=Array.isArray(raw)?raw.filter(u=>u&&typeof u==='object'&&typeof u.ghostSN==='string'&&u.ghostSN&&!u.ghostSN.includes('[object')):[];
+  if(raw.length!==S.batchUnits.length)saveBatchUnits();
   S.batchTrees={};S.batchTab=null;
   S.batchStep=S.batchUnits.length?2:1;
-  S.batchType='pillars';S.batchNumInput='';
+  S.batchType=null;S.batchNumInput='';
   rebuildBatchTrees();
   S.screen='batch';render();
 }
@@ -1730,34 +1726,48 @@ function openBatch(){
 function rebuildBatchTrees(){
   S.batchTrees={};
   for(const u of S.batchUnits){
-    if(!S.batchTrees[u.ghostSN]){
-      const ghostRow=findRowBySN(DATA.ghosts,u.ghostSN);
-      if(ghostRow)S.batchTrees[u.ghostSN]=getGhostTree(ghostRow);
-    }
+    try{
+      if(!u.ghostSN||typeof u.ghostSN!=='string')continue;
+      if(!S.batchTrees[u.ghostSN]){
+        const ghostRow=findRowBySN(DATA.ghosts,u.ghostSN);
+        if(ghostRow)S.batchTrees[u.ghostSN]=getGhostTree(ghostRow);
+      }
+    }catch(e){console.warn('[Batch] Error building tree for',u.ghostSN,e);}
   }
 }
 
 function batchAddUnit(){
   const raw=S.batchNumInput.trim();
   if(!raw)return;
-  // Support comma/space separated numbers
-  const nums=raw.split(/[,\s]+/).map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n>0);
-  if(!nums.length){showToast('Enter a valid number','error');return;}
-  let added=0,dupes=0;
-  for(const num of nums){
-    const sn=findSNByNum(S.batchType,num);
-    if(!sn){showToast(`No unit #${num} in ${BATCH_ASSEMBLY_TYPES.find(t=>t.dk===S.batchType)?.label||S.batchType}`,'error');continue;}
-    const result=traceToGhost(sn);
-    if(!result){showToast(`Can't trace #${num} to ghost`,'error');continue;}
-    const ghostSN=result.ghost;
+  const chip=S.batchType?CHIPS.find(c=>c.id===S.batchType):null;
+
+  // Build search inputs from number(s)
+  const parts=raw.split(/[,\s]+/).filter(s=>s.trim());
+  let added=0,dupes=0,notFound=0;
+
+  for(const part of parts){
+    let searchStr;
+    if(chip){
+      // Chip selected: build "PREFIX-number"
+      searchStr=chip.id==='GALINA'?part.trim():`${chip.short}-${part.trim()}`;
+    } else {
+      // No chip: treat as full S/N
+      searchStr=part.trim();
+    }
+
+    const result=traceToGhost(searchStr);
+    if(!result){notFound++;showToast(`No match for "${searchStr}"`,'error');continue;}
+    const ghostSN=getRowSN(result.ghost,DATA.ghosts);
+    if(!ghostSN){notFound++;showToast(`Can't find ghost S/N for "${searchStr}"`,'error');continue;}
     if(S.batchUnits.some(u=>u.ghostSN===ghostSN)){dupes++;continue;}
-    S.batchUnits.push({dk:S.batchType,num,sn,ghostSN});
+    S.batchUnits.push({chipId:S.batchType||'',inputSN:searchStr,sn:result.matchedSN||searchStr,ghostSN});
     added++;
   }
+
   S.batchNumInput='';
-  if(added)saveBatchUnits();
-  if(added)rebuildBatchTrees();
-  if(dupes)showToast(`${added?added+' added, ':''}${dupes} already added`);
+  if(added){saveBatchUnits();rebuildBatchTrees();}
+  if(dupes&&added)showToast(`${added} added, ${dupes} already added`);
+  else if(dupes)showToast(`${dupes} already added`);
   else if(added)showToast(`${added} ghost${added>1?'s':''} added`);
   render();
 }
@@ -1791,11 +1801,8 @@ function getBatchTabItems(tabKey){
 }
 
 function batchBack(){
-  if(S.batchStep===2&&S.batchUnits.length){
-    S.batchStep=1;render();
-  } else {
-    S.screen='search';render();
-  }
+  if(S.batchStep===2){S.batchStep=1;render();}
+  else{S.screen='search';render();}
 }
 
 function rBatch(){
@@ -1810,7 +1817,6 @@ function rBatch(){
     <div style="padding:16px">${h}</div>
   </div>${rToast()}`;
 
-  // Event listeners for input
   const bni=$('#batchNumIn');
   if(bni){
     bni.addEventListener('input',e=>{S.batchNumInput=e.target.value;});
@@ -1824,44 +1830,63 @@ function rBatch(){
 function rBatchInput(){
   let h='';
 
-  // Assembly type selector
-  h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:8px">SELECT ASSEMBLY TYPE</div>`;
-  h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">`;
-  BATCH_ASSEMBLY_TYPES.forEach(t=>{
-    const sel=S.batchType===t.dk;
-    h+=`<div style="padding:8px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;border:${sel?'2px solid '+t.color:'1px solid var(--bd)'};background:${sel?t.color+'12':'var(--card)'};transition:all .15s" onclick="S.batchType='${t.dk}';render()">
-      <span style="font-size:16px">${t.icon}</span>
-      <span style="font-size:11px;font-weight:600;color:${sel?t.color:'var(--t3)'}">${t.label}</span>
-    </div>`;
-  });
-  h+=`</div>`;
+  // Reuse same chip selector as search screen
+  const sel=S.batchType;const chip=sel?CHIPS.find(c=>c.id===sel):null;
+  const mainChips=CHIPS.filter(c=>!c.sub);
+  const subChips=CHIPS.filter(c=>c.sub);
+  const chipH=(list)=>list.map(c=>{
+    const active=sel===c.id;
+    return`<div class="uchip ${active?'uchip-on':''}" style="${active?`background:${c.color}22;border-color:${c.color};color:${c.color}`:''}" onclick="S.batchType='${c.id}';S.batchNumInput='';render()"><span class="uchip-i">${c.icon}</span><span class="uchip-l">${c.label}</span></div>`;
+  }).join('');
 
-  // Number input
-  const bt=BATCH_ASSEMBLY_TYPES.find(t=>t.dk===S.batchType);
-  const unitCount=(DATA[S.batchType]||[]).length;
-  h+=`<div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:8px">ENTER UNIT NUMBER(S)</div>`;
-  h+=`<div style="display:flex;gap:8px;margin-bottom:16px">
-    <input type="text" class="etin" id="batchNumIn" placeholder="e.g. 29 or 29,35,42" value="${escA(S.batchNumInput)}" style="flex:1;padding:10px 14px;font-size:14px;font-family:var(--fm)" inputmode="numeric">
-    <button class="savb savA" style="padding:10px 20px;min-height:44px;font-size:13px;white-space:nowrap;touch-action:manipulation" onclick="batchAddUnit()">Add ⏎</button>
+  h+=`<div style="width:100%;max-width:420px;margin-bottom:16px">
+    <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:6px">SELECT UNIT TYPE</div>
+    <div class="chipgrid">${chipH(mainChips)}</div>
+    <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin:10px 0 6px">SUB-COMPONENTS</div>
+    <div class="chipgrid">${chipH(subChips)}</div>
   </div>`;
-  if(unitCount)h+=`<div style="font-size:10px;color:var(--t6);margin-top:-10px;margin-bottom:16px">${bt?.label}: ${unitCount} units loaded</div>`;
+
+  // Number input (when chip selected)
+  if(chip){
+    h+=`<div style="width:100%;max-width:420px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:12px;color:${chip.color};font-weight:700">${chip.icon} ${chip.label}</span>
+        <span style="font-size:10px;color:var(--t4)">Enter number(s) ↓</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${chip.short?`<div style="padding:12px 16px;border-radius:12px;background:${chip.color}15;border:1px solid ${chip.color}33;color:${chip.color};font-family:var(--fm);font-size:18px;font-weight:700;white-space:nowrap">${chip.short}-</div>`:''}
+        <input class="sch-in" id="batchNumIn" type="text" inputmode="numeric" value="${escA(S.batchNumInput)}" placeholder="${chip.id==='GALINA'?'240002...':'29, 35, 42...'}" style="font-size:20px;text-align:center;letter-spacing:2px" autocomplete="off">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn1" style="flex:1" onclick="batchAddUnit()">Add ⏎</button>
+        <button class="btn btn3" onclick="S.batchType=null;S.batchNumInput='';render()">✕ Clear</button>
+      </div>
+    </div>`;
+  } else {
+    h+=`<div style="width:100%;max-width:420px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px;margin-bottom:6px">OR ENTER FULL S/N</div>
+      <input class="sch-in" id="batchNumIn" value="${escA(S.batchNumInput)}" placeholder="GT418-GST-00001 or full S/N..." autocomplete="off" spellcheck="false">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn1" style="flex:1" onclick="batchAddUnit()">Add ⏎</button>
+      </div>
+    </div>`;
+  }
 
   // Added units list
   if(S.batchUnits.length){
+    h+=`<div style="width:100%;max-width:420px">`;
     h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:10px;color:var(--t5);font-weight:600;letter-spacing:1px">${S.batchUnits.length} GHOST${S.batchUnits.length>1?'S':''} SELECTED</div>
       <button style="padding:4px 10px;border-radius:5px;font-size:9px;font-weight:600;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);color:#f87171;cursor:pointer" onclick="batchClearAll()">Clear all</button>
     </div>`;
 
     S.batchUnits.forEach((u,idx)=>{
-      const ghostNum=(u.ghostSN.match(/(\d+)$/)||[])[1]||u.ghostSN;
-      const unitNum=(u.sn.match(/(\d+)$/)||[])[1]||u.num;
-      const aType=BATCH_ASSEMBLY_TYPES.find(t=>t.dk===u.dk);
+      const chipInfo=u.chipId?CHIPS.find(c=>c.id===u.chipId):null;
       h+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:4px;border-radius:8px;background:var(--card);border:1px solid var(--bd)">
         <span style="font-size:14px">👻</span>
         <div style="flex:1">
           <div style="font-size:12px;font-weight:600;color:var(--t1);font-family:var(--fm)">${esc(u.ghostSN)}</div>
-          <div style="font-size:10px;color:var(--t4)">via ${aType?.icon||''} ${aType?.label||u.dk} #${unitNum}</div>
+          <div style="font-size:10px;color:var(--t4)">via ${chipInfo?.icon||'🔍'} ${esc(u.inputSN||u.sn||'')}</div>
         </div>
         <button style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);color:#f87171;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" onclick="batchRemoveUnit(${idx})">✕</button>
       </div>`;
@@ -1870,11 +1895,12 @@ function rBatchInput(){
     h+=`<button class="savb savA" style="width:100%;margin-top:16px;min-height:48px;font-size:14px;touch-action:manipulation" onclick="S.batchStep=2;render()">
       Review ${S.batchUnits.length} Ghost${S.batchUnits.length>1?'s':''} →
     </button>`;
+    h+=`</div>`;
   } else {
     h+=`<div style="text-align:center;padding:40px 20px;color:var(--t5)">
       <div style="font-size:32px;margin-bottom:12px">📋</div>
       <div style="font-size:13px">Add units to begin ECN review</div>
-      <div style="font-size:11px;color:var(--t6);margin-top:6px">Pick assembly type above, then enter numbers</div>
+      <div style="font-size:11px;color:var(--t6);margin-top:6px">Pick a unit type above, then enter numbers</div>
     </div>`;
   }
 
@@ -1884,13 +1910,13 @@ function rBatchInput(){
 function rBatchDashboard(){
   let h='';
 
-  // Summary bar with edit/add button
+  // Summary bar
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div style="font-size:12px;font-weight:600;color:var(--t2)">${S.batchUnits.length} Ghost${S.batchUnits.length>1?'s':''}</div>
     <button style="padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="S.batchStep=1;render()">✏️ Edit units</button>
   </div>`;
 
-  // Tab strip - show only tabs with data
+  // Tab strip
   const availTabs=BATCH_TABS.filter(t=>getBatchTabItems(t.k).length>0);
   if(!S.batchTab||!availTabs.find(t=>t.k===S.batchTab)){
     S.batchTab=availTabs[0]?.k||null;
@@ -1900,8 +1926,7 @@ function rBatchDashboard(){
   availTabs.forEach(t=>{
     const items=getBatchTabItems(t.k);
     const sel=S.batchTab===t.k;
-    // Count issues for this tab
-    const dk=t.dk;const sk=t.k;
+    const dk=t.dk;
     let issues=0;
     items.forEach(item=>{
       Object.keys(item).forEach(f=>{
@@ -1928,9 +1953,8 @@ function rBatchDashboard(){
 
     items.forEach((item,idx)=>{
       const itemSN=item[sf]||`Unit ${idx+1}`;
-      const snNum=(itemSN.match(/(\d+)$/)||[])[1]||itemSN;
 
-      // Find parent ghost for context
+      // Find parent ghost
       let parentGhost='';
       for(const[gsn,tree]of Object.entries(S.batchTrees)){
         const d=tree[selTab.tk];
@@ -1940,14 +1964,12 @@ function rBatchDashboard(){
       const ghostNum=(parentGhost.match(/(\d+)$/)||[])[1]||parentGhost;
 
       h+=`<div style="margin-bottom:12px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--card)">`;
-      // Unit header
       h+=`<div style="padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd);background:${selTab.color}08">
         <span style="font-size:14px">${selTab.icon}</span>
         <span style="font-size:12px;font-weight:700;color:${selTab.color};font-family:var(--fm)">${esc(itemSN)}</span>
         <span style="font-size:9px;color:var(--t5)">👻 ${esc(ghostNum)}</span>
       </div>`;
 
-      // Fields grid
       h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
       const fields=Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));
       fields.forEach(f=>{
@@ -1967,7 +1989,6 @@ function rBatchDashboard(){
         if(!val)valColor='var(--t6)';
         if(isSN)valColor=selTab.color;
 
-        // Checkbox display
         let displayVal=val;
         if(vRule?.type==='checkbox'){
           const pass=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
