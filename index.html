@@ -438,25 +438,11 @@ async function loadCompRules(){
 
 async function saveCompRules(){
   if(!db){showToast('Firestore not available','error');return;}
-  // Clean empty sub-objects before save
-  const clean={};
-  for(const[k,v]of Object.entries(COMP_RULES)){
-    if(v&&typeof v==='object'&&!Array.isArray(v)){
-      const sub={};
-      for(const[sk,sv]of Object.entries(v)){
-        if(Array.isArray(sv)){if(sv.length)sub[sk]=sv;}
-        else if(sv&&typeof sv==='object'){
-          const inner={};for(const[ik,iv]of Object.entries(sv)){if(iv!==undefined&&iv!==null&&iv!=='')inner[ik]=iv;}
-          if(Object.keys(inner).length)sub[sk]=inner;
-        } else if(sv!==undefined&&sv!==null&&sv!==''){sub[sk]=sv;}
-      }
-      if(Object.keys(sub).length)clean[k]=sub;
-      else clean[k]={};
-    } else {clean[k]=v||{};}
-  }
-  try{await db.collection('ghost-tracker').doc('compliance-rules').set(clean);
-    COMP_RULES=clean;
-    console.log('[COMP] Saved:',JSON.stringify(clean));
+  try{
+    // Log what we're about to save
+    console.log('[COMP] Saving COMP_RULES:',JSON.stringify(COMP_RULES));
+    await db.collection('ghost-tracker').doc('compliance-rules').set(COMP_RULES);
+    console.log('[COMP] Save success');
   }catch(e){showToast('Save failed: '+e.message,'error');console.error('[COMP] Save error:',e);}}
 
 // Check a single field for compliance. Returns null (ok) or string (reason)
@@ -1807,7 +1793,17 @@ function clearFieldRule(dk,f){
 
 // Set a rule type for a field (clears old one first)
 function setFieldRuleType(dk,f,type){
+  console.log('[RULE] Setting',dk,f,'→',type);
+  console.log('[RULE] Before clear:',JSON.stringify({
+    reqECN:COMP_RULES.requiredECN?.[dk],
+    dateFresh:COMP_RULES.dateFresh?.[dk],
+    exact:COMP_RULES.exactMatch?.[dk]
+  }));
   clearFieldRule(dk,f);
+  console.log('[RULE] After clear:',JSON.stringify({
+    reqECN:COMP_RULES.requiredECN?.[dk],
+    dateFresh:COMP_RULES.dateFresh?.[dk]
+  }));
   switch(type){
     case'checkbox':
       if(!COMP_RULES.requiredChecks)COMP_RULES.requiredChecks={};
@@ -1837,6 +1833,7 @@ function setFieldRuleType(dk,f,type){
       if(!COMP_RULES.latestFW)COMP_RULES.latestFW={};
       COMP_RULES.latestFW[f]='';break;
   }
+  console.log('[RULE] After set:',type,JSON.stringify(getFieldRuleType(dk,f)));
   render();
 }
 
