@@ -367,27 +367,18 @@ try{
 let ECN_SETTINGS={};
 let ECN_LOADED=false;
 
-// Edit fields: {dataKey: Set of editable field names} — controls which fields can be edited from the app
-let EDIT_FIELDS={};
-
 async function loadECNSettings(){
   if(!db){ECN_LOADED=true;return;}
   try{const doc=await db.collection('ghost-tracker').doc('ecn-settings').get();
     if(doc.exists){const d=doc.data();Object.keys(d).forEach(k=>{ECN_SETTINGS[k]=new Set(d[k]||[]);});ECN_LOADED=true;console.log('[ECN] Loaded:',d);}
     else{ECN_SETTINGS={};ECN_LOADED=true;}
-    // Load edit fields
-    const edDoc=await db.collection('ghost-tracker').doc('edit-fields').get();
-    if(edDoc.exists){const d=edDoc.data();Object.keys(d).forEach(k=>{EDIT_FIELDS[k]=new Set(d[k]||[]);});console.log('[EDIT] Loaded:',d);}
   }catch(e){console.warn('[ECN] Load failed:',e);ECN_LOADED=true;}}
 
 async function saveECNSettings(){
   if(!db){showToast('Firestore not available','error');return;}
   try{const d={};Object.keys(ECN_SETTINGS).forEach(k=>{d[k]=[...ECN_SETTINGS[k]];});
     await db.collection('ghost-tracker').doc('ecn-settings').set(d);
-    // Save edit fields
-    const ed={};Object.keys(EDIT_FIELDS).forEach(k=>{ed[k]=[...EDIT_FIELDS[k]];});
-    await db.collection('ghost-tracker').doc('edit-fields').set(ed);
-    showToast('Settings saved');
+    showToast('ECN settings saved');
   }catch(e){showToast('Save failed: '+e.message,'error');}}
 
 // Detect if a column name is an ECN field
@@ -403,29 +394,7 @@ function isECNField(f){
 }
 
 function getECNFields(dataKey){const rows=DATA[dataKey];if(!rows||!rows.length)return[];return Object.keys(rows[0]).filter(f=>isECNField(f));}
-function isECNVisible(dataKey,field){return(ECN_SETTINGS[dataKey]&&ECN_SETTINGS[dataKey].has(field))||(EDIT_FIELDS[dataKey]&&EDIT_FIELDS[dataKey].has(field));}
-function isFieldEditable(dk,f){
-  // Field is editable if: in EDIT_FIELDS set, OR has a V rule (for backward compat until all migrated)
-  if(EDIT_FIELDS[dk]&&EDIT_FIELDS[dk].has(f))return true;
-  // Also check ECN_SETTINGS for backward compat
-  if(isECNField(f)&&ECN_SETTINGS[dk]&&ECN_SETTINGS[dk].has(f))return true;
-  // V rules make normal fields editable by default
-  const sk=Object.entries(SK_TO_DK).find(([k,v])=>v===dk)?.[0]||dk;
-  if(getV(sk,f))return true;
-  return false;
-}
-function togEditField(dk,f){
-  if(!EDIT_FIELDS[dk])EDIT_FIELDS[dk]=new Set();
-  if(EDIT_FIELDS[dk].has(f))EDIT_FIELDS[dk].delete(f);
-  else EDIT_FIELDS[dk].add(f);
-  // Also sync ECN_SETTINGS for ECN fields
-  if(isECNField(f)){
-    if(!ECN_SETTINGS[dk])ECN_SETTINGS[dk]=new Set();
-    if(EDIT_FIELDS[dk].has(f))ECN_SETTINGS[dk].add(f);
-    else ECN_SETTINGS[dk].delete(f);
-  }
-  render();
-}
+function isECNVisible(dataKey,field){return ECN_SETTINGS[dataKey]&&ECN_SETTINGS[dataKey].has(field);}
 
 // ===== COMPLIANCE RULES =====
 let COMP_RULES={latestFW:{},requiredChecks:{},requiredFields:{},requiredECN:{},exactMatch:{},multiMatch:{},dateFresh:{}};
@@ -1480,41 +1449,58 @@ const SETTINGS_TYPES=[
 ];
 
 function rSettings(){
+  const tab=S.settingsTab||'ecn';
   const sel=S.settingsSel;
   const selType=SETTINGS_TYPES.find(t=>t.dk===sel);
+
+  const fwFieldsAll=detectFWFields();
+  const chkFieldsAll=detectCheckboxFields();
   const allFieldsAll=detectFieldsByKey();
+
+  function fwForDK(dk){return fwFieldsAll.filter(f=>{const rows=DATA[dk];if(!rows||!rows.length)return false;return Object.keys(rows[0]).includes(f);});}
+  function chkForDK(dk){return(chkFieldsAll[dk]||[]).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));}
   function reqForDK(dk){return allFieldsAll[dk]||[];}
   function ecnForDK(dk){return getECNFields(dk);}
 
   // Count helpers
-  function activeCount(dk){
-    const normal=reqForDK(dk).filter(f=>isFieldEditable(dk,f)).length;
-    const ecn=ecnForDK(dk).filter(f=>isFieldEditable(dk,f)).length;
-    return normal+ecn;
+  function ecnCount(dk){return ecnForDK(dk).filter(f=>isECNVisible(dk,f)).length;}
+  function ecnTotal(dk){return ecnForDK(dk).length;}
+  function ruleCount(dk){
+    const fw=fwForDK(dk).filter(f=>(COMP_RULES.latestFW||{})[f]).length;
+    const chk=(COMP_RULES.requiredChecks?.[dk]||[]).length;
+    const req=(COMP_RULES.requiredFields?.[dk]||[]).length;
+    const ecn=(COMP_RULES.requiredECN?.[dk]||[]).length;
+    const em=Object.keys(COMP_RULES.exactMatch?.[dk]||{}).length;
+    const mm=Object.keys(COMP_RULES.multiMatch?.[dk]||{}).length;
+    const df=Object.keys(COMP_RULES.dateFresh?.[dk]||{}).length;
+    return fw+chk+req+ecn+em+mm+df;
   }
-  function totalCount(dk){return reqForDK(dk).length+ecnForDK(dk).length;}
-  function rulesCount(dk){
-    const all=[...reqForDK(dk),...ecnForDK(dk)];
-    const seen=new Set();
-    return all.filter(f=>{if(seen.has(f))return false;seen.add(f);return getFieldRuleType(dk,f).type!=='none';}).length;
-  }
+  function ruleTotal(dk){return fwForDK(dk).length+chkForDK(dk).length+reqForDK(dk).length+ecnForDK(dk).length+reqForDK(dk).length;}
 
   let h='';
+
+  // Tab toggle
+  h+=`<div style="display:flex;gap:2px;margin-bottom:12px">`;
+  [{id:'ecn',label:'⚙️ ECN Visibility'},{id:'rules',label:'📋 Compliance Rules'}].forEach(t=>{
+    const isAct=tab===t.id;
+    h+=`<div style="flex:1;padding:10px;text-align:center;cursor:pointer;border-radius:8px 8px 0 0;background:${isAct?'var(--inp)':'transparent'};border-bottom:2px solid ${isAct?'var(--ac)':'transparent'};transition:all .15s" onclick="S.settingsTab='${t.id}';S.settingsSel=null;render()">
+      <span style="font-size:12px;font-weight:600;color:${isAct?'var(--ac)':'var(--t5)'}">${t.label}</span>
+    </div>`;
+  });
+  h+=`</div>`;
 
   // Assembly chip grid (4 cols)
   h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">`;
   SETTINGS_TYPES.forEach(t=>{
     const rows=DATA[t.dk];if(!rows||!rows.length)return;
     const isAct=sel===t.dk;
-    const ac=activeCount(t.dk);const rc=rulesCount(t.dk);const tot=totalCount(t.dk);
-    const hasItems=ac>0||rc>0;
+    const cnt=tab==='ecn'?ecnCount(t.dk):ruleCount(t.dk);
+    const tot=tab==='ecn'?ecnTotal(t.dk):ruleTotal(t.dk);
+    const hasItems=cnt>0;
     h+=`<div style="padding:8px 4px;border-radius:10px;cursor:pointer;text-align:center;position:relative;border:${isAct?`2px solid ${t.color}`:`1.5px solid #1a1c2e`};background:${isAct?t.color+'0a':'#0d0e18'};transition:all .15s" onclick="S.settingsSel=${isAct?'null':`'${t.dk}'`};render()">
       <div style="font-size:18px;margin-bottom:2px">${t.icon}</div>
       <div style="font-size:10px;font-weight:700;color:${isAct?t.color:hasItems?'var(--t1)':'var(--t5)'};margin-bottom:3px">${t.short}</div>
-      <div style="display:flex;justify-content:center;gap:4px">
-        <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:${ac?'var(--grn)18':'transparent'};color:${ac?'var(--grn)':'var(--t6)'}">${ac} on</span>
-        <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:${rc?'var(--ac)18':'transparent'};color:${rc?'var(--ac)':'var(--t6)'}">${rc} rules</span>
-      </div>
+      <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${hasItems?t.color+'18':'transparent'};color:${hasItems?t.color:'var(--t5)'}">${cnt}/${tot}</span>
       ${hasItems&&!isAct?`<div style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:${t.color};border:2px solid var(--bg)"></div>`:''}
     </div>`;
   });
@@ -1523,122 +1509,86 @@ function rSettings(){
   // Expanded content for selected assembly
   if(selType){
     const dk=selType.dk;
-    const normalFields=reqForDK(dk);
-    const ecnFields=ecnForDK(dk);
-
-    // Split each column into ON/OFF
-    const normalOn=normalFields.filter(f=>isFieldEditable(dk,f));
-    const normalOff=normalFields.filter(f=>!isFieldEditable(dk,f));
-    const ecnOn=ecnFields.filter(f=>isFieldEditable(dk,f));
-    const ecnOff=ecnFields.filter(f=>!isFieldEditable(dk,f));
-
-    h+=`<div style="border-radius:12px;overflow:hidden;border:1px solid ${selType.color}22;background:#0d0e18">`;
+    h+=`<div style="border-radius:12px;overflow:hidden;border:1px solid ${selType.color}22;background:#0d0e18;animation:slideDown .15s ease-out">`;
+    // Header
     h+=`<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;background:${selType.color}08;border-bottom:1px solid ${selType.color}12">
       <span style="font-size:16px">${selType.icon}</span>
       <span style="font-size:13px;font-weight:700;color:${selType.color}">${selType.label}</span>
-      <span style="font-size:10px;color:var(--t5);margin-left:auto">${normalOn.length+ecnOn.length} editable · ${rulesCount(dk)} rules</span>
+      <span style="font-size:10px;color:var(--t5);margin-left:auto">${tab==='ecn'?`${ecnCount(dk)}/${ecnTotal(dk)} visible`:`${ruleCount(dk)}/${ruleTotal(dk)} set`}</span>
     </div>`;
 
-    // Two columns
-    h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">`;
+    if(tab==='ecn'){
+      // ECN toggles
+      const ecnFs=ecnForDK(dk);
+      if(ecnFs.length){
+        h+=`<div style="padding:6px 0">`;
+        ecnFs.forEach(f=>{
+          const vis=isECNVisible(dk,f);
+          const cid=regComp('ecnvis',dk,f);
+          h+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer" onclick="doComp(${cid})">
+            <div style="width:32px;height:18px;border-radius:9px;background:${vis?'var(--grn)':'#1e2130'};border:1.5px solid ${vis?'var(--grn)':'#2a2d45'};position:relative;transition:all .15s;flex-shrink:0">
+              <div style="width:12px;height:12px;border-radius:50%;background:${vis?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${vis?'16px':'2px'};transition:left .15s"></div>
+            </div>
+            <span style="flex:1;font-size:11px;color:${vis?'var(--t1)':'var(--t5)'};font-family:var(--fm)">${esc(f)}</span>
+          </div>`;
+        });
+        h+=`</div>`;
+      } else {
+        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No ECN fields</div>`;
+      }
+    } else {
+      // Rules content — unified per-field approach
+      h+=`<div style="padding:6px 0">`;
 
-    // LEFT COLUMN: Normal fields
-    h+=`<div style="border-right:1px solid #1a1c2e">`;
-    h+=`<div style="padding:8px 10px;font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e">NORMAL (${normalFields.length})</div>`;
-    // ON fields
-    if(normalOn.length){
-      normalOn.forEach(f=>{h+=rSettingsFieldRow(dk,f,true);});
+      // Gather ALL fields: regular + ECN
+      const allFields=[...reqForDK(dk),...ecnForDK(dk)];
+      // Dedupe
+      const seen=new Set();
+      const uFields=allFields.filter(f=>{if(seen.has(f))return false;seen.add(f);return true;});
+
+      // Show fields with rules first, then the rest
+      const withRule=uFields.filter(f=>getFieldRuleType(dk,f).type!=='none');
+      const withoutRule=uFields.filter(f=>getFieldRuleType(dk,f).type==='none');
+
+      if(withRule.length){
+        h+=`<div style="padding:6px 14px 4px;font-size:9px;color:var(--grn);font-weight:700;letter-spacing:.5px">ACTIVE RULES (${withRule.length})</div>`;
+        withRule.forEach(f=>{ h+=rRuleRow(dk,f,true); });
+      }
+
+      h+=`<div style="padding:${withRule.length?'10':'6'}px 14px 4px;font-size:9px;color:var(--t5);font-weight:700;letter-spacing:.5px">ALL FIELDS (${withoutRule.length})</div>`;
+      h+=`<div style="padding:2px 14px 6px;font-size:9px;color:var(--t6)">Select a rule type to activate compliance check</div>`;
+      withoutRule.forEach(f=>{ h+=rRuleRow(dk,f,false); });
+
+      if(!uFields.length){
+        h+=`<div style="padding:20px;text-align:center;font-size:11px;color:var(--t5)">No configurable fields</div>`;
+      }
+      h+=`</div>`;
     }
-    // Separator
-    if(normalOn.length&&normalOff.length){
-      h+=`<div style="padding:4px 10px;font-size:8px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${normalOff.length})</div>`;
-    }
-    // OFF fields
-    normalOff.forEach(f=>{h+=rSettingsFieldRow(dk,f,false);});
-    if(!normalFields.length)h+=`<div style="padding:16px;text-align:center;font-size:10px;color:var(--t6)">No fields</div>`;
     h+=`</div>`;
-
-    // RIGHT COLUMN: ECN fields
-    h+=`<div>`;
-    h+=`<div style="padding:8px 10px;font-size:9px;font-weight:700;color:var(--pur);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e">ECN (${ecnFields.length})</div>`;
-    if(ecnOn.length){
-      ecnOn.forEach(f=>{h+=rSettingsFieldRow(dk,f,true);});
-    }
-    if(ecnOn.length&&ecnOff.length){
-      h+=`<div style="padding:4px 10px;font-size:8px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${ecnOff.length})</div>`;
-    }
-    ecnOff.forEach(f=>{h+=rSettingsFieldRow(dk,f,false);});
-    if(!ecnFields.length)h+=`<div style="padding:16px;text-align:center;font-size:10px;color:var(--t6)">No ECN fields</div>`;
-    h+=`</div>`;
-
-    h+=`</div></div>`; // close grid + card
   }
 
   // Summary when nothing selected
   if(!selType){
-    const totalActive=SETTINGS_TYPES.reduce((s,t)=>s+activeCount(t.dk),0);
-    const totalRules=SETTINGS_TYPES.reduce((s,t)=>s+rulesCount(t.dk),0);
+    const totalEcnVis=Object.values(ECN_SETTINGS).reduce((s,set)=>s+set.size,0);
+    const totalRules=Object.keys(COMP_RULES.latestFW||{}).length+Object.values(COMP_RULES.requiredChecks||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredFields||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.requiredECN||{}).reduce((s,a)=>s+a.length,0)+Object.values(COMP_RULES.exactMatch||{}).reduce((s,o)=>s+Object.keys(o).length,0)+Object.values(COMP_RULES.multiMatch||{}).reduce((s,o)=>s+Object.keys(o).length,0)+Object.values(COMP_RULES.dateFresh||{}).reduce((s,o)=>s+Object.keys(o).length,0);
     h+=`<div style="padding:14px;border-radius:10px;background:#0d0e18;border:1px solid #1a1c2e;text-align:center">
-      <div style="font-size:11px;color:var(--t5);margin-bottom:8px">Tap an assembly to configure fields & rules</div>
-      <div style="display:flex;justify-content:center;gap:16px">
-        <div><span style="font-size:18px;font-weight:700;color:var(--grn)">${totalActive}</span><div style="font-size:9px;color:var(--t5)">editable</div></div>
-        <div><span style="font-size:18px;font-weight:700;color:var(--ac)">${totalRules}</span><div style="font-size:9px;color:var(--t5)">rules</div></div>
-      </div>
+      <div style="font-size:11px;color:var(--t5);margin-bottom:8px">${tab==='ecn'?'Tap an assembly to toggle ECN visibility':'Tap an assembly to configure rules'}</div>
+      <div style="display:flex;justify-content:center;gap:16px">${tab==='ecn'?
+        `<div><span style="font-size:18px;font-weight:700;color:var(--ac)">${totalEcnVis}</span><div style="font-size:9px;color:var(--t5)">visible</div></div>`:
+        `<div><span style="font-size:18px;font-weight:700;color:var(--ac)">${totalRules}</span><div style="font-size:9px;color:var(--t5)">rules set</div></div>
+         <div><span style="font-size:18px;font-weight:700;color:var(--grn)">${Object.keys(COMP_RULES.latestFW||{}).length}</span><div style="font-size:9px;color:var(--grn)">FW tracked</div></div>`
+      }</div>
     </div>`;
   }
 
-  h+=`<button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveSettingsAndBack()">Save & Back</button>`;
+  // Save button
+  const saveLabel=tab==='ecn'?'saveECNAndBack':'saveCompAndBack';
+  h+=`<button class="btn btn1" style="width:100%;margin-top:16px" onclick="${saveLabel}()">Save & Back</button>`;
 
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
     <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">⚙️ Settings</div></div>
     <div style="padding:16px">${h}</div>
   </div>${rToast()}`;
-}
-
-// Render a single field row in settings
-function rSettingsFieldRow(dk,f,isOn){
-  const rule=getFieldRuleType(dk,f);
-  const label=FIELD_LABELS[f]||f;
-  const hasRule=rule.type!=='none';
-  const col=isOn?'var(--grn)':'#2a2d45';
-
-  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isOn?'background:#0d1210':''}">`;
-  // Row 1: toggle + name
-  h+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:${hasRule?'4':'0'}px">
-    <div style="width:28px;height:16px;border-radius:8px;background:${isOn?'var(--grn)':'#1e2130'};border:1.5px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
-      <div style="width:10px;height:10px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${isOn?'14px':'2px'};transition:left .15s"></div>
-    </div>
-    <span style="flex:1;font-size:10px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}</span>
-    <select style="padding:2px 4px;border-radius:4px;font-size:8px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:95px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
-      <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
-      <option value="checkbox" ${rule.type==='checkbox'?'selected':''}>☑ TRUE</option>
-      <option value="required" ${rule.type==='required'?'selected':''}>⚠ Not empty</option>
-      <option value="exact" ${rule.type==='exact'?'selected':''}>🎯 Exact</option>
-      <option value="multi" ${rule.type==='multi'?'selected':''}>📋 Multi</option>
-      <option value="date_fresh" ${rule.type==='date_fresh'?'selected':''}>📅 Date</option>
-      <option value="ecn_required" ${rule.type==='ecn_required'?'selected':''}>🔧 ECN</option>
-      <option value="fw" ${rule.type==='fw'?'selected':''}>🔄 FW</option>
-    </select>
-  </div>`;
-
-  // Row 2: value input for types that need it
-  if(rule.type==='exact'||rule.type==='fw'){
-    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
-      <input class="comp-input" style="flex:1;padding:3px 6px;border-radius:4px;font-size:9px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}">
-    </div>`;
-  } else if(rule.type==='multi'){
-    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
-      <input class="comp-input" style="flex:1;padding:3px 6px;border-radius:4px;font-size:9px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
-    </div>`;
-  } else if(rule.type==='date_fresh'){
-    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
-      <input class="comp-input" type="number" style="width:50px;padding:3px 6px;border-radius:4px;font-size:9px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
-      <span style="font-size:8px;color:var(--t5)">days</span>
-    </div>`;
-  }
-
-  h+=`</div>`;
-  return h;
 }
 
 function togECNSec(dk){S.ecnExpanded.has(dk)?S.ecnExpanded.delete(dk):S.ecnExpanded.add(dk);render();}
@@ -1650,7 +1600,6 @@ function togECNField(dk,field){
   render();
 }
 
-async function saveSettingsAndBack(){await saveECNSettings();await saveCompRules();S.screen='search';render();}
 async function saveECNAndBack(){await saveECNSettings();S.screen='search';render();}
 
 // ===== ECN SUB-SECTION IN RESULT CARDS =====
@@ -1814,6 +1763,54 @@ function setFieldRuleType(dk,f,type){
       COMP_RULES.latestFW[f]='';break;
   }
   render();
+}
+
+// Render a single rule row
+function rRuleRow(dk,f,active){
+  const rule=getFieldRuleType(dk,f);
+  const label=FIELD_LABELS[f]||f;
+  const isECN=isECNField(f);
+  const colors={none:'var(--t6)',checkbox:'var(--grn)',required:'var(--yel)',ecn_required:'var(--pur)',exact:'#f472b6',multi:'#60a5fa',date_fresh:'#fbbf24',fw:'var(--blu)'};
+  const col=colors[rule.type]||'var(--t5)';
+  const typeLabels={none:'No rule',checkbox:'☑ Must be TRUE',required:'⚠ Required',ecn_required:'🔧 ECN Required',exact:'🎯 Exact value',multi:'📋 One of values',date_fresh:'📅 Date within',fw:'🔄 FW version'};
+
+  let h=`<div style="padding:6px 14px;margin-bottom:2px;border-radius:6px;background:${active?col+'08':'transparent'};${active?'border-left:3px solid '+col:''}">`;
+  // Row 1: field name + type dropdown
+  h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:${active?'4':'0'}px">
+    <span style="flex:1;font-size:11px;color:${active?'var(--t1)':'var(--t4)'};font-weight:${active?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}${isECN?' <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle">ECN</span>':''}</span>
+    <select style="padding:3px 6px;border-radius:5px;font-size:9px;font-weight:600;background:var(--inp);color:${col};border:1px solid ${active?col+'44':'var(--bd)'};cursor:pointer;min-width:120px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
+      <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
+      <option value="checkbox" ${rule.type==='checkbox'?'selected':''}>☑ Must be TRUE</option>
+      <option value="required" ${rule.type==='required'?'selected':''}>⚠ Not empty</option>
+      <option value="exact" ${rule.type==='exact'?'selected':''}>🎯 Exact value</option>
+      <option value="multi" ${rule.type==='multi'?'selected':''}>📋 One of values</option>
+      <option value="date_fresh" ${rule.type==='date_fresh'?'selected':''}>📅 Date within</option>
+      ${isECN?`<option value="ecn_required" ${rule.type==='ecn_required'?'selected':''}>🔧 ECN applied</option>`:''}
+      <option value="fw" ${rule.type==='fw'?'selected':''}>🔄 FW version</option>
+    </select>
+  </div>`;
+
+  // Row 2: value input (only for types that need it)
+  if(rule.type==='exact'||rule.type==='fw'){
+    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
+      <span style="font-size:9px;color:var(--t5)">Value:</span>
+      <input class="comp-input" style="flex:1;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}">
+    </div>`;
+  } else if(rule.type==='multi'){
+    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
+      <span style="font-size:9px;color:var(--t5)">Values:</span>
+      <input class="comp-input" style="flex:1;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
+    </div>`;
+  } else if(rule.type==='date_fresh'){
+    h+=`<div style="display:flex;align-items:center;gap:6px;padding-left:4px">
+      <span style="font-size:9px;color:var(--t5)">Max days:</span>
+      <input class="comp-input" type="number" style="width:70px;padding:4px 8px;border-radius:5px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
+      <span style="font-size:9px;color:var(--t5)">days old</span>
+    </div>`;
+  }
+
+  h+=`</div>`;
+  return h;
 }
 
 async function saveCompAndBack(){await saveCompRules();S.screen='search';render();}
@@ -2105,7 +2102,7 @@ function rBatchDashboard(){
         const label=FIELD_LABELS[f]||f;
         const isECN=isECNField(f);
         const vRule=getV(sk,f);
-        const editable=isFieldEditable(dk,f);
+        const editable=!!vRule||isECN;
         const isSN=f===sf||/S\/N$/i.test(f);
         const compIssue=checkFieldComp(dk,f,val);
         const eid=editable?regEdit(sk,itemSN,f,val):null;
@@ -2187,7 +2184,6 @@ window.onload=function(){render();
       if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
       else doLogout();}
   }initGA();};
-
 
 
 </script>
