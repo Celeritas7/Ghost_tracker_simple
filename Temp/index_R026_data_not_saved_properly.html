@@ -438,26 +438,8 @@ async function loadCompRules(){
 
 async function saveCompRules(){
   if(!db){showToast('Firestore not available','error');return;}
-  // Clean empty sub-objects before save
-  const clean={};
-  for(const[k,v]of Object.entries(COMP_RULES)){
-    if(v&&typeof v==='object'&&!Array.isArray(v)){
-      const sub={};
-      for(const[sk,sv]of Object.entries(v)){
-        if(Array.isArray(sv)){if(sv.length)sub[sk]=sv;}
-        else if(sv&&typeof sv==='object'){
-          const inner={};for(const[ik,iv]of Object.entries(sv)){if(iv!==undefined&&iv!==null&&iv!=='')inner[ik]=iv;}
-          if(Object.keys(inner).length)sub[sk]=inner;
-        } else if(sv!==undefined&&sv!==null&&sv!==''){sub[sk]=sv;}
-      }
-      if(Object.keys(sub).length)clean[k]=sub;
-      else clean[k]={};
-    } else {clean[k]=v||{};}
-  }
-  try{await db.collection('ghost-tracker').doc('compliance-rules').set(clean);
-    COMP_RULES=clean;
-    console.log('[COMP] Saved:',JSON.stringify(clean));
-  }catch(e){showToast('Save failed: '+e.message,'error');console.error('[COMP] Save error:',e);}}
+  try{await db.collection('ghost-tracker').doc('compliance-rules').set(COMP_RULES);showToast('Compliance rules saved');
+  }catch(e){showToast('Save failed: '+e.message,'error');}}
 
 // Check a single field for compliance. Returns null (ok) or string (reason)
 function checkFieldComp(dataKey,field,value){
@@ -1558,18 +1540,18 @@ function rSettings(){
     </div>`;
 
     // Two columns
-    h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;max-height:70vh;overflow-y:auto">`;
+    h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">`;
 
     // LEFT COLUMN: Normal fields
     h+=`<div style="border-right:1px solid #1a1c2e">`;
-    h+=`<div style="padding:5px 8px;font-size:8px;font-weight:700;color:var(--t3);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e;position:sticky;top:0;z-index:1">NORMAL (${normalFields.length})</div>`;
+    h+=`<div style="padding:8px 10px;font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e">NORMAL (${normalFields.length})</div>`;
     // ON fields
     if(normalOn.length){
       normalOn.forEach(f=>{h+=rSettingsFieldRow(dk,f,true);});
     }
     // Separator
     if(normalOn.length&&normalOff.length){
-      h+=`<div style="padding:3px 8px;font-size:7px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${normalOff.length})</div>`;
+      h+=`<div style="padding:4px 10px;font-size:8px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${normalOff.length})</div>`;
     }
     // OFF fields
     normalOff.forEach(f=>{h+=rSettingsFieldRow(dk,f,false);});
@@ -1578,12 +1560,12 @@ function rSettings(){
 
     // RIGHT COLUMN: ECN fields
     h+=`<div>`;
-    h+=`<div style="padding:5px 8px;font-size:8px;font-weight:700;color:var(--pur);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e;position:sticky;top:0;z-index:1">ECN (${ecnFields.length})</div>`;
+    h+=`<div style="padding:8px 10px;font-size:9px;font-weight:700;color:var(--pur);letter-spacing:.5px;background:#0a0b14;border-bottom:1px solid #1a1c2e">ECN (${ecnFields.length})</div>`;
     if(ecnOn.length){
       ecnOn.forEach(f=>{h+=rSettingsFieldRow(dk,f,true);});
     }
     if(ecnOn.length&&ecnOff.length){
-      h+=`<div style="padding:3px 8px;font-size:7px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${ecnOff.length})</div>`;
+      h+=`<div style="padding:4px 10px;font-size:8px;color:var(--t6);background:#080910;border-top:1px solid #1a1c2e;border-bottom:1px solid #1a1c2e">OFF (${ecnOff.length})</div>`;
     }
     ecnOff.forEach(f=>{h+=rSettingsFieldRow(dk,f,false);});
     if(!ecnFields.length)h+=`<div style="padding:16px;text-align:center;font-size:10px;color:var(--t6)">No ECN fields</div>`;
@@ -1605,14 +1587,11 @@ function rSettings(){
     </div>`;
   }
 
-  h+=`<div style="height:60px"></div>`; // spacer for sticky button
+  h+=`<button class="btn btn1" style="width:100%;margin-top:16px" onclick="saveSettingsAndBack()">Save & Back</button>`;
 
   app().innerHTML=`${rUBar()}<div style="min-height:100vh">
     <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">⚙️ Settings</div></div>
     <div style="padding:16px">${h}</div>
-    <div style="position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:linear-gradient(transparent,var(--bg) 30%);z-index:10">
-      <button class="btn btn1" style="width:100%" onclick="saveSettingsAndBack()">Save</button>
-    </div>
   </div>${rToast()}`;
 }
 
@@ -1623,13 +1602,14 @@ function rSettingsFieldRow(dk,f,isOn){
   const hasRule=rule.type!=='none';
   const col=isOn?'var(--grn)':'#2a2d45';
 
-  let h=`<div style="padding:3px 8px;border-bottom:1px solid #12131f;${isOn&&hasRule?'background:#0d1210':''}">`;
-  h+=`<div style="display:flex;align-items:center;gap:5px">
-    <div style="width:24px;height:14px;border-radius:7px;background:${isOn?'var(--grn)':'#1e2130'};border:1px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
-      <div style="width:8px;height:8px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:2px;left:${isOn?'12px':'2px'};transition:left .15s"></div>
+  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isOn?'background:#0d1210':''}">`;
+  // Row 1: toggle + name
+  h+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:${hasRule?'4':'0'}px">
+    <div style="width:28px;height:16px;border-radius:8px;background:${isOn?'var(--grn)':'#1e2130'};border:1.5px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
+      <div style="width:10px;height:10px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${isOn?'14px':'2px'};transition:left .15s"></div>
     </div>
-    <span style="flex:1;font-size:9px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}</span>
-    <select style="padding:1px 2px;border-radius:3px;font-size:8px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:85px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
+    <span style="flex:1;font-size:10px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}</span>
+    <select style="padding:2px 4px;border-radius:4px;font-size:8px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:95px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
       <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
       <option value="checkbox" ${rule.type==='checkbox'?'selected':''}>☑ TRUE</option>
       <option value="required" ${rule.type==='required'?'selected':''}>⚠ Not empty</option>
@@ -1641,13 +1621,20 @@ function rSettingsFieldRow(dk,f,isOn){
     </select>
   </div>`;
 
-  // Value input row (compact)
+  // Row 2: value input for types that need it
   if(rule.type==='exact'||rule.type==='fw'){
-    h+=`<div style="padding:2px 0 2px 29px"><input class="comp-input" style="width:100%;padding:2px 6px;border-radius:3px;font-size:8px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}"></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
+      <input class="comp-input" style="flex:1;padding:3px 6px;border-radius:4px;font-size:9px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}">
+    </div>`;
   } else if(rule.type==='multi'){
-    h+=`<div style="padding:2px 0 2px 29px"><input class="comp-input" style="width:100%;padding:2px 6px;border-radius:3px;font-size:8px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)"></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
+      <input class="comp-input" style="flex:1;padding:3px 6px;border-radius:4px;font-size:9px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)">
+    </div>`;
   } else if(rule.type==='date_fresh'){
-    h+=`<div style="display:flex;align-items:center;gap:4px;padding:2px 0 2px 29px"><input class="comp-input" type="number" style="width:50px;padding:2px 6px;border-radius:3px;font-size:8px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)"><span style="font-size:7px;color:var(--t5)">days</span></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:4px;padding-left:34px">
+      <input class="comp-input" type="number" style="width:50px;padding:3px 6px;border-radius:4px;font-size:9px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)">
+      <span style="font-size:8px;color:var(--t5)">days</span>
+    </div>`;
   }
 
   h+=`</div>`;
@@ -1663,18 +1650,7 @@ function togECNField(dk,field){
   render();
 }
 
-async function saveSettingsAndBack(){
-  try{
-    await saveECNSettings();
-    await saveCompRules();
-    console.log('[Settings] Saved. COMP_RULES:',JSON.stringify(COMP_RULES));
-    console.log('[Settings] EDIT_FIELDS:',JSON.stringify(Object.fromEntries(Object.entries(EDIT_FIELDS).map(([k,v])=>[k,[...v]]))));
-    showToast('✓ All settings saved');
-  }catch(e){
-    showToast('Save failed: '+e.message,'error');
-    console.error('[Settings] Save error:',e);
-  }
-}
+async function saveSettingsAndBack(){await saveECNSettings();await saveCompRules();S.screen='search';render();}
 async function saveECNAndBack(){await saveECNSettings();S.screen='search';render();}
 
 // ===== ECN SUB-SECTION IN RESULT CARDS =====
