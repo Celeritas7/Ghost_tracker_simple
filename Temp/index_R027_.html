@@ -378,9 +378,6 @@ async function loadECNSettings(){
     // Load edit fields
     const edDoc=await db.collection('ghost-tracker').doc('edit-fields').get();
     if(edDoc.exists){const d=edDoc.data();Object.keys(d).forEach(k=>{EDIT_FIELDS[k]=new Set(d[k]||[]);});console.log('[EDIT] Loaded:',d);}
-    // Load disabled fields
-    const disDoc=await db.collection('ghost-tracker').doc('disabled-fields').get();
-    if(disDoc.exists){const d=disDoc.data();Object.keys(d).forEach(k=>{DISABLED_FIELDS[k]=new Set(d[k]||[]);});console.log('[DISABLED] Loaded:',d);}
   }catch(e){console.warn('[ECN] Load failed:',e);ECN_LOADED=true;}}
 
 async function saveECNSettings(){
@@ -390,10 +387,7 @@ async function saveECNSettings(){
     // Save edit fields
     const ed={};Object.keys(EDIT_FIELDS).forEach(k=>{ed[k]=[...EDIT_FIELDS[k]];});
     await db.collection('ghost-tracker').doc('edit-fields').set(ed);
-    // Save disabled fields
-    const dis={};Object.keys(DISABLED_FIELDS).forEach(k=>{dis[k]=[...DISABLED_FIELDS[k]];});
-    await db.collection('ghost-tracker').doc('disabled-fields').set(dis);
-    console.log('[Settings] Saved ECN+EDIT+DISABLED');
+    showToast('Settings saved');
   }catch(e){showToast('Save failed: '+e.message,'error');}}
 
 // Detect if a column name is an ECN field
@@ -410,41 +404,25 @@ function isECNField(f){
 
 function getECNFields(dataKey){const rows=DATA[dataKey];if(!rows||!rows.length)return[];return Object.keys(rows[0]).filter(f=>isECNField(f));}
 function isECNVisible(dataKey,field){return(ECN_SETTINGS[dataKey]&&ECN_SETTINGS[dataKey].has(field))||(EDIT_FIELDS[dataKey]&&EDIT_FIELDS[dataKey].has(field));}
-
-// Explicitly disabled fields (overrides V-rule defaults)
-let DISABLED_FIELDS={};
-
 function isFieldEditable(dk,f){
-  // Explicitly disabled → not editable
-  if(DISABLED_FIELDS[dk]&&DISABLED_FIELDS[dk].has(f))return false;
-  // Explicitly enabled → editable
+  // Field is editable if: in EDIT_FIELDS set, OR has a V rule (for backward compat until all migrated)
   if(EDIT_FIELDS[dk]&&EDIT_FIELDS[dk].has(f))return true;
-  // ECN_SETTINGS backward compat
+  // Also check ECN_SETTINGS for backward compat
   if(isECNField(f)&&ECN_SETTINGS[dk]&&ECN_SETTINGS[dk].has(f))return true;
-  // V rules default editable (until user explicitly disables)
+  // V rules make normal fields editable by default
   const sk=Object.entries(SK_TO_DK).find(([k,v])=>v===dk)?.[0]||dk;
   if(getV(sk,f))return true;
   return false;
 }
 function togEditField(dk,f){
   if(!EDIT_FIELDS[dk])EDIT_FIELDS[dk]=new Set();
-  if(!DISABLED_FIELDS[dk])DISABLED_FIELDS[dk]=new Set();
-
-  if(isFieldEditable(dk,f)){
-    // Currently ON → turn OFF
-    EDIT_FIELDS[dk].delete(f);
-    DISABLED_FIELDS[dk].add(f);
-    // Also remove from ECN_SETTINGS
-    if(isECNField(f)&&ECN_SETTINGS[dk])ECN_SETTINGS[dk].delete(f);
-  } else {
-    // Currently OFF → turn ON
-    EDIT_FIELDS[dk].add(f);
-    DISABLED_FIELDS[dk].delete(f);
-    // Also add to ECN_SETTINGS for ECN fields
-    if(isECNField(f)){
-      if(!ECN_SETTINGS[dk])ECN_SETTINGS[dk]=new Set();
-      ECN_SETTINGS[dk].add(f);
-    }
+  if(EDIT_FIELDS[dk].has(f))EDIT_FIELDS[dk].delete(f);
+  else EDIT_FIELDS[dk].add(f);
+  // Also sync ECN_SETTINGS for ECN fields
+  if(isECNField(f)){
+    if(!ECN_SETTINGS[dk])ECN_SETTINGS[dk]=new Set();
+    if(EDIT_FIELDS[dk].has(f))ECN_SETTINGS[dk].add(f);
+    else ECN_SETTINGS[dk].delete(f);
   }
   render();
 }
@@ -1675,15 +1653,8 @@ async function saveSettingsAndBack(){
   try{
     await saveECNSettings();
     await saveCompRules();
-    // Verify: re-read and compare
-    const verDoc=await db.collection('ghost-tracker').doc('compliance-rules').get();
-    if(verDoc.exists){
-      const saved=verDoc.data();
-      console.log('[Verify] dateFresh saved:',JSON.stringify(saved.dateFresh));
-      console.log('[Verify] exactMatch saved:',JSON.stringify(saved.exactMatch));
-      console.log('[Verify] multiMatch saved:',JSON.stringify(saved.multiMatch));
-      console.log('[Verify] requiredECN saved:',JSON.stringify(saved.requiredECN));
-    }
+    console.log('[Settings] Saved. COMP_RULES:',JSON.stringify(COMP_RULES));
+    console.log('[Settings] EDIT_FIELDS:',JSON.stringify(Object.fromEntries(Object.entries(EDIT_FIELDS).map(([k,v])=>[k,[...v]]))));
     showToast('✓ All settings saved');
   }catch(e){
     showToast('Save failed: '+e.message,'error');
