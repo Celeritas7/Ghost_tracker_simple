@@ -1256,7 +1256,7 @@ function rECNSubSectionGrid(sk,items,lk,c){
         const val=item[f]||'';
         const eid=regEdit(sk,item[sf]||'',f,val);
         const comp=checkFieldComp(dk,f,val);
-        const ruleI=getFieldRuleType(dk,f);const fType=ruleI.type==="date_fresh"?{type:"date"}:ruleI.type==="checkbox"?{type:"checkbox"}:guessECNType(sk,f);
+        const fType=guessECNType(sk,f);
         let vDisp;
         if(fType?.type==='checkbox'){
           const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
@@ -1321,28 +1321,16 @@ function toggleDebug(){S.showDebug=!S.showDebug;render();}
 function startEdit(sec,sn,field,value){
   S.editing={section:sec,sn,field,value,_from:S.screen};
   const val=getV(sec,field);
-  const dk=SK_TO_DK[sec]||sec;
-
-  // Check if compliance rule dictates the input type
-  const ruleInfo=getFieldRuleType(dk,field);
+  // For ECN fields, detect type from actual value (columns can have mixed types)
   let effectiveType=val?.type;
-
-  if(ruleInfo.type==='date_fresh'){
-    effectiveType='date';
-  } else if(ruleInfo.type==='checkbox'){
-    effectiveType='checkbox';
-  } else if(ruleInfo.type==='exact'||ruleInfo.type==='multi'||ruleInfo.type==='fw'){
-    effectiveType=null; // free text input
-  } else if(isECNField(field)){
-    // Fallback: detect type from actual value
+  if(isECNField(field)){
     const v=(value||'').trim();
     if(/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no)$/i.test(v))effectiveType='checkbox';
     else if(/^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v)||/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(v))effectiveType='date';
-    else if(!v)effectiveType=val?.type||'checkbox';
-    else effectiveType=null;
+    else if(!v)effectiveType=val?.type||'checkbox'; // default for empty
+    else effectiveType=null; // free text
+    S.editing._effectiveType=effectiveType;
   }
-  S.editing._effectiveType=effectiveType;
-
   // Normalize checkbox values to ✓/✗ for the toggle UI
   if(effectiveType==='checkbox'){
     const isPass=/^(TRUE|true|1|OK|✓|done)$/i.test((value||'').trim());
@@ -1735,7 +1723,7 @@ function rECNSubSection(sk,items,lk){
         const compTag=compIssue?`<span class="comp-tag">⚠ ${esc(compIssue)}</span>`:'';
 
         // Detect type from actual data
-        const ruleI2=getFieldRuleType(dk,f);const fType=ruleI2.type==="date_fresh"?{type:"date"}:ruleI2.type==="checkbox"?{type:"checkbox"}:guessECNType(sk,f);
+        const fType=guessECNType(sk,f);
         let vH;
         if(fType?.type==='checkbox'){
           const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
@@ -2180,8 +2168,7 @@ function rBatchDashboard(){
         if(isSN)valColor=selTab.color;
 
         let displayVal=val;
-        const ruleInfo=getFieldRuleType(dk,f);
-        const effType=ruleInfo.type==='date_fresh'?'date':ruleInfo.type==='checkbox'?'checkbox':vRule?.type||(isECN?guessECNType(sk,f)?.type:null);
+        const effType=vRule?.type||(isECN?guessECNType(sk,f)?.type:null);
         if(effType==='checkbox'||(!effType&&isECN&&/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no|)$/i.test(val))){
           const pass=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
           const fail=/^(FALSE|false|0|✗|no)$/i.test(val);
