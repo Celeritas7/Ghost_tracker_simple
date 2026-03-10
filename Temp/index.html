@@ -1577,16 +1577,6 @@ function rSettings(){
       <span style="font-size:10px;color:var(--t5);margin-left:auto">${normalOn.length+ecnOn.length} editable · ${rulesCount(dk)} rules</span>
     </div>`;
 
-    // Bulk actions bar
-    h+=`<div style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:#0a0c14;border-bottom:1px solid #1a1c2e;flex-wrap:wrap">
-      <span style="font-size:10px;font-weight:600;color:var(--t3)">Bulk ON:</span>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','date_fresh')">📅 Date 60d</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','checkbox')">☑ TRUE</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','ecn_required')">🔧 ECN</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','required')">⚠ Required</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);color:#f87171" onclick="bulkSetRule('${escA(dk)}','none')">✕ Clear all</button>
-    </div>`;
-
     // Two columns
     h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;max-height:70vh;overflow-y:auto">`;
 
@@ -1651,20 +1641,15 @@ function rSettingsFieldRow(dk,f,isOn){
   const rule=getFieldRuleType(dk,f);
   const label=FIELD_LABELS[f]||f;
   const hasRule=rule.type!=='none';
-  const isEcn=isECNField(f);
   const col=isOn?'var(--grn)':'#2a2d45';
-  // ⚠️ Highlight: has rule but toggle OFF = flags will show but can't edit
-  const ruleButOff=hasRule&&!isOn;
 
-  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isOn&&hasRule?'background:rgba(52,211,153,.03)':ruleButOff?'background:rgba(251,191,36,.03)':''}">`;
-  h+=`<div style="display:flex;align-items:center;gap:6px">
-    <div style="width:28px;height:16px;border-radius:8px;background:${isOn?'var(--grn)':'#1e2130'};border:1.5px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
-      <div style="width:10px;height:10px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${isOn?'14px':'2px'};transition:left .15s"></div>
+  let h=`<div style="padding:3px 8px;border-bottom:1px solid #12131f;${isOn&&hasRule?'background:#0d1210':''}">`;
+  h+=`<div style="display:flex;align-items:center;gap:5px">
+    <div style="width:24px;height:14px;border-radius:7px;background:${isOn?'var(--grn)':'#1e2130'};border:1px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:2px;left:${isOn?'12px':'2px'};transition:left .15s"></div>
     </div>
-    <span style="flex:1;font-size:11px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">
-      ${esc(label)}${isEcn?' <span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle">ECN</span>':''}${ruleButOff?'<span style="font-size:7px;color:var(--yel);margin-left:3px" title="Rule active but field is read-only">⚠️ flag only</span>':''}
-    </span>
-    <select style="padding:2px 4px;border-radius:4px;font-size:9px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:95px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
+    <span style="flex:1;font-size:9px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">${esc(label)}</span>
+    <select style="padding:1px 2px;border-radius:3px;font-size:8px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:85px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
       <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
       <option value="checkbox" ${rule.type==='checkbox'?'selected':''}>☑ TRUE</option>
       <option value="required" ${rule.type==='required'?'selected':''}>⚠ Not empty</option>
@@ -1676,13 +1661,13 @@ function rSettingsFieldRow(dk,f,isOn){
     </select>
   </div>`;
 
-  // Value input row
+  // Value input row (compact)
   if(rule.type==='exact'||rule.type==='fw'){
-    h+=`<div style="padding:3px 0 2px 34px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}"></div>`;
+    h+=`<div style="padding:2px 0 2px 29px"><input class="comp-input" style="width:100%;padding:2px 6px;border-radius:3px;font-size:8px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}"></div>`;
   } else if(rule.type==='multi'){
-    h+=`<div style="padding:3px 0 2px 34px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)"></div>`;
+    h+=`<div style="padding:2px 0 2px 29px"><input class="comp-input" style="width:100%;padding:2px 6px;border-radius:3px;font-size:8px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)"></div>`;
   } else if(rule.type==='date_fresh'){
-    h+=`<div style="display:flex;align-items:center;gap:5px;padding:3px 0 2px 34px"><input class="comp-input" type="number" style="width:55px;padding:3px 8px;border-radius:4px;font-size:10px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)"><span style="font-size:9px;color:var(--t5)">days max</span></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:4px;padding:2px 0 2px 29px"><input class="comp-input" type="number" style="width:50px;padding:2px 6px;border-radius:3px;font-size:8px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)"><span style="font-size:7px;color:var(--t5)">days</span></div>`;
   }
 
   h+=`</div>`;
@@ -1696,20 +1681,6 @@ function togECNField(dk,field){
   if(ECN_SETTINGS[dk].has(field))ECN_SETTINGS[dk].delete(field);
   else ECN_SETTINGS[dk].add(field);
   render();
-}
-
-// Bulk set rule type for all toggled-ON fields in a dk
-function bulkSetRule(dk,type){
-  const allFieldsAll=detectFieldsByKey();
-  const normal=allFieldsAll[dk]||[];
-  const ecn=getECNFields(dk);
-  const all=[...normal,...ecn];
-  const seen=new Set();
-  const unique=all.filter(f=>{if(seen.has(f))return false;seen.add(f);return true;});
-  const onFields=unique.filter(f=>isFieldEditable(dk,f));
-  if(!onFields.length){showToast('No toggled-ON fields to update','error');return;}
-  onFields.forEach(f=>setFieldRuleType(dk,f,type));
-  showToast(`${onFields.length} fields → ${type==='none'?'cleared':type}`);
 }
 
 async function saveSettingsAndBack(){
@@ -2128,31 +2099,34 @@ function rBatchDashboard(){
   let h='';
 
   // Summary bar
-  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:600;color:var(--t2)">${S.batchUnits.length} Ghost${S.batchUnits.length>1?'s':''}</div>
-    <button style="padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="S.batchStep=1;render()">✏️ Edit units</button>
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:600;color:var(--t2)">${S.batchUnits.length} Ghost${S.batchUnits.length>1?'s':''}</div>
+    <button style="padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="S.batchStep=1;render()">✏️ Edit units</button>
   </div>`;
 
-  // Tab strip with issue counts
+  // Tab strip
   const availTabs=BATCH_TABS.filter(t=>getBatchTabItems(t.k).length>0);
   if(!S.batchTab||!availTabs.find(t=>t.k===S.batchTab)){
     S.batchTab=availTabs[0]?.k||null;
   }
 
-  h+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px">`;
+  h+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:12px">`;
   availTabs.forEach(t=>{
     const items=getBatchTabItems(t.k);
     const sel=S.batchTab===t.k;
     const dk=t.dk;
     let issues=0;
     items.forEach(item=>{
-      Object.keys(item).forEach(f=>{if(f==='_rowIdx')return;if(checkFieldComp(dk,f,item[f]))issues++;});
+      Object.keys(item).forEach(f=>{
+        if(f==='_rowIdx')return;
+        if(checkFieldComp(dk,f,item[f]))issues++;
+      });
     });
-    h+=`<div style="padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;border:${sel?'2px solid '+t.color:'1px solid var(--bd)'};background:${sel?t.color+'12':'var(--card)'};transition:all .12s" onclick="S.batchTab='${t.k}';render()">
+    h+=`<div style="padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:4px;border:${sel?'2px solid '+t.color:'1px solid var(--bd)'};background:${sel?t.color+'12':'var(--card)'};transition:all .12s" onclick="S.batchTab='${t.k}';render()">
       <span style="font-size:14px">${t.icon}</span>
-      <span style="font-size:11px;font-weight:700;color:${sel?t.color:'var(--t3)'}">${t.label}</span>
-      <span style="font-size:10px;color:var(--t5)">${items.length}</span>
-      ${issues?`<span style="min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;animation:pulse 2s infinite">⚠${issues}</span>`:''}
+      <span style="font-size:10px;font-weight:700;color:${sel?t.color:'var(--t3)'}">${t.label}</span>
+      <span style="font-size:9px;color:var(--t5)">${items.length}</span>
+      ${issues?`<span style="width:6px;height:6px;border-radius:50%;background:var(--red)"></span>`:''}
     </div>`;
   });
   h+=`</div>`;
@@ -2177,21 +2151,11 @@ function rBatchDashboard(){
       }
       const ghostNum=(parentGhost.match(/(\d+)$/)||[])[1]||parentGhost;
 
-      // Count issues for this unit
-      let unitIssues=0;
-      const chkF=[...Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f)),...Object.keys(item).filter(f=>f!=='_rowIdx'&&isECNField(f))];
-      chkF.forEach(f=>{if(checkFieldComp(dk,f,item[f]))unitIssues++;});
-
-      h+=`<div style="margin-bottom:10px;border:1px solid ${unitIssues?'rgba(248,113,113,.35)':'var(--bd)'};border-radius:10px;overflow:hidden;background:var(--card);${unitIssues?'box-shadow:0 0 12px rgba(248,113,113,.08)':''}">`;
-
-      // Unit header with issue badge
-      h+=`<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd);background:${unitIssues?'rgba(248,113,113,.04)':selTab.color+'08'}">
-        <span style="font-size:16px">${selTab.icon}</span>
-        <span style="font-size:14px;font-weight:700;color:${selTab.color};font-family:var(--fm)">${esc(itemSN)}</span>
-        <span style="font-size:10px;color:var(--t4)">👻 ${esc(ghostNum)}</span>
-        ${unitIssues?
-          `<span style="margin-left:auto;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)">⚠️ ${unitIssues} issue${unitIssues>1?'s':''}</span>`:
-          `<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--grn)">✓ OK</span>`}
+      h+=`<div style="margin-bottom:12px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--card)">`;
+      h+=`<div style="padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd);background:${selTab.color}08">
+        <span style="font-size:14px">${selTab.icon}</span>
+        <span style="font-size:12px;font-weight:700;color:${selTab.color};font-family:var(--fm)">${esc(itemSN)}</span>
+        <span style="font-size:9px;color:var(--t5)">👻 ${esc(ghostNum)}</span>
       </div>`;
 
       h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
@@ -2226,33 +2190,14 @@ function rBatchDashboard(){
           valColor=pass?'var(--grn)':fail?'var(--red)':'var(--t5)';
         }
 
-        // Date age badge
-        let dateBadge='';
-        if(ruleInfo.type==='date_fresh'&&val){
-          const d=new Date(val.replace(/\//g,'-'));
-          if(!isNaN(d.getTime())){
-            const days=Math.floor((new Date()-d)/(1000*60*60*24));
-            const maxD=parseInt(ruleInfo.value)||60;
-            const overdue=days>maxD;
-            dateBadge=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:${overdue?'rgba(248,113,113,.15)':'rgba(52,211,153,.12)'};color:${overdue?'var(--red)':'var(--grn)'};font-weight:700">${days}d${overdue?' ⚠️':''}</span>`;
-          }
-        }
-
-        // Warning reason tag
-        let warnTag='';
-        if(compIssue){
-          warnTag=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:700">⚠️ ${esc(compIssue)}</span>`;
-        }
-
-        h+=`<div style="padding:8px 12px;background:${bgColor};${editable?'cursor:pointer':''}${compIssue?';border-left:3px solid var(--red)':''}" ${editable?`onclick="doEdit(${eid})"`:''}">
-          <div style="font-size:10px;color:var(--t4);margin-bottom:3px;display:flex;align-items:center;gap:3px;flex-wrap:wrap">
+        h+=`<div style="padding:6px 8px;background:${bgColor};${editable?'cursor:pointer':''}${compIssue?';border-left:2px solid var(--red)':''}" ${editable?`onclick="doEdit(${eid})"`:''}">
+          <div style="font-size:8px;color:var(--t5);margin-bottom:2px;display:flex;align-items:center;gap:3px">
             ${esc(label)}
-            ${editable?'<span style="font-size:8px;color:var(--ac)">✎</span>':''}
-            ${isECN?'<span style="font-size:6px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700">ECN</span>':''}
-            ${dateBadge}
-            ${warnTag}
+            ${editable?'<span style="font-size:7px;color:var(--ac)">✎</span>':''}
+            ${isECN?'<span style="font-size:6px;padding:0 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700">ECN</span>':''}
+            ${compIssue?'<span style="font-size:7px;color:var(--red)">⚠</span>':''}
           </div>
-          <div style="font-size:13px;font-family:${isSN?'var(--fm)':'inherit'};color:${valColor};font-weight:${isSN||effType==='checkbox'?'700':'500'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayVal?esc(displayVal):'<span style="color:var(--t5);font-style:italic">—</span>'}</div>
+          <div style="font-size:11px;font-family:${isSN?'var(--fm)':'inherit'};color:${valColor};font-weight:${isSN||vRule?.type==='checkbox'?'700':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayVal?esc(displayVal):'—'}</div>
         </div>`;
       });
       h+=`</div></div>`;
@@ -2261,7 +2206,6 @@ function rBatchDashboard(){
 
   return h;
 }
-
 
 // Utility: find S/N by trailing number
 function findSNByNum(dk,num){
