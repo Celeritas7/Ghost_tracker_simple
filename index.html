@@ -1109,6 +1109,12 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
   // Filter to assemblies that have data
   const avail=all.filter(s=>s.d&&(!Array.isArray(s.d)||s.d.length>0)&&SC[s.k]);
 
+  // Auto-select matched tab if none selected
+  if(!S.resultTab||!avail.find(s=>s.k===S.resultTab)){
+    const matched=avail.find(s=>isM(s.k));
+    S.resultTab=matched?matched.k:avail[0]?.k||null;
+  }
+
   // Count total compliance
   let totalChecked=0,totalIssues=0;
   avail.forEach(s=>{
@@ -1138,13 +1144,6 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
 
   let h='';
 
-  // Ghost header bar
-  h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 12px;border-radius:8px;background:var(--card);border:1px solid var(--bd)">
-    <span style="font-size:18px">👻</span>
-    <span style="font-size:15px;font-weight:700;font-family:var(--fm)">${esc(gSN)}</span>
-    <span style="font-size:9px;padding:2px 8px;border-radius:4px;background:rgba(52,211,153,.1);color:var(--grn);font-weight:600">LIVE</span>
-  </div>`;
-
   // Compliance bar
   if(totalRules){
     const compCol=compPct>=95?'var(--grn)':compPct>=80?'var(--yel)':'var(--red)';
@@ -1157,43 +1156,63 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
     </div>`;
   }
 
-  // Vertical accordion — each assembly is a collapsible section
+  // Tab strip — same style as batch
+  h+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px">`;
   avail.forEach(s=>{
     const c=SC[s.k];
     const lk=SK_TO_DK[s.k]||s.k;
-    const items=Array.isArray(s.d)?s.d:[s.d];
-    const sf=getSNField(DATA[lk]||items);
+    const sel=S.resultTab===s.k;
     const matched=isM(s.k);
+    const items=Array.isArray(s.d)?s.d:[s.d];
+    const shortL=c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK');
 
-    // Count issues for this assembly
+    // Count issues for this tab
+    let tabIssues=0;
+    items.forEach(item=>{Object.entries(item).forEach(([k,v])=>{if(k!=='_rowIdx'&&checkFieldComp(lk,k,v))tabIssues++;});});
+
+    h+=`<div style="padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;border:${sel?'2px solid '+c.color:'1px solid var(--bd)'};background:${sel?c.color+'12':'var(--card)'};transition:all .12s" onclick="S.resultTab='${s.k}';render()">
+      <span style="font-size:14px">${c.icon}</span>
+      <span style="font-size:11px;font-weight:700;color:${sel?c.color:'var(--t3)'}">${shortL}</span>
+      ${matched?`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
+      ${tabIssues?`<span style="min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px">⚠${tabIssues}</span>`:''}
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // Selected tab content — show grouped fields
+  const selEntry=avail.find(s=>s.k===S.resultTab);
+  if(selEntry){
+    const c=SC[selEntry.k];
+    const lk=SK_TO_DK[selEntry.k]||selEntry.k;
+    const items=Array.isArray(selEntry.d)?selEntry.d:[selEntry.d];
+    const sf=getSNField(DATA[lk]||items);
+    const matched=isM(selEntry.k);
+
+    // Count issues
     let assIssues=0;
     items.forEach(item=>{Object.entries(item).forEach(([k,v])=>{if(k!=='_rowIdx'&&checkFieldComp(lk,k,v))assIssues++;});});
 
-    const hasIssues=assIssues>0;
-    const isOpen=matched; // auto-open matched assembly
-    const shortL=c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK');
-    const snStr=items.map(i=>i[sf]||'?').join(' · ');
+    items.forEach((item,idx)=>{
+      const itemSN=item[sf]||`Unit ${idx+1}`;
 
-    h+=`<div style="margin-bottom:6px;border:1px solid ${hasIssues?'rgba(248,113,113,.3)':matched?c.color+'66':'var(--bd)'};border-radius:8px;overflow:hidden;background:var(--card)">`;
+      h+=`<div style="margin-bottom:10px;border:1px solid ${assIssues?'rgba(248,113,113,.3)':matched?c.color+'44':'var(--bd)'};border-radius:10px;overflow:hidden;background:var(--card);${assIssues?'box-shadow:0 0 10px rgba(248,113,113,.06)':''}">`;
 
-    // Assembly header (clickable)
-    h+=`<div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;background:${matched?c.color+'08':hasIssues?'rgba(248,113,113,.03)':'transparent'}" onclick="togAssyResult(this)">
-      <span style="font-size:9px;color:var(--t4);transition:transform .2s" class="${isOpen?'assy-arrow-open':''}">▶</span>
-      <span style="font-size:15px">${c.icon}</span>
-      <span style="font-size:12px;font-weight:700;color:${c.color}">${shortL}</span>
-      <span style="font-size:10px;font-family:var(--fm);color:var(--t3)">${esc(snStr)}</span>
-      <span style="flex:1"></span>
-      ${matched?`<span style="font-size:7px;padding:2px 6px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
-      ${hasIssues?`<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(248,113,113,.1);color:var(--red);font-weight:700;border:1px solid rgba(248,113,113,.2)">⚠️ ${assIssues}</span>`:`<span style="font-size:8px;color:var(--grn);font-weight:600">✓</span>`}
-    </div>`;
+      // Unit header
+      h+=`<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd);background:${assIssues?'rgba(248,113,113,.04)':c.color+'08'}">
+        <span style="font-size:16px">${c.icon}</span>
+        <span style="font-size:14px;font-weight:700;color:${c.color};font-family:var(--fm)">${esc(itemSN)}</span>
+        <span style="font-size:10px;color:var(--t4)">👻 ${esc(gSN.match(/(\d+)$/)?.[1]||gSN)}</span>
+        ${matched?`<span style="font-size:7px;padding:2px 6px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
+        ${assIssues?
+          `<span style="margin-left:auto;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)">⚠️ ${assIssues} issue${assIssues>1?'s':''}</span>`:
+          `<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--grn)">✓ OK</span>`}
+      </div>`;
 
-    // Assembly body (collapsible)
-    h+=`<div style="overflow:hidden;${isOpen?'':'max-height:0'}">`;
-    items.forEach(item=>{
-      h+=rGroupedFields(s.k,item,lk,sf);
+      // Grouped fields (S/N → Data → Empty → ECN)
+      h+=rGroupedFields(selEntry.k,item,lk,sf);
+      h+=`</div>`;
     });
-    h+=`</div></div>`;
-  });
+  }
 
   // Debug button
   h+=`<div style="text-align:center;padding:8px"><button style="font-size:10px;padding:4px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--t4);cursor:pointer" onclick="toggleDebug()">🔍 Debug</button></div>`;
@@ -1203,19 +1222,6 @@ function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(
     <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
     <div style="padding:12px">${h}</div>
   </div>${rToast()}`;
-}
-
-// Toggle assembly accordion in result view
-function togAssyResult(el){
-  const body=el.nextElementSibling;
-  const arrow=el.querySelector('span');
-  if(body.style.maxHeight==='0px'||body.style.maxHeight===''){
-    body.style.maxHeight=body.scrollHeight+'px';
-    arrow.classList.add('assy-arrow-open');
-  } else {
-    body.style.maxHeight='0';
-    arrow.classList.remove('assy-arrow-open');
-  }
 }
 
 // ===== EDIT =====
@@ -1592,14 +1598,14 @@ function rSettingsFieldRow(dk,f,isOn){
   const col=isOn?'var(--grn)':'#2a2d45';
   const ruleButOff=hasRule&&!isOn;
 
-  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isHidden?'opacity:.4;':isOn&&hasRule?'background:rgba(52,211,153,.03);':ruleButOff?'background:rgba(251,191,36,.03);':''}">`;
+  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isHidden?'opacity:.6;background:rgba(248,113,113,.02);':isOn&&hasRule?'background:rgba(52,211,153,.03);':ruleButOff?'background:rgba(251,191,36,.03);':''}">`;
   h+=`<div style="display:flex;align-items:center;gap:6px">
-    <div style="width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;border:1px solid ${isHidden?'rgba(248,113,113,.15)':'var(--bd)'};background:${isHidden?'rgba(248,113,113,.05)':'rgba(255,255,255,.03)'};flex-shrink:0;color:${isHidden?'var(--t5)':'var(--t2)'}" onclick="togFieldVisibility('${escA(dk)}','${escA(f)}')" title="${isHidden?'Hidden — click to show':'Visible — click to hide'}">${isHidden?'🚫':'👁'}</div>
+    <div style="width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;border:1px solid ${isHidden?'rgba(248,113,113,.15)':'var(--bd)'};background:${isHidden?'rgba(248,113,113,.05)':'rgba(255,255,255,.03)'};flex-shrink:0;color:${isHidden?'var(--t4)':'var(--t2)'}" onclick="togFieldVisibility('${escA(dk)}','${escA(f)}')" title="${isHidden?'Hidden — click to show':'Visible — click to hide'}">${isHidden?'🚫':'👁'}</div>
     <div style="width:28px;height:16px;border-radius:8px;background:${isOn?'var(--grn)':'#1e2130'};border:1.5px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
       <div style="width:10px;height:10px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${isOn?'14px':'2px'};transition:left .15s"></div>
     </div>
-    <span style="flex:1;font-size:11px;color:${isHidden?'var(--t5)':isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isHidden?'text-decoration:line-through':''}" title="${escA(f)}">
-      ${esc(label)}${isEcn?' <span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle;'+(isHidden?'opacity:.4':'')+'">ECN</span>':''}${ruleButOff&&!isHidden?'<span style="font-size:7px;color:var(--yel);margin-left:3px">⚠️ flag only</span>':''}
+    <span style="flex:1;font-size:11px;color:${isHidden?'var(--t3)':isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isHidden?'text-decoration:line-through':''}" title="${escA(f)}">
+      ${esc(label)}${isEcn?' <span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle;'+(isHidden?'opacity:.6':'')+'">ECN</span>':''}${ruleButOff&&!isHidden?'<span style="font-size:7px;color:var(--yel);margin-left:3px">⚠️ flag only</span>':''}
     </span>
     <select style="padding:2px 4px;border-radius:4px;font-size:9px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:95px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
       <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
