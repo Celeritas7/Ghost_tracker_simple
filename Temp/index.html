@@ -295,7 +295,6 @@ V['headBody.93 FacePlate変更']={type:'date'};
 .rbk{transition:color .12s}
 .rbk:active{color:var(--ac2)}
 
-.assy-arrow-open{transform:rotate(90deg);display:inline-block}
 </style>
 </head>
 <body>
@@ -382,9 +381,6 @@ async function loadECNSettings(){
     // Load disabled fields
     const disDoc=await db.collection('ghost-tracker').doc('disabled-fields').get();
     if(disDoc.exists){const d=disDoc.data();Object.keys(d).forEach(k=>{DISABLED_FIELDS[k]=new Set(d[k]||[]);});console.log('[DISABLED] Loaded:',d);}
-    // Load hidden fields
-    const hidDoc=await db.collection('ghost-tracker').doc('hidden-fields').get();
-    if(hidDoc.exists){const d=hidDoc.data();Object.keys(d).forEach(k=>{HIDDEN_FIELDS[k]=new Set(d[k]||[]);});console.log('[HIDDEN] Loaded:',d);}
   }catch(e){console.warn('[ECN] Load failed:',e);ECN_LOADED=true;}}
 
 async function saveECNSettings(){
@@ -397,10 +393,7 @@ async function saveECNSettings(){
     // Save disabled fields
     const dis={};Object.keys(DISABLED_FIELDS).forEach(k=>{dis[k]=[...DISABLED_FIELDS[k]];});
     await db.collection('ghost-tracker').doc('disabled-fields').set(dis);
-    // Save hidden fields
-    const hid={};Object.keys(HIDDEN_FIELDS).forEach(k=>{hid[k]=[...HIDDEN_FIELDS[k]];});
-    await db.collection('ghost-tracker').doc('hidden-fields').set(hid);
-    console.log('[Settings] Saved ECN+EDIT+DISABLED+HIDDEN');
+    console.log('[Settings] Saved ECN+EDIT+DISABLED');
   }catch(e){showToast('Save failed: '+e.message,'error');}}
 
 // Detect if a column name is an ECN field
@@ -420,9 +413,6 @@ function isECNVisible(dataKey,field){return(ECN_SETTINGS[dataKey]&&ECN_SETTINGS[
 
 // Explicitly disabled fields (overrides V-rule defaults)
 let DISABLED_FIELDS={};
-
-// Hidden fields: {dataKey: Set of field names} — hidden fields don't appear in any view
-let HIDDEN_FIELDS={};
 
 function isFieldEditable(dk,f){
   // Explicitly disabled → not editable
@@ -456,18 +446,6 @@ function togEditField(dk,f){
       ECN_SETTINGS[dk].add(f);
     }
   }
-  render();
-}
-
-function isFieldVisible(dk,f){
-  // If explicitly hidden → not visible
-  if(HIDDEN_FIELDS[dk]&&HIDDEN_FIELDS[dk].has(f))return false;
-  return true;
-}
-function togFieldVisibility(dk,f){
-  if(!HIDDEN_FIELDS[dk])HIDDEN_FIELDS[dk]=new Set();
-  if(HIDDEN_FIELDS[dk].has(f))HIDDEN_FIELDS[dk].delete(f);
-  else HIDDEN_FIELDS[dk].add(f);
   render();
 }
 
@@ -975,248 +953,336 @@ function rSearch(){const tot=Object.values(DATA).reduce((s,a)=>s+(a?.length||0),
 }
 
 // ===== RESULT =====
-// ========= SHARED UNIT BODY RENDERER =========
-// Renders grouped fields (S/N → Data → ECN) for a single assembly item
-function rGroupedFields(sk,item,dk,sf,opts){
-  opts=opts||{};
-  const allKeys=Object.keys(item).filter(f=>f!=='_rowIdx');
-  const itemSN=item[sf]||'?';
-
-  // Separate fields into groups
-  const snFields=[],dataFields=[],ecnFields=[],emptyFields=[];
-  allKeys.forEach(f=>{
-    if(!isFieldVisible(dk,f))return; // hidden in settings
-    if(shouldSkipField(f)&&!isECNField(f))return;
-    const val=(item[f]||'').trim();
-    const isSN=f===sf||/S\/N$/i.test(f)||isSNField(f);
-    const isEcn=isECNField(f);
-    if(isEcn)ecnFields.push(f);
-    else if(isSN)snFields.push(f);
-    else if(!val&&!isEcn)emptyFields.push(f);
-    else dataFields.push(f);
-  });
-
-  // Count issues per group
-  let dataIssues=0,ecnIssues=0,ecnOk=0,ecnEmpty=0;
-  dataFields.forEach(f=>{if(checkFieldComp(dk,f,item[f]))dataIssues++;});
-  ecnFields.forEach(f=>{
-    const ci=checkFieldComp(dk,f,item[f]);
-    if(ci)ecnIssues++;
-    else if(!(item[f]||'').trim())ecnEmpty++;
-    else ecnOk++;
-  });
-
-  let h='';
-
-  // S/N group
-  if(snFields.length){
-    h+=`<div style="padding:5px 12px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--bd);color:var(--ac);background:rgba(91,110,234,.04);display:flex;align-items:center;gap:6px">🔗 Serial Numbers</div>`;
-    h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
-    snFields.forEach(f=>{h+=rFC(sk,itemSN,f,item[f],dk,sf);});
-    h+=`</div>`;
-  }
-
-  // Data group
-  if(dataFields.length){
-    h+=`<div style="padding:5px 12px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--bd);color:var(--grn);background:rgba(52,211,153,.03);display:flex;align-items:center;gap:6px">📋 Data <span style="flex:1"></span>${dataIssues?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:600">${dataIssues} ⚠</span>`:''}</div>`;
-    h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
-    dataFields.forEach(f=>{h+=rFC(sk,itemSN,f,item[f],dk,sf);});
-    h+=`</div>`;
-  }
-
-  // Empty fields (compact chips)
-  if(emptyFields.length&&!opts.hideEmpty){
-    h+=`<div style="padding:4px 12px;font-size:8px;font-weight:700;letter-spacing:.5px;color:var(--t5);border-bottom:1px solid var(--bd)">Empty (${emptyFields.length})</div>`;
-    h+=`<div style="display:flex;flex-wrap:wrap;gap:4px;padding:5px 12px 6px;border-bottom:1px solid var(--bd)">`;
-    emptyFields.forEach(f=>{
-      const label=FIELD_LABELS[f]||f;
-      const comp=checkFieldComp(dk,f,'');
-      h+=`<span style="padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid ${comp?'rgba(248,113,113,.2)':'var(--bd)'};font-size:9px;color:${comp?'var(--red)':'var(--t5)'}">${esc(label)}${comp?' ⚠':''}</span>`;
-    });
-    h+=`</div>`;
-  }
-
-  // ECN group
-  if(ecnFields.length){
-    h+=`<div style="padding:5px 12px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--bd);color:var(--pur);background:rgba(167,139,250,.04);display:flex;align-items:center;gap:6px">🔧 ECN (${ecnFields.length}) <span style="flex:1"></span>`;
-    if(ecnOk)h+=`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(52,211,153,.12);color:var(--grn);font-weight:600">${ecnOk} ✓</span>`;
-    if(ecnIssues)h+=`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:600">${ecnIssues} ⚠</span>`;
-    if(ecnEmpty)h+=`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(167,139,250,.12);color:var(--pur);font-weight:600">${ecnEmpty} —</span>`;
-    h+=`</div>`;
-    h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
-    ecnFields.forEach(f=>{h+=rFC(sk,itemSN,f,item[f],dk,sf);});
-    h+=`</div>`;
-  }
-
-  return h;
-}
-
-// Render a single field cell (shared between single + batch)
-function rFC(sk,itemSN,f,rawVal,dk,sf){
-  const val=(rawVal||'').trim();
-  const label=FIELD_LABELS[f]||f;
-  const isEcn=isECNField(f);
-  const vRule=getV(sk,f);
-  const editable=isFieldEditable(dk,f);
-  const isSN=f===sf||/S\/N$/i.test(f)||isSNField(f);
-  const compIssue=checkFieldComp(dk,f,val);
-  const eid=editable?regEdit(sk,itemSN,f,val):null;
-  const ruleInfo=getFieldRuleType(dk,f);
-
-  let valColor='var(--t1)';
-  let bgColor='var(--card)';
-  if(compIssue)bgColor='rgba(248,113,113,.05)';
-  else if(isEcn)bgColor='rgba(167,139,250,.03)';
-  if(!val)valColor='var(--t5)';
-  if(isSN)valColor='var(--pur)';
-
-  // Determine display value
-  let displayVal=val;
-  const effType=ruleInfo.type==='date_fresh'?'date':ruleInfo.type==='checkbox'?'checkbox':vRule?.type||(isEcn?guessECNType(sk,f)?.type:null);
-  if(effType==='checkbox'||(!effType&&isEcn&&/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no|)$/i.test(val))){
-    const pass=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
-    const fail=/^(FALSE|false|0|✗|no)$/i.test(val);
-    if(pass)displayVal='✓';
-    else if(fail)displayVal='✗';
-    valColor=pass?'var(--grn)':fail?'var(--red)':'var(--t5)';
-  }
-
-  // Date badge
-  let dateBadge='';
-  if(ruleInfo.type==='date_fresh'&&val){
-    const d=new Date(val.replace(/\//g,'-'));
-    if(!isNaN(d.getTime())){
-      const days=Math.floor((new Date()-d)/(1000*60*60*24));
-      const maxD=parseInt(ruleInfo.value)||60;
-      const over=days>maxD;
-      dateBadge=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:${over?'rgba(248,113,113,.15)':'rgba(52,211,153,.12)'};color:${over?'var(--red)':'var(--grn)'};font-weight:700">${days}d${over?' ⚠️':''}</span>`;
-    }
-  }
-
-  // Warning tag
-  let warnTag='';
-  if(compIssue)warnTag=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:700">⚠️ ${esc(compIssue)}</span>`;
-
-  return`<div style="padding:10px 14px;background:${bgColor};${editable?'cursor:pointer':''}${compIssue?';border-left:3px solid var(--red)':''}" ${editable?`onclick="doEdit(${eid})"`:''}><div style="font-size:10px;color:var(--t4);margin-bottom:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;line-height:1.4">${esc(label)}${editable?'<span style="font-size:8px;color:var(--ac)">✎</span>':''}${isEcn?'<span style="font-size:6px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700">ECN</span>':''}${dateBadge}${warnTag}</div><div style="font-size:14px;font-family:${isSN?'var(--fm)':'inherit'};color:${valColor};font-weight:${isSN||effType==='checkbox'?'700':'500'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayVal?esc(displayVal):'<span style="color:var(--t5);font-style:italic">—</span>'}</div></div>`;
-}
-
 function rResult(){const{result:R,tree:T}=S;if(!R||!T)return;const gSN=getRowSN(T.ghost,DATA.ghosts);
-  const all=[{k:'ghost',d:T.ghost,tk:'ghost'},{k:'mobileBase',d:T.mb,tk:'mb'},{k:'mbMotors',d:T.mbMotors,tk:'mbMotors'},{k:'pillar',d:T.pl,tk:'pl'},{k:'plMotors',d:T.plMotors,tk:'plMotors'},{k:'headBody',d:T.hb,tk:'hb'},{k:'arm',d:T.arm,tk:'arm'},{k:'armA12',d:T.armA12,tk:'armA12'},{k:'armA35',d:T.armA35,tk:'armA35'},{k:'armA4',d:T.armA4,tk:'armA4'},{k:'gripper',d:T.gr,tk:'gr'},{k:'deployKit',d:T.dk,tk:'dk'}];
+  const all=[{k:'ghost',d:T.ghost},{k:'mobileBase',d:T.mb},{k:'mbMotors',d:T.mbMotors},{k:'pillar',d:T.pl},{k:'plMotors',d:T.plMotors},{k:'headBody',d:T.hb},{k:'arm',d:T.arm},{k:'armA12',d:T.armA12},{k:'armA35',d:T.armA35},{k:'armA4',d:T.armA4},{k:'gripper',d:T.gr},{k:'deployKit',d:T.dk}];
   const mi=(R.matchedIn||'').toLowerCase().replace(/[^a-z0-9]/g,'');const mp=(R.path||[]).map(p=>p.toLowerCase().replace(/[^a-z0-9]/g,''));
   const sm={pdb:['mobilebase'],iob:['headbody','gripper'],mdb:['mbmotors','plmotors','arma12','arma35','arma4'],brk:['pillar'],bat:['arm'],galina:['headbody'],lmotor:['mbmotors','plmotors'],a12motor:['arma12'],a35motor:['arma35'],a4motor:['arma4']};
   const isM=k=>{const kl=k.toLowerCase();if(mi.includes(kl)||kl.includes(mi))return true;for(const p of mp)if(p.includes(kl)||kl.includes(p))return true;for(const[s,ts]of Object.entries(sm))if(mi.includes(s)&&ts.some(t=>kl.includes(t)))return true;return false;};
+  const isGM=mi==='ghost';const matched=all.filter(s=>isM(s.k));const rest=all.filter(s=>!isM(s.k));const seen=new Set();const sorted=isGM?all:[...matched,...rest];const fin=sorted.filter(s=>{if(seen.has(s.k))return false;seen.add(s.k);return true;});
+  let h='';
+  // Assembly tab strip - bigger chips, exclusive selection
+  const availSecs=fin.filter(s=>s.d&&(!Array.isArray(s.d)||s.d.length>0)&&SC[s.k]);
+  // Auto-select first matched section if no tab selected
+  if(!S.resultTab||!availSecs.find(s=>s.k===S.resultTab)){
+    const firstMatch=availSecs.find(s=>isM(s.k));
+    S.resultTab=firstMatch?firstMatch.k:(availSecs[0]?.k||null);
+  }
+  h+=`<div style="display:flex;gap:3px;padding:6px 0;flex-wrap:wrap;margin-bottom:2px">`;
+  availSecs.forEach(s=>{
+    const c=SC[s.k];
+    const lk2=SK_TO_DK[s.k]||s.k;
+    const items2=Array.isArray(s.d)?s.d:[s.d];
+    const iss2=countSectionIssues(lk2,items2);
+    const isSel=S.resultTab===s.k;
+    const isMt=isM(s.k);
+    const shortL=c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK');
+    h+=`<div style="padding:4px 8px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:4px;border:${isSel?'2px solid '+c.color:isMt?'1.5px solid '+c.color+'66':'1px solid var(--bd)'};background:${isSel?c.color+'12':'var(--card)'};transition:all .12s" onclick="selectResultTab('${s.k}')">
+      <span style="font-size:15px">${c.icon}</span>
+      <span style="font-size:10px;font-weight:700;color:${isSel?c.color:isMt?c.color:'var(--t3)'}">${shortL}</span>
+      ${iss2?`<span style="width:6px;height:6px;border-radius:50%;background:var(--red)"></span>`:''}
+      ${isMt&&!isSel?`<span style="font-size:7px;padding:0 3px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">M</span>`:''}
+    </div>`;
+  });
+  h+=`</div>`;
 
-  // Filter to assemblies that have data
-  const avail=all.filter(s=>s.d&&(!Array.isArray(s.d)||s.d.length>0)&&SC[s.k]);
+  // Show only selected assembly content (card grid body, no accordion header)
+  const selSec=availSecs.find(s=>s.k===S.resultTab);
+  if(selSec){
+    const c=SC[selSec.k];
+    const lk=SK_TO_DK[selSec.k]||selSec.k;
+    const items=Array.isArray(selSec.d)?selSec.d:[selSec.d];
+    const sf=getSNField(DATA[lk]||items);
+    const issues=countSectionIssues(lk,items);
+    const isMt=isM(selSec.k);
 
-  // Count total compliance
+    // Mini header with S/N and issue count
+    h+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 4px 6px;border-bottom:1px solid ${c.color}18;margin-bottom:4px">
+      <span style="font-size:12px;font-weight:700;color:${c.color}">${c.label}</span>
+      <span style="font-size:9px;font-family:var(--fm);color:var(--t3)">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</span>
+      ${isMt?`<span style="font-size:7px;padding:1px 5px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
+      <span style="flex:1"></span>
+      ${issues?`<span class="comp-badge">${issues} ⚠</span>`:''}
+    </div>`;
+
+    // Force expanded for card grid rendering
+    S.expanded.add(selSec.k);
+    // Render card grid body directly (reuse rSC internals)
+    h+=rSCBody(selSec.k,selSec.d);
+  }
+  app().innerHTML=`${rUBar()}<div style="min-height:100vh"><div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
+    <div class="tbox"><div class="tbox-t">TRACE PATH</div><div class="tsteps">${R.path.map((s,i)=>`<span style="display:flex;align-items:center;gap:4px"><span class="tstep ${i===0?'tstep0':'tstepN'}">${esc(s)}</span>${i<R.path.length-1?'<span class="tarr">→</span>':''}</span>`).join('')}</div><div class="tsum"><span class="thl">${esc(S.searchInput)}</span> → ${esc(R.matchedIn)} → <span class="thl2">${esc(gSN)}</span></div></div>
+    ${rCompBar(all)}
+    <div style="margin:1px 12px 2px"><button class="dbgbtn" onclick="toggleDebug()" style="font-size:9px;padding:2px 8px">🔍 Debug</button></div>
+    ${S.showDebug?`<div class="dbg">${debugInfo}</div>`:''}
+    <div class="sw">${h}</div>
+    <button class="rfb ${S.refreshing?'rfS':''}" onclick="doRefresh()" title="Refresh">↻</button></div>${rToast()}`;
+}
+
+// Compliance progress bar
+function rCompBar(allSecs){
+  const lkMap=SK_TO_DK;
   let totalChecked=0,totalIssues=0;
-  avail.forEach(s=>{
-    const lk=SK_TO_DK[s.k]||s.k;
-    const items=Array.isArray(s.d)?s.d:[s.d];
+  allSecs.forEach(({k,d})=>{
+    if(!d)return;const items=Array.isArray(d)?d:[d];if(!items.length)return;
+    const dk=lkMap[k]||k;
     items.forEach(item=>{
-      Object.entries(item).forEach(([k,v])=>{
-        if(k==='_rowIdx')return;
-        const ci=checkFieldComp(lk,k,v);
-        if(ci)totalIssues++;
+      Object.entries(item).forEach(([field,val])=>{
+        if(field==='_rowIdx')return;
+        const issue=checkFieldComp(dk,field,val);
+        if(issue!==null){totalChecked++;totalIssues++;}
         else{
-          const hasRule=COMP_RULES.latestFW?.[k]||
-            (COMP_RULES.requiredChecks?.[lk]||[]).includes(k)||
-            (COMP_RULES.requiredFields?.[lk]||[]).includes(k)||
-            (COMP_RULES.requiredECN?.[lk]||[]).includes(k)||
-            (COMP_RULES.exactMatch?.[lk]||{})[k]!==undefined||
-            (COMP_RULES.multiMatch?.[lk]||{})[k]!==undefined||
-            (COMP_RULES.dateFresh?.[lk]||{})[k]!==undefined;
-          const hasFWRule=Object.keys(COMP_RULES.latestFW||{}).some(fw=>k===fw||k.startsWith(fw));
+          // Count non-null rules that passed
+          const hasRule=COMP_RULES.latestFW?.[field]||
+            (COMP_RULES.requiredChecks?.[dk]||[]).includes(field)||
+            (COMP_RULES.requiredFields?.[dk]||[]).includes(field)||
+            (COMP_RULES.requiredECN?.[dk]||[]).includes(field)||
+            (COMP_RULES.exactMatch?.[dk]||{})[field]!==undefined||
+            (COMP_RULES.multiMatch?.[dk]||{})[field]!==undefined||
+            (COMP_RULES.dateFresh?.[dk]||{})[field]!==undefined;
+          // Check partial FW match
+          const hasFWRule=Object.keys(COMP_RULES.latestFW||{}).some(fw=>field===fw||field.startsWith(fw));
           if(hasRule||hasFWRule)totalChecked++;
         }
       });
     });
   });
-  const totalRules=totalChecked+totalIssues;
-  const compPct=totalRules?Math.round(totalChecked/totalRules*100):100;
-
-  let h='';
-
-  // Ghost header bar
-  h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 12px;border-radius:8px;background:var(--card);border:1px solid var(--bd)">
-    <span style="font-size:18px">👻</span>
-    <span style="font-size:15px;font-weight:700;font-family:var(--fm)">${esc(gSN)}</span>
-    <span style="font-size:9px;padding:2px 8px;border-radius:4px;background:rgba(52,211,153,.1);color:var(--grn);font-weight:600">LIVE</span>
-  </div>`;
-
-  // Compliance bar
-  if(totalRules){
-    const compCol=compPct>=95?'var(--grn)':compPct>=80?'var(--yel)':'var(--red)';
-    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:var(--card2);border:1px solid var(--bd)">
-      <span style="font-size:10px;color:var(--t4)">COMPLIANCE</span>
-      <div style="flex:1;height:4px;border-radius:2px;background:var(--bd2);overflow:hidden"><div style="height:100%;width:${compPct}%;border-radius:2px;background:${compCol}"></div></div>
-      <span style="font-size:12px;font-weight:700;font-family:var(--fm);color:${compCol}">${compPct}%</span>
-      <span style="font-size:9px;color:var(--t4)">${totalChecked}/${totalRules}</span>
+  if(!totalChecked)return'';
+  const passed=totalChecked-totalIssues;
+  const pct=Math.round((passed/totalChecked)*100);
+  const color=pct===100?'var(--grn)':pct>=70?'var(--yel)':'var(--red)';
+  return`<div class="comp-bar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:9px;font-weight:600;letter-spacing:1px;color:var(--t5)">COMPLIANCE</span>
+      <div class="comp-bar-track" style="flex:1"><div class="comp-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span style="font-size:11px;font-weight:700;color:${color}">${pct}%</span>
+      <span style="font-size:9px;color:var(--t4)">${passed}/${totalChecked}</span>
       ${totalIssues?`<span style="font-size:9px;color:var(--red)">${totalIssues}⚠</span>`:''}
-    </div>`;
-  }
+    </div>
+  </div>`;
+}
 
-  // Vertical accordion — each assembly is a collapsible section
-  avail.forEach(s=>{
-    const c=SC[s.k];
-    const lk=SK_TO_DK[s.k]||s.k;
-    const items=Array.isArray(s.d)?s.d:[s.d];
-    const sf=getSNField(DATA[lk]||items);
-    const matched=isM(s.k);
-
-    // Count issues for this assembly
-    let assIssues=0;
-    items.forEach(item=>{Object.entries(item).forEach(([k,v])=>{if(k!=='_rowIdx'&&checkFieldComp(lk,k,v))assIssues++;});});
-
-    const hasIssues=assIssues>0;
-    const isOpen=matched; // auto-open matched assembly
-    const shortL=c.label.replace('Mobile Base','MB').replace('Head & Body','H&B').replace('Deploy Kit','DK');
-    const snStr=items.map(i=>i[sf]||'?').join(' · ');
-
-    h+=`<div style="margin-bottom:6px;border:1px solid ${hasIssues?'rgba(248,113,113,.3)':matched?c.color+'66':'var(--bd)'};border-radius:8px;overflow:hidden;background:var(--card)">`;
-
-    // Assembly header (clickable)
-    h+=`<div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;background:${matched?c.color+'08':hasIssues?'rgba(248,113,113,.03)':'transparent'}" onclick="togAssyResult(this)">
-      <span style="font-size:9px;color:var(--t4);transition:transform .2s" class="${isOpen?'assy-arrow-open':''}">▶</span>
-      <span style="font-size:15px">${c.icon}</span>
-      <span style="font-size:12px;font-weight:700;color:${c.color}">${shortL}</span>
-      <span style="font-size:10px;font-family:var(--fm);color:var(--t3)">${esc(snStr)}</span>
-      <span style="flex:1"></span>
-      ${matched?`<span style="font-size:7px;padding:2px 6px;border-radius:3px;background:${c.color}22;color:${c.color};font-weight:700">MATCH</span>`:''}
-      ${hasIssues?`<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(248,113,113,.1);color:var(--red);font-weight:700;border:1px solid rgba(248,113,113,.2)">⚠️ ${assIssues}</span>`:`<span style="font-size:8px;color:var(--grn);font-weight:600">✓</span>`}
-    </div>`;
-
-    // Assembly body (collapsible)
-    h+=`<div style="overflow:hidden;${isOpen?'':'max-height:0'}">`;
-    items.forEach(item=>{
-      h+=rGroupedFields(s.k,item,lk,sf);
+// Render card grid body only (no section header) - used by tab view
+function rSCBody(sk,data){
+  if(!data||(Array.isArray(data)&&!data.length))return'';
+  const c=SC[sk];if(!c)return'';
+  const items=Array.isArray(data)?data:[data];if(!items.length)return'';
+  const lk=SK_TO_DK[sk]||sk;
+  const sf=getSNField(DATA[lk]||items);
+  let h='';
+  items.forEach((item,idx)=>{
+    if(items.length>1)h+=`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`;
+    const snFs=[],chkFs=[],prodFs=[],emptyFs=[];
+    Object.entries(item).forEach(([k,v])=>{
+      if(shouldSkipField(k))return;
+      if(isECNField(k))return;
+      const val=getV(sk,k);
+      const isChk=val?.type==='checkbox';
+      const isSN=isSNField(k)||k===sf;
+      const comp=checkFieldComp(lk,k,v);
+      const eid=regEdit(sk,item[sf]||'',k,v||'');
+      const fObj={k,v:v||'',label:FIELD_LABELS[k]||k,isChk,isSN,comp,eid,isDr:val?.type==='dropdown',isD:val?.type==='date'};
+      if(isSN)snFs.push(fObj);
+      else if(isChk)chkFs.push(fObj);
+      else if(v)prodFs.push(fObj);
+      else emptyFs.push(fObj);
     });
-    h+=`</div></div>`;
+
+    h+=`<div style="padding:5px 4px">`;
+    if(snFs.length){
+      h+=`<div class="cg-grp" style="color:var(--ac)">SERIAL NUMBERS</div>`;
+      h+=`<div class="cg-sn">`;
+      snFs.forEach(f=>{
+        h+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+          <div class="cg-lbl">${esc(f.label)}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+          <div class="cg-val cg-val-sn">${esc(f.v||'—')}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(prodFs.length){
+      h+=`<div class="cg-grp" style="color:var(--grn)">DATA</div>`;
+      h+=`<div class="cg-prod">`;
+      prodFs.forEach(f=>{
+        h+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+          <div class="cg-lbl">${esc(f.label)}${f.isDr?'<span style="color:var(--ac);font-size:7px">▾</span>':''}${f.isD?'<span style="font-size:7px">📅</span>':''}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+          <div class="cg-val">${esc(f.v)}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(chkFs.length){
+      h+=`<div class="cg-grp" style="color:var(--yel)">CHECKS</div>`;
+      h+=`<div class="cg-chks">`;
+      chkFs.forEach(f=>{
+        const p=f.v==='✓'||/^(TRUE|true|1|OK)$/.test(f.v);
+        const col=p?'var(--grn)':'var(--red)';
+        const bg=p?'rgba(52,211,153,.06)':'rgba(248,113,113,.06)';
+        const bd=p?'rgba(52,211,153,.15)':'rgba(248,113,113,.15)';
+        h+=`<div class="cg-chk" style="background:${bg};border:1px solid ${bd}" onclick="doEdit(${f.eid})">
+          <span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>
+          <span style="font-size:9px;color:${col}">${esc(f.label)}</span>
+          ${f.comp?`<span style="font-size:7px;color:var(--red)">⚠</span>`:''}
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    if(emptyFs.length){
+      h+=`<div class="cg-grp" style="color:var(--t5)">EMPTY (${emptyFs.length})</div>`;
+      h+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">`;
+      emptyFs.forEach(f=>{
+        h+=`<div style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--bd);cursor:pointer;font-size:8px;color:var(--t5);display:flex;align-items:center;gap:3px" onclick="doEdit(${f.eid})">${esc(f.label)}${f.comp?'<span style="color:var(--red)">⚠</span>':''}</div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
   });
 
-  // Debug button
-  h+=`<div style="text-align:center;padding:8px"><button style="font-size:10px;padding:4px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--t4);cursor:pointer" onclick="toggleDebug()">🔍 Debug</button></div>`;
-  if(S.showDebug)h+=rDebug();
-
-  app().innerHTML=`${rUBar()}<div style="min-height:100vh">
-    <div class="rh"><button class="rbk" onclick="goBack()">← Back</button><div class="rid">👻 ${esc(gSN)}</div><span class="rlive">LIVE</span></div>
-    <div style="padding:12px">${h}</div>
-  </div>${rToast()}`;
+  // ECN
+  const ecnH=rECNSubSectionGrid(sk,items,lk,c);
+  if(ecnH)h+=`<div style="padding:0 4px 5px">${ecnH}</div>`;
+  return h;
 }
 
-// Toggle assembly accordion in result view
-function togAssyResult(el){
-  const body=el.nextElementSibling;
-  const arrow=el.querySelector('span');
-  if(body.style.maxHeight==='0px'||body.style.maxHeight===''){
-    body.style.maxHeight=body.scrollHeight+'px';
-    arrow.classList.add('assy-arrow-open');
-  } else {
-    body.style.maxHeight='0';
-    arrow.classList.remove('assy-arrow-open');
+function rSC(sk,data,isMS){if(!data||(Array.isArray(data)&&!data.length))return'';const c=SC[sk];if(!c)return'';const items=Array.isArray(data)?data:[data];if(!items.length)return'';const isO=S.expanded.has(sk);const lk=SK_TO_DK[sk]||sk;const sf=getSNField(DATA[lk]||items);
+  const issues=countSectionIssues(lk,items);
+  const issueBadge=issues?`<span class="comp-badge">${issues} ⚠</span>`:'';
+  let innerH='';
+  if(isO){
+    items.forEach((item,idx)=>{
+      if(items.length>1)innerH+=`<div class="fgl" style="color:${c.color}">${esc(item[sf]||'?')}</div>`;
+      // Classify fields
+      const snFs=[],chkFs=[],prodFs=[],emptyFs=[];
+      Object.entries(item).forEach(([k,v])=>{
+        if(shouldSkipField(k))return;
+        if(isECNField(k))return; // ECN handled separately
+        const val=getV(sk,k);
+        const isChk=val?.type==='checkbox';
+        const isSN=isSNField(k)||k===sf;
+        const comp=checkFieldComp(lk,k,v);
+        const eid=regEdit(sk,item[sf]||'',k,v||'');
+        const fObj={k,v:v||'',label:FIELD_LABELS[k]||k,isChk,isSN,comp,eid,isDr:val?.type==='dropdown',isD:val?.type==='date'};
+        if(isSN)snFs.push(fObj);
+        else if(isChk)chkFs.push(fObj);
+        else if(v)prodFs.push(fObj);
+        else emptyFs.push(fObj);
+      });
+
+      innerH+=`<div style="padding:5px 8px;background:var(--card);border:1px solid ${c.color}12;border-top:none">`;
+
+      // S/N group
+      if(snFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--ac)">SERIAL NUMBERS</div>`;
+        innerH+=`<div class="cg-sn">`;
+        snFs.forEach(f=>{
+          innerH+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+            <div class="cg-lbl">${esc(f.label)}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+            <div class="cg-val cg-val-sn">${esc(f.v||'—')}</div>
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Production group (text fields with values)
+      if(prodFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--grn)">DATA</div>`;
+        innerH+=`<div class="cg-prod">`;
+        prodFs.forEach(f=>{
+          innerH+=`<div class="cg-card ${f.comp?'cg-card-warn':''}" onclick="doEdit(${f.eid})">
+            <div class="cg-lbl">${esc(f.label)}${f.isDr?'<span style="color:var(--ac);font-size:7px">▾</span>':''}${f.isD?'<span style="font-size:7px">📅</span>':''}${f.comp?`<span style="color:var(--red);font-size:7px">⚠</span>`:''}</div>
+            <div class="cg-val">${esc(f.v)}</div>
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Checkbox group
+      if(chkFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--yel)">CHECKS</div>`;
+        innerH+=`<div class="cg-chks">`;
+        chkFs.forEach(f=>{
+          const p=f.v==='✓'||/^(TRUE|true|1|OK)$/.test(f.v);
+          const col=p?'var(--grn)':'var(--red)';
+          const bg=p?'rgba(52,211,153,.06)':'rgba(248,113,113,.06)';
+          const bd=p?'rgba(52,211,153,.15)':'rgba(248,113,113,.15)';
+          innerH+=`<div class="cg-chk" style="background:${bg};border:1px solid ${bd}" onclick="doEdit(${f.eid})">
+            <span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>
+            <span style="font-size:9px;color:${col}">${esc(f.label)}</span>
+            ${f.comp?`<span style="font-size:7px;color:var(--red)">⚠</span>`:''}
+          </div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      // Empty fields (compact, dimmed)
+      if(emptyFs.length){
+        innerH+=`<div class="cg-grp" style="color:var(--t5)">EMPTY (${emptyFs.length})</div>`;
+        innerH+=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">`;
+        emptyFs.forEach(f=>{
+          innerH+=`<div style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--bd);cursor:pointer;font-size:8px;color:var(--t5);display:flex;align-items:center;gap:3px" onclick="doEdit(${f.eid})">${esc(f.label)}${f.comp?'<span style="color:var(--red)">⚠</span>':''}</div>`;
+        });
+        innerH+=`</div>`;
+      }
+
+      innerH+=`</div>`;
+    });
+
+    // ECN subsection
+    const ecnH=rECNSubSectionGrid(sk,items,lk,c);
+    if(ecnH)innerH+=`<div style="background:var(--card);border:1px solid ${c.color}12;border-top:none;border-radius:0 0 8px 8px;padding:0 8px 5px">${ecnH}</div>`;
   }
+  return`<div class="sc"><div class="sh" onclick="togSec('${sk}')" style="background:${c.bg};border-radius:${isO?'8px 8px 0 0':'8px'};border:1px solid ${c.color}${isMS?'55':'18'};border-left:${isMS?'3px solid '+c.color:'1px solid '+c.color+'18'}"><span class="si">${c.icon}</span><div class="sinfo"><div class="slbl" style="color:${c.color}">${c.label}</div><div class="ssn">${items.map(i=>esc(i[sf]||'?')).join(' · ')}</div></div>${issueBadge}${isMS?`<span class="mbdg" style="background:${c.color}22;color:${c.color}">MATCH</span>`:''}<span class="schv ${isO?'schvO':''}">▼</span></div>${isO?`<div style="border-radius:0 0 8px 8px;overflow:hidden">${innerH}</div>`:''}</div>`;}
+
+// Card grid ECN subsection
+function rECNSubSectionGrid(sk,items,lk,c){
+  const dk=SK_TO_DK[sk]||sk;
+  const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
+  if(!ecnFields.length)return'';
+  const ecnKey='ecn_'+sk;
+  const isOpen=S.expanded.has(ecnKey);
+  const sf=getSNField(DATA[lk]||items);
+
+  let ecnIssues=0;
+  items.forEach(item=>{ecnFields.forEach(f=>{if(checkFieldComp(dk,f,item[f]))ecnIssues++;});});
+  const issuePill=ecnIssues?`<span style="font-size:7px;padding:0 4px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:700">${ecnIssues}⚠</span>`:'';
+
+  let h=`<div style="display:flex;align-items:center;gap:4px;padding:3px 0;cursor:pointer;border-top:1px dashed rgba(167,139,250,.15)" onclick="togSec('${ecnKey}')">
+    <span class="cg-grp" style="color:var(--pur);margin-bottom:0">🔧 ECN (${ecnFields.length})</span>${issuePill}
+    <span class="schv ${isOpen?'schvO':''}" style="margin-left:auto">▼</span>
+  </div>`;
+  if(isOpen){
+    h+=`<div class="cg-ecn-wrap">`;
+    items.forEach(item=>{
+      ecnFields.forEach(f=>{
+        const val=item[f]||'';
+        const eid=regEdit(sk,item[sf]||'',f,val);
+        const comp=checkFieldComp(dk,f,val);
+        const ruleI=getFieldRuleType(dk,f);const fType=ruleI.type==="date_fresh"?{type:"date"}:ruleI.type==="checkbox"?{type:"checkbox"}:guessECNType(sk,f);
+        let vDisp;
+        if(fType?.type==='checkbox'){
+          const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
+          const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
+          vDisp=p?'<span class="ckd ckP" style="width:10px;height:10px;font-size:7px">✓</span>':(isF?'<span class="ckd ckF" style="width:10px;height:10px;font-size:7px">✗</span>':`<span style="font-size:8px;color:var(--t3)">${esc(val||'—')}</span>`);
+        } else {
+          vDisp=`<span style="font-size:8px;font-family:var(--fm);color:${comp?'var(--red)':'var(--pur)'}">${esc(val||'—')}</span>`;
+        }
+        h+=`<div class="cg-ecn ${comp?'cg-card-warn':''}" onclick="doEdit(${eid})">
+          <span style="font-size:7px;font-family:var(--fm);color:var(--t3)">${esc(f)}</span>
+          ${vDisp}
+        </div>`;
+      });
+    });
+    h+=`</div>`;
+  }
+  return h;
 }
+
+function rFR(sec,sn,field,value,lk){if(shouldSkipField(field))return'';const label=FIELD_LABELS[field]||field;const val=getV(sec,field);const isSN=field===getSNField(DATA[lk]||[])||/S\/N$/i.test(field);const isC=val?.type==='checkbox';const isD=val?.type==='date';const isDr=val?.type==='dropdown';const isH=S.result?.matchedSN===value||(S.result?.matchedSN===sn&&field===getSNField(DATA[lk]||[]));
+  const compIssue=checkFieldComp(lk,field,value);
+  const eid=regEdit(sec,sn,field,value||'');
+  let vH;if(isC){const p=value==='✓'||/^(TRUE|true|1|OK)$/.test(value);vH=`<span class="ckd ${p?'ckP':'ckF'}">${p?'✓':'✗'}</span>`;}else{vH=`<span class="fv ${isSN?'fvsn':''}">${esc(value||'—')}</span>`;}
+  const compCls=compIssue?'fr-warn':'';
+  const compTag=compIssue?`<span class="comp-tag">⚠ ${esc(compIssue)}</span>`:'';
+  return`<div class="fr ${isH?'frH':''} ${compCls}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl">${esc(label)}</span>${isDr?'<span class="ib ib-l">▾</span>':''}${isC?'<span class="ib ib-c">☐</span>':''}${isD?'<span class="ib ib-d">📅</span>':''}${compTag}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;}
 
 // ===== EDIT =====
 function rEdit(){const{editing:E,editValue:ev}=S;if(!E)return;const label=FIELD_LABELS[E.field]||E.field;const c=SC[E.section];const val=getV(E.section,E.field);
@@ -1513,14 +1579,12 @@ function rSettings(){
 
     // Bulk actions bar
     h+=`<div style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:#0a0c14;border-bottom:1px solid #1a1c2e;flex-wrap:wrap">
-      <span style="font-size:10px;font-weight:600;color:var(--t3)">Bulk:</span>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkShowAll('${escA(dk)}')">👁 Show all</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkHideOff('${escA(dk)}')">🚫 Hide OFF</button>
-      <span style="width:1px;height:14px;background:var(--bd);margin:0 2px"></span>
+      <span style="font-size:10px;font-weight:600;color:var(--t3)">Bulk ON:</span>
       <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','date_fresh')">📅 Date 60d</button>
       <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','checkbox')">☑ TRUE</button>
       <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','ecn_required')">🔧 ECN</button>
-      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);color:#f87171" onclick="bulkSetRule('${escA(dk)}','none')">✕ Clear rules</button>
+      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--t2)" onclick="bulkSetRule('${escA(dk)}','required')">⚠ Required</button>
+      <button style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);color:#f87171" onclick="bulkSetRule('${escA(dk)}','none')">✕ Clear all</button>
     </div>`;
 
     // Two columns
@@ -1588,18 +1652,17 @@ function rSettingsFieldRow(dk,f,isOn){
   const label=FIELD_LABELS[f]||f;
   const hasRule=rule.type!=='none';
   const isEcn=isECNField(f);
-  const isHidden=!isFieldVisible(dk,f);
   const col=isOn?'var(--grn)':'#2a2d45';
+  // ⚠️ Highlight: has rule but toggle OFF = flags will show but can't edit
   const ruleButOff=hasRule&&!isOn;
 
-  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isHidden?'opacity:.4;':isOn&&hasRule?'background:rgba(52,211,153,.03);':ruleButOff?'background:rgba(251,191,36,.03);':''}">`;
+  let h=`<div style="padding:5px 10px;border-bottom:1px solid #12131f;${isOn&&hasRule?'background:rgba(52,211,153,.03)':ruleButOff?'background:rgba(251,191,36,.03)':''}">`;
   h+=`<div style="display:flex;align-items:center;gap:6px">
-    <div style="width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;border:1px solid ${isHidden?'rgba(248,113,113,.15)':'var(--bd)'};background:${isHidden?'rgba(248,113,113,.05)':'rgba(255,255,255,.03)'};flex-shrink:0;color:${isHidden?'var(--t5)':'var(--t2)'}" onclick="togFieldVisibility('${escA(dk)}','${escA(f)}')" title="${isHidden?'Hidden — click to show':'Visible — click to hide'}">${isHidden?'🚫':'👁'}</div>
     <div style="width:28px;height:16px;border-radius:8px;background:${isOn?'var(--grn)':'#1e2130'};border:1.5px solid ${col};position:relative;cursor:pointer;flex-shrink:0" onclick="togEditField('${escA(dk)}','${escA(f)}')">
       <div style="width:10px;height:10px;border-radius:50%;background:${isOn?'#fff':'#4d5070'};position:absolute;top:1.5px;left:${isOn?'14px':'2px'};transition:left .15s"></div>
     </div>
-    <span style="flex:1;font-size:11px;color:${isHidden?'var(--t5)':isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isHidden?'text-decoration:line-through':''}" title="${escA(f)}">
-      ${esc(label)}${isEcn?' <span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle;'+(isHidden?'opacity:.4':'')+'">ECN</span>':''}${ruleButOff&&!isHidden?'<span style="font-size:7px;color:var(--yel);margin-left:3px">⚠️ flag only</span>':''}
+    <span style="flex:1;font-size:11px;color:${isOn?'var(--t1)':'var(--t4)'};font-weight:${isOn?'600':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(f)}">
+      ${esc(label)}${isEcn?' <span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700;vertical-align:middle">ECN</span>':''}${ruleButOff?'<span style="font-size:7px;color:var(--yel);margin-left:3px" title="Rule active but field is read-only">⚠️ flag only</span>':''}
     </span>
     <select style="padding:2px 4px;border-radius:4px;font-size:9px;background:var(--inp);color:${hasRule?'var(--ac)':'var(--t5)'};border:1px solid ${hasRule?'var(--ac)33':'var(--bd)'};cursor:pointer;max-width:95px" onchange="setFieldRuleType('${escA(dk)}','${escA(f)}',this.value)">
       <option value="none" ${rule.type==='none'?'selected':''}>No rule</option>
@@ -1613,18 +1676,18 @@ function rSettingsFieldRow(dk,f,isOn){
     </select>
   </div>`;
 
+  // Value input row
   if(rule.type==='exact'||rule.type==='fw'){
-    h+=`<div style="padding:3px 0 2px 54px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}"></div>`;
+    h+=`<div style="padding:3px 0 2px 34px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="required value" onchange="${rule.type==='fw'?`setFWRule('${escA(f)}',this.value)`:`setExactMatch('${escA(dk)}','${escA(f)}',this.value)`}"></div>`;
   } else if(rule.type==='multi'){
-    h+=`<div style="padding:3px 0 2px 54px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)"></div>`;
+    h+=`<div style="padding:3px 0 2px 34px"><input class="comp-input" style="width:100%;padding:3px 8px;border-radius:4px;font-size:10px;font-family:var(--fm)" value="${escA(rule.value)}" placeholder="val1, val2, val3" onchange="setMultiMatch('${escA(dk)}','${escA(f)}',this.value)"></div>`;
   } else if(rule.type==='date_fresh'){
-    h+=`<div style="display:flex;align-items:center;gap:5px;padding:3px 0 2px 54px"><input class="comp-input" type="number" style="width:55px;padding:3px 8px;border-radius:4px;font-size:10px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)"><span style="font-size:9px;color:var(--t5)">days max</span></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:5px;padding:3px 0 2px 34px"><input class="comp-input" type="number" style="width:55px;padding:3px 8px;border-radius:4px;font-size:10px" value="${escA(rule.value)}" placeholder="60" onchange="setDateFresh('${escA(dk)}','${escA(f)}',this.value)"><span style="font-size:9px;color:var(--t5)">days max</span></div>`;
   }
 
   h+=`</div>`;
   return h;
 }
-
 
 function togECNSec(dk){S.ecnExpanded.has(dk)?S.ecnExpanded.delete(dk):S.ecnExpanded.add(dk);render();}
 
@@ -1636,25 +1699,6 @@ function togECNField(dk,field){
 }
 
 // Bulk set rule type for all toggled-ON fields in a dk
-// Bulk show all fields
-function bulkShowAll(dk){
-  if(HIDDEN_FIELDS[dk]){HIDDEN_FIELDS[dk].clear();}
-  showToast('All fields visible');render();
-}
-// Bulk hide all OFF (non-editable) fields
-function bulkHideOff(dk){
-  if(!HIDDEN_FIELDS[dk])HIDDEN_FIELDS[dk]=new Set();
-  const allFieldsAll=detectFieldsByKey();
-  const normal=allFieldsAll[dk]||[];
-  const ecn=getECNFields(dk);
-  const all=[...normal,...ecn];
-  const seen=new Set();
-  const unique=all.filter(f=>{if(seen.has(f))return false;seen.add(f);return true;});
-  let cnt=0;
-  unique.forEach(f=>{if(!isFieldEditable(dk,f)){HIDDEN_FIELDS[dk].add(f);cnt++;}});
-  showToast(`${cnt} OFF fields hidden`);render();
-}
-
 function bulkSetRule(dk,type){
   const allFieldsAll=detectFieldsByKey();
   const normal=allFieldsAll[dk]||[];
@@ -1690,6 +1734,58 @@ async function saveSettingsAndBack(){
 async function saveECNAndBack(){await saveECNSettings();S.screen='search';render();}
 
 // ===== ECN SUB-SECTION IN RESULT CARDS =====
+function rECNSubSection(sk,items,lk){
+  const dk=SK_TO_DK[sk]||sk;
+  const ecnFields=getECNFields(dk).filter(f=>isECNVisible(dk,f));
+  if(!ecnFields.length)return'';
+  const ecnKey='ecn_'+sk;
+  const isOpen=S.expanded.has(ecnKey);
+  const sf=getSNField(DATA[lk]||items);
+
+  // Count ECN compliance issues
+  let ecnIssues=0;
+  items.forEach(item=>{ecnFields.forEach(f=>{if(checkFieldComp(dk,f,item[f]))ecnIssues++;});});
+  const issueBadge=ecnIssues?`<span class="comp-badge" style="margin-left:auto">${ecnIssues} ⚠</span>`:'';
+
+  let h=`<div class="ecn-sub" onclick="togSec('${ecnKey}')">
+    <span class="ecn-sub-icon">🔧</span>
+    <span class="ecn-sub-label">ECN (${ecnFields.length})</span>
+    ${issueBadge}
+    <span class="schv ${isOpen?'schvO':''}">▼</span>
+  </div>`;
+  if(isOpen){
+    h+=`<div class="ecn-sub-body">`;
+    items.forEach(item=>{
+      ecnFields.forEach(f=>{
+        const val=item[f]||'';
+        const eid=regEdit(sk,item[sf]||'',f,val);
+        const compIssue=checkFieldComp(dk,f,val);
+        const compCls=compIssue?'fr-warn':'';
+        const compTag=compIssue?`<span class="comp-tag">⚠ ${esc(compIssue)}</span>`:'';
+
+        // Detect type from actual data
+        const ruleI2=getFieldRuleType(dk,f);const fType=ruleI2.type==="date_fresh"?{type:"date"}:ruleI2.type==="checkbox"?{type:"checkbox"}:guessECNType(sk,f);
+        let vH;
+        if(fType?.type==='checkbox'){
+          const p=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
+          const isF=/^(FALSE|false|0|✗|no)$/i.test(val);
+          vH=p?'<span class="ckd ckP">✓</span>':(isF?'<span class="ckd ckF">✗</span>':`<span class="fv">${esc(val||'—')}</span>`);
+        } else if(fType?.type==='date'){
+          vH=`<span class="fv" style="color:var(--blu)">${esc(val||'—')}</span>`;
+        } else {
+          vH=`<span class="fv">${esc(val||'—')}</span>`;
+        }
+
+        h+=`<div class="fr ${compCls}" onclick="doEdit(${eid})"><div class="fl"><span class="flbl ecn-flbl">${esc(f)}</span>${compTag}</div><div class="frt">${vH}<span class="fei">✎</span></div></div>`;
+      });
+    });
+    h+=`</div>`;
+  }
+  return h;
+}
+
+
+// Compliance settings actions
 function setFWRule(field,val){
   if(!COMP_RULES.latestFW)COMP_RULES.latestFW={};
   if(val.trim())COMP_RULES.latestFW[field]=val.trim();
@@ -2034,14 +2130,10 @@ function rBatchDashboard(){
   // Summary bar
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="font-size:13px;font-weight:600;color:var(--t2)">${S.batchUnits.length} Ghost${S.batchUnits.length>1?'s':''}</div>
-    <div style="display:flex;gap:6px">
-      <button style="padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.06);color:var(--grn);cursor:pointer" onclick="batchExpandAll()">Expand all</button>
-      <button style="padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="batchCollapseAll()">Collapse all</button>
-      <button style="padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="S.batchStep=1;render()">✏️ Edit</button>
-    </div>
+    <button style="padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--t3);cursor:pointer" onclick="S.batchStep=1;render()">✏️ Edit units</button>
   </div>`;
 
-  // Tab strip
+  // Tab strip with issue counts
   const availTabs=BATCH_TABS.filter(t=>getBatchTabItems(t.k).length>0);
   if(!S.batchTab||!availTabs.find(t=>t.k===S.batchTab)){
     S.batchTab=availTabs[0]?.k||null;
@@ -2053,17 +2145,19 @@ function rBatchDashboard(){
     const sel=S.batchTab===t.k;
     const dk=t.dk;
     let issues=0;
-    items.forEach(item=>{Object.keys(item).forEach(f=>{if(f==='_rowIdx')return;if(checkFieldComp(dk,f,item[f]))issues++;});});
+    items.forEach(item=>{
+      Object.keys(item).forEach(f=>{if(f==='_rowIdx')return;if(checkFieldComp(dk,f,item[f]))issues++;});
+    });
     h+=`<div style="padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;border:${sel?'2px solid '+t.color:'1px solid var(--bd)'};background:${sel?t.color+'12':'var(--card)'};transition:all .12s" onclick="S.batchTab='${t.k}';render()">
       <span style="font-size:14px">${t.icon}</span>
       <span style="font-size:11px;font-weight:700;color:${sel?t.color:'var(--t3)'}">${t.label}</span>
       <span style="font-size:10px;color:var(--t5)">${items.length}</span>
-      ${issues?`<span style="min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px">⚠${issues}</span>`:''}
+      ${issues?`<span style="min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;animation:pulse 2s infinite">⚠${issues}</span>`:''}
     </div>`;
   });
   h+=`</div>`;
 
-  // Selected tab content — units all collapsed
+  // Selected tab content
   const selTab=availTabs.find(t=>t.k===S.batchTab);
   if(selTab){
     const items=getBatchTabItems(selTab.k);
@@ -2071,7 +2165,6 @@ function rBatchDashboard(){
     const sk=selTab.k;
     const sf=getSNField(DATA[dk]||items);
 
-    h+=`<div id="batchUnitList">`;
     items.forEach((item,idx)=>{
       const itemSN=item[sf]||`Unit ${idx+1}`;
 
@@ -2084,65 +2177,93 @@ function rBatchDashboard(){
       }
       const ghostNum=(parentGhost.match(/(\d+)$/)||[])[1]||parentGhost;
 
-      // Count issues
+      // Count issues for this unit
       let unitIssues=0;
-      const chkKeys=[...Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f)),...Object.keys(item).filter(f=>f!=='_rowIdx'&&isECNField(f))];
-      const seen=new Set();
-      chkKeys.forEach(f=>{if(!seen.has(f)){seen.add(f);if(checkFieldComp(dk,f,item[f]))unitIssues++;}});
+      const chkF=[...Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f)),...Object.keys(item).filter(f=>f!=='_rowIdx'&&isECNField(f))];
+      chkF.forEach(f=>{if(checkFieldComp(dk,f,item[f]))unitIssues++;});
 
-      const hasIssues=unitIssues>0;
+      h+=`<div style="margin-bottom:10px;border:1px solid ${unitIssues?'rgba(248,113,113,.35)':'var(--bd)'};border-radius:10px;overflow:hidden;background:var(--card);${unitIssues?'box-shadow:0 0 12px rgba(248,113,113,.08)':''}">`;
 
-      h+=`<div style="margin-bottom:8px;border:1px solid ${hasIssues?'rgba(248,113,113,.3)':'var(--bd)'};border-radius:8px;overflow:hidden;background:var(--card);${hasIssues?'box-shadow:0 0 8px rgba(248,113,113,.05)':''}">`;
-
-      // Unit header — all collapsed by default
-      h+=`<div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;background:${hasIssues?'rgba(248,113,113,.04)':selTab.color+'08'}" onclick="togBatchUnit(this)">
-        <span style="font-size:9px;color:var(--t4)">▶</span>
-        <span style="font-size:14px">${selTab.icon}</span>
-        <span style="font-size:13px;font-weight:700;color:${selTab.color};font-family:var(--fm)">${esc(itemSN)}</span>
+      // Unit header with issue badge
+      h+=`<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd);background:${unitIssues?'rgba(248,113,113,.04)':selTab.color+'08'}">
+        <span style="font-size:16px">${selTab.icon}</span>
+        <span style="font-size:14px;font-weight:700;color:${selTab.color};font-family:var(--fm)">${esc(itemSN)}</span>
         <span style="font-size:10px;color:var(--t4)">👻 ${esc(ghostNum)}</span>
-        ${hasIssues?
-          `<span style="margin-left:auto;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2)">⚠️ ${unitIssues}</span>`:
-          `<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--grn)">✓ OK</span>`}
+        ${unitIssues?
+          `<span style="margin-left:auto;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)">⚠️ ${unitIssues} issue${unitIssues>1?'s':''}</span>`:
+          `<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--grn)">✓ OK</span>`}
       </div>`;
 
-      // Unit body — collapsed
-      h+=`<div style="overflow:hidden;max-height:0">`;
-      h+=rGroupedFields(sk,item,dk,sf,{hideEmpty:true});
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd)">`;
+      const fields=Object.keys(item).filter(f=>f!=='_rowIdx'&&!shouldSkipField(f));
+      const ecnFields=Object.keys(item).filter(f=>f!=='_rowIdx'&&isECNField(f));
+      const allFields=[...fields,...ecnFields];
+      allFields.forEach(f=>{
+        const val=item[f]||'';
+        const label=FIELD_LABELS[f]||f;
+        const isECN=isECNField(f);
+        const vRule=getV(sk,f);
+        const editable=isFieldEditable(dk,f);
+        const isSN=f===sf||/S\/N$/i.test(f);
+        const compIssue=checkFieldComp(dk,f,val);
+        const eid=editable?regEdit(sk,itemSN,f,val):null;
+
+        let valColor='var(--t1)';
+        let bgColor='var(--card)';
+        if(compIssue)bgColor='rgba(248,113,113,.06)';
+        else if(isECN)bgColor='rgba(91,110,234,.04)';
+        if(!val)valColor='var(--t6)';
+        if(isSN)valColor=selTab.color;
+
+        let displayVal=val;
+        const ruleInfo=getFieldRuleType(dk,f);
+        const effType=ruleInfo.type==='date_fresh'?'date':ruleInfo.type==='checkbox'?'checkbox':vRule?.type||(isECN?guessECNType(sk,f)?.type:null);
+        if(effType==='checkbox'||(!effType&&isECN&&/^(TRUE|FALSE|true|false|1|0|OK|✓|✗|done|no|)$/i.test(val))){
+          const pass=/^(TRUE|true|1|OK|✓|done)$/i.test(val);
+          const fail=/^(FALSE|false|0|✗|no)$/i.test(val);
+          if(pass)displayVal='✓';
+          else if(fail)displayVal='✗';
+          valColor=pass?'var(--grn)':fail?'var(--red)':'var(--t5)';
+        }
+
+        // Date age badge
+        let dateBadge='';
+        if(ruleInfo.type==='date_fresh'&&val){
+          const d=new Date(val.replace(/\//g,'-'));
+          if(!isNaN(d.getTime())){
+            const days=Math.floor((new Date()-d)/(1000*60*60*24));
+            const maxD=parseInt(ruleInfo.value)||60;
+            const overdue=days>maxD;
+            dateBadge=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:${overdue?'rgba(248,113,113,.15)':'rgba(52,211,153,.12)'};color:${overdue?'var(--red)':'var(--grn)'};font-weight:700">${days}d${overdue?' ⚠️':''}</span>`;
+          }
+        }
+
+        // Warning reason tag
+        let warnTag='';
+        if(compIssue){
+          warnTag=`<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--red);font-weight:700">⚠️ ${esc(compIssue)}</span>`;
+        }
+
+        h+=`<div style="padding:8px 12px;background:${bgColor};${editable?'cursor:pointer':''}${compIssue?';border-left:3px solid var(--red)':''}" ${editable?`onclick="doEdit(${eid})"`:''}">
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px;display:flex;align-items:center;gap:3px;flex-wrap:wrap">
+            ${esc(label)}
+            ${editable?'<span style="font-size:8px;color:var(--ac)">✎</span>':''}
+            ${isECN?'<span style="font-size:6px;padding:1px 3px;border-radius:2px;background:var(--ac);color:#fff;font-weight:700">ECN</span>':''}
+            ${dateBadge}
+            ${warnTag}
+          </div>
+          <div style="font-size:13px;font-family:${isSN?'var(--fm)':'inherit'};color:${valColor};font-weight:${isSN||effType==='checkbox'?'700':'500'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayVal?esc(displayVal):'<span style="color:var(--t5);font-style:italic">—</span>'}</div>
+        </div>`;
+      });
       h+=`</div></div>`;
     });
-    h+=`</div>`;
   }
 
   return h;
 }
 
-// Toggle batch unit
-function togBatchUnit(el){
-  const body=el.nextElementSibling;
-  const arrow=el.querySelector('span');
-  if(body.style.maxHeight==='0px'||body.style.maxHeight==='0'){
-    body.style.maxHeight=body.scrollHeight+'px';
-    if(arrow)arrow.textContent='▼';
-  } else {
-    body.style.maxHeight='0';
-    if(arrow)arrow.textContent='▶';
-  }
-}
-function batchExpandAll(){
-  document.querySelectorAll('#batchUnitList > div').forEach(card=>{
-    const head=card.firstElementChild;
-    const body=head?.nextElementSibling;
-    if(body){body.style.maxHeight=body.scrollHeight+'px';const a=head.querySelector('span');if(a&&a.textContent==='▶')a.textContent='▼';}
-  });
-}
-function batchCollapseAll(){
-  document.querySelectorAll('#batchUnitList > div').forEach(card=>{
-    const head=card.firstElementChild;
-    const body=head?.nextElementSibling;
-    if(body){body.style.maxHeight='0';const a=head.querySelector('span');if(a&&a.textContent==='▼')a.textContent='▶';}
-  });
-}
 
+// Utility: find S/N by trailing number
 function findSNByNum(dk,num){
   const rows=DATA[dk]||[];const sf=getSNField(rows);
   const r=rows.find(r=>{const m=(r[sf]||'').match(/(\d+)$/);return m&&parseInt(m[1])===num;});
@@ -2185,7 +2306,6 @@ window.onload=function(){render();
       if(cfg){currentUser.isAdmin=cfg.isAdmin;currentUser.team=cfg.team;currentUser.name=cfg.name;localStorage.setItem('gau',JSON.stringify(currentUser));valToken();}
       else doLogout();}
   }initGA();};
-
 
 
 
